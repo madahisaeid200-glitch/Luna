@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#211a28"><title>LUNA — Episode Producer</title>
+<style>
+:root{--bg:#f7f3f0;--ink:#201a24;--muted:#746b78;--accent:#9b6b8d;--line:#e8dfe7;--dark:#211a28;--soft:#f4eaf2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}header{background:var(--dark);color:white;padding:16px clamp(16px,5vw,56px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.15em}.brand span{color:#e2b9d5}a,button{font:inherit;cursor:pointer}a{color:inherit;text-decoration:none}button,.link{border:1px solid #d7c6d5;border-radius:12px;padding:9px 14px;background:white;color:var(--ink);font-weight:750}.primary{background:var(--accent);color:white;border-color:var(--accent)}main{max-width:1050px;margin:auto;padding:24px 16px 60px}.hero,.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:clamp(18px,4vw,30px);margin-bottom:16px}.hero{background:linear-gradient(120deg,#f0e3ed,#f9eee2)}.eyebrow{color:var(--accent);font-size:.75rem;font-weight:900;letter-spacing:.1em}.layout{display:grid;grid-template-columns: minmax(0, .9fr) minmax(0,1.1fr);gap:16px}.field{display:grid;gap:5px;margin:12px 0}.field label{font-weight:800;font-size:.9rem}.field input,.field select,.field textarea{width:100%;font:inherit;padding:11px;border:1px solid var(--line);border-radius:11px;background:white;color:var(--ink)}.field textarea{min-height:100px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.output{white-space:pre-wrap;overflow-wrap:anywhere;background:#fcf9fc;border:1px solid var(--line);border-radius:14px;padding:16px;min-height:220px}.hint{font-size:.85rem;color:var(--muted)}.checklist label{display:flex;align-items:flex-start;gap:9px;padding:8px 0}.checklist input{margin-top:6px;accent-color:var(--accent)}footer{text-align:center;padding:18px;color:var(--muted);font-size:.82rem}@media(max-width:760px){.layout{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><div class="brand">L<span>U</span>NA STUDIO</div><div style="color:#c9bdce;font-size:.8rem" id="subtitle">استودیو آماده‌سازی قسمت‌ها</div></div><div class="actions" style="margin:0"><a class="link" href="./index.html">بازگشت به داشبورد</a><button id="language">English</button></div></header>
+<main>
+<section class="hero"><div class="eyebrow">EPISODE PRODUCER · BETA</div><h1 id="heading">کارگاه تولید قسمت LUNA</h1><p id="description">ایده قسمت را وارد کن و یک پیش‌نویس منظم شامل شروع جذاب، صحنه‌ها، دیالوگ و پایان بامزه بساز.</p><p class="hint" id="notice">این نسخه از قالب‌های داخلی استفاده می‌کند؛ هنوز به مدل هوش مصنوعی یا سرویس تولید ویدیو متصل نیست.</p></section>
+<div class="layout">
+<section class="panel"><h2 id="settingsTitle">تنظیمات قسمت</h2>
+<div class="field"><label id="titleLabel" for="epTitle">عنوان یا ایده قسمت</label><input id="epTitle" placeholder="مثلاً قرار عاشقانه‌ای که خراب شد"></div>
+<div class="field"><label id="premiseLabel" for="premise">اتفاق اصلی / سوءتفاهم</label><textarea id="premise" placeholder="لونا فکر می‌کند لئو برایش یک ماشین لوکس کرایه کرده، اما..."></textarea></div>
+<div class="field"><label id="durationLabel" for="duration">مدت ویدیو</label><select id="duration"><option value="short">Short / Reel · 30–60 sec</option><option value="long">Episode · 3–5 min</option></select></div>
+<div class="field"><label id="toneLabel" for="tone">حال‌وهوای داستان</label><select id="tone"><option value="romcom">عاشقانه و بامزه</option><option value="chaos">سوءتفاهم و آشوب</option><option value="luxury">لوکس و سفر</option></select></div>
+<div class="field"><label id="langLabel" for="scriptLang">زبان متن خروجی</label><select id="scriptLang"><option value="en">English</option><option value="fa">فارسی</option><option value="both">هر دو زبان / Both</option></select></div>
+<div class="actions"><button class="primary" id="generate">ساخت پیش‌نویس قسمت</button><button id="save">ذخیره در داشبورد</button></div><p class="hint" id="saveHint">ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.</p></section>
+<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button></div></section>
+</div>
+<section class="panel checklist"><h2 id="checkTitle">چک‌لیست قبل از تولید ویدیو</h2>
+<label><input type="checkbox"> <span id="check1">شروع ۲ ثانیه اول کنجکاوی ایجاد می‌کند.</span></label>
+<label><input type="checkbox"> <span id="check2">شوخی قابل فهم است و شخصیت‌ها را ثابت نگه می‌دارد.</span></label>
+<label><input type="checkbox"> <span id="check3">پایان، مخاطب را به قسمت بعدی کنجکاو می‌کند.</span></label>
+<label><input type="checkbox"> <span id="check4">اگر شخصیت‌ها AI هستند، شفافیت لازم در انتشار رعایت می‌شود.</span></label>
+</section>
+</main><footer>LUNA Studio · Episode Producer Beta</footer>
+<script>
+const el=id=>document.getElementById(id);let fa=true;let lastDraft='';
+const ui={
+fa:{subtitle:'استودیو آماده‌سازی قسمت‌ها',heading:'کارگاه تولید قسمت LUNA',description:'ایده قسمت را وارد کن و یک پیش‌نویس منظم شامل شروع جذاب، صحنه‌ها، دیالوگ و پایان بامزه بساز.',notice:'این نسخه از قالب‌های داخلی استفاده می‌کند؛ هنوز به مدل هوش مصنوعی یا سرویس تولید ویدیو متصل نیست.',settingsTitle:'تنظیمات قسمت',titleLabel:'عنوان یا ایده قسمت',premiseLabel:'اتفاق اصلی / سوءتفاهم',durationLabel:'مدت ویدیو',toneLabel:'حال‌وهوای داستان',langLabel:'زبان متن خروجی',generate:'ساخت پیش‌نویس قسمت',save:'ذخیره در داشبورد',saveHint:'ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.',outputEyebrow:'پیش‌نویس سناریو',outputTitle:'پیش‌نویس داستان',placeholder:'برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.',copy:'کپی متن',download:'دانلود فایل متنی',checkTitle:'چک‌لیست قبل از تولید ویدیو',checks:['شروع ۲ ثانیه اول کنجکاوی ایجاد می‌کند.','شوخی قابل فهم است و شخصیت‌ها را ثابت نگه می‌دارد.','پایان، مخاطب را به قسمت بعدی کنجکاو می‌کند.','اگر شخصیت‌ها AI هستند، شفافیت لازم در انتشار رعایت می‌شود.'],back:'بازگشت به داشبورد',button:'English',missing:'لطفاً عنوان و اتفاق اصلی را وارد کن.',saved:'پیش‌نویس در داشبورد این مرورگر ذخیره شد.',copied:'متن کپی شد.'},
+en:{subtitle:'Episode planning studio',heading:'LUNA Episode Workshop',description:'Enter an episode idea to draft a hook, scenes, dialogue beats and a funny ending.',notice:'This beta uses built-in templates; it is not connected to an AI model or video-generation service yet.',settingsTitle:'Episode settings',titleLabel:'Episode title or idea',premiseLabel:'Main event / misunderstanding',durationLabel:'Video length',toneLabel:'Story tone',langLabel:'Output language',generate:'Generate episode draft',save:'Save to dashboard',saveHint:'Drafts save in this browser only. Copy or download the text to move it to another device.',outputEyebrow:'SCRIPT DRAFT',outputTitle:'Story draft',placeholder:'Enter a title and the main event, then select Generate episode draft.',copy:'Copy text',download:'Download text file',checkTitle:'Before video production',checks:['The first 2 seconds create curiosity.','The joke is clear and character voices stay consistent.','The ending makes viewers curious about the next episode.','Clearly disclose that the characters are AI when publishing.'],back:'Back to dashboard',button:'فارسی',missing:'Please enter a title and the main event.',saved:'Draft saved to this browser’s dashboard.',copied:'Text copied.'}
+};
+function setUi(){const d=ui[fa?'fa':'en'];document.documentElement.lang=fa?'fa':'en';document.documentElement.dir=fa?'rtl':'ltr';Object.keys(d).forEach(k=>{const node=el(k);if(node){if(k==='checks')d.checks.forEach((v,i)=>el('check'+(i+1)).textContent=v);else if(k==='button')el('language').textContent=d[k];else node.textContent=d[k]}});el('language').textContent=d.button;el('subtitle').textContent=d.subtitle;el('heading').textContent=d.heading;el('description').textContent=d.description;el('notice').textContent=d.notice;el('settingsTitle').textContent=d.settingsTitle;el('titleLabel').textContent=d.titleLabel;el('premiseLabel').textContent=d.premiseLabel;el('durationLabel').textContent=d.durationLabel;el('toneLabel').textContent=d.toneLabel;el('langLabel').textContent=d.langLabel;el('generate').textContent=d.generate;el('save').textContent=d.save;el('saveHint').textContent=d.saveHint;el('outputEyebrow').textContent=d.outputEyebrow;el('outputTitle').textContent=d.outputTitle;el('copy').textContent=d.copy;el('download').textContent=d.download;el('checkTitle').textContent=d.checkTitle;el('check1').textContent=d.checks[0];el('check2').textContent=d.checks[1];el('check3').textContent=d.checks[2];el('check4').textContent=d.checks[3];}
+function draft(lang,title,premise,duration,tone){const short=duration==='short';const beats=lang==='fa'?[
+'قلاب آغازین (۰–۲ ثانیه): «این قرار عاشقانه قرار بود بی‌نقص باشه… تا وقتی که لئو گفت: یه سورپرایز دارم!»',
+'صحنه ۱ — انتظار: لونا با ظاهر کاملاً آماده و لوکس منتظر است. لونا: «فقط بگو این بار چیزی رو اشتباه رزرو نکردی.»',
+'صحنه ۲ — سوءتفاهم: '+premise,
+'صحنه ۳ — واکنش: لئو با اعتمادبه‌نفس توضیح می‌دهد که همه‌چیز طبق نقشه بوده؛ اما جزئیات نشان می‌دهد یک اشتباه بامزه رخ داده است.',
+'پایان بامزه: لونا به دوربین نگاه می‌کند: «قسمت بعدی، خودم همه‌چیز رو رزرو می‌کنم!» لئو: «عالیه… فقط برای سگ هم جا بگیر!»',
+'یادداشت اجرا: کات‌های سریع، واکنش چهره اغراق‌شده، زیرنویس کوتاه و مکث قبل از شوخی آخر.'
+]:[
+'Opening hook (0–2s): “This romantic plan was supposed to be perfect… until Leo said, ‘I have a surprise!’”',
+'Scene 1 — The setup: Luna looks perfectly glamorous and waits. Luna: “Just tell me you didn’t book the wrong thing again.”',
+'Scene 2 — The misunderstanding: '+premise,
+'Scene 3 — The reaction: Leo confidently insists everything followed the plan, while the details reveal a ridiculous mistake.',
+'Funny ending: Luna looks at the camera: “Next time, I’m booking everything myself!” Leo: “Great—just save a spot for the dog!”',
+'Production note: quick cuts, expressive reactions, short captions and a beat of silence before the final punchline.'
+].join('\n\n');const long=lang==='fa'?[
+'قلاب آغازین: یک نمای لوکس و یک جمله غیرمنتظره که سؤال ایجاد کند.',
+'صحنه ۱ — هدف: لونا توضیح می‌دهد که می‌خواهد یک تجربه بی‌نقص و رمانتیک داشته باشد.',
+'صحنه ۲ — برنامه لئو: لئو با اعتمادبه‌نفس نقشه‌اش را تعریف می‌کند؛ مخاطب سرنخ کوچکی از اشتباه می‌بیند.',
+'صحنه ۳ — سوءتفاهم اصلی: '+premise,
+'صحنه ۴ — تلاش برای نجات برنامه: هر دو راه‌حل‌هایی پیشنهاد می‌کنند که اوضاع را خنده‌دارتر می‌کند. دیالوگ‌ها کوتاه و شخصیت‌محور باشند.',
+'صحنه ۵ — اوج کمدی: حقیقت روشن می‌شود؛ لونا تلاش می‌کند جدی بماند اما نمی‌تواند.',
+'پایان و قلاب قسمت بعد: یک مشکل تازه یا یک پیام مرموز، داستان را ادامه‌دار می‌کند.',
+'یادداشت تولید: ۵ تا ۷ نما، تنوع نمای باز و نزدیک، زیرنویس خوانا و موسیقی پس‌زمینه کم‌حجم.'
+]:[
+'Opening hook: Start with a glamorous visual and an unexpected line that raises a question.',
+'Scene 1 — The goal: Luna explains that she wants a flawless, romantic experience.',
+'Scene 2 — Leo’s plan: Leo confidently describes his plan while the audience notices a small clue that something is wrong.',
+'Scene 3 — The main misunderstanding: '+premise,
+'Scene 4 — Damage control: They propose solutions that make the situation even funnier. Keep dialogue short and character-driven.',
+'Scene 5 — Comedy payoff: The truth comes out; Luna tries to stay serious but breaks into laughter.',
+'Ending / next-episode hook: A new problem or mysterious message keeps the story going.',
+'Production notes: 5–7 shots, mix wide and close-up framing, readable captions and subtle background music.'
+].join('\n\n');return (lang==='both'?'=== ENGLISH DRAFT ===\n'+(short?draft('en',title,premise,duration,tone):draft('en',title,premise,duration,tone))+'\n\n=== پیش‌نویس فارسی ===\n'+(short?draft('fa',title,premise,duration,tone):draft('fa',title,premise,duration,tone)): (lang==='fa'?long: (short?draft('en',title,premise,duration,tone):long)))}
+el('generate').onclick=()=>{const title=el('epTitle').value.trim(),premise=el('premise').value.trim();if(!title||!premise){alert(ui[fa?'fa':'en'].missing);return}const lang=el('scriptLang').value;lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);el('output').textContent=lastDraft};
+el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;arr.push({id,en:title,fa:title,storyEn:[lastDraft],storyFa:[lastDraft]});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
+el('copy').onclick=async()=>{if(!lastDraft)return;try{await navigator.clipboard.writeText(lastDraft);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=lastDraft;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
+el('download').onclick=()=>{if(!lastDraft)return;const blob=new Blob([lastDraft],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
+el('language').onclick=()=>{fa=!fa;setUi()};setUi();
+</script></body></html>
