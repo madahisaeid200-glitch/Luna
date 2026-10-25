@@ -21,6 +21,15 @@
 <div class="actions"><button class="primary" id="generate">ساخت پیش‌نویس قسمت</button><button id="save">ذخیره در داشبورد</button></div><p class="hint" id="saveHint">ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.</p></section>
 <section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button></div></section>
 </div>
+
+<section class="panel" id="aiConnection">
+<h2>اتصال به هوش مصنوعی / AI Connection</h2>
+<p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
+<div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" placeholder="https://luna-ai-producer.your-name.workers.dev"></div>
+<div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
+<p class="hint" id="aiStatus" role="status">وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.</p>
+</section>
+
 <section class="panel checklist"><h2 id="checkTitle">چک‌لیست قبل از تولید ویدیو</h2>
 <label><input type="checkbox"> <span id="check1">شروع ۲ ثانیه اول کنجکاوی ایجاد می‌کند.</span></label>
 <label><input type="checkbox"> <span id="check2">شوخی قابل فهم است و شخصیت‌ها را ثابت نگه می‌دارد.</span></label>
@@ -76,7 +85,47 @@ return (isFa?'عنوان: ':'Title: ')+title+'\n\n'+lines.join('\n\n');
 if(lang==='both')return one('en')+'\n\n====================\n\n'+one('fa');
 return one(lang);
 }
-el('generate').onclick=()=>{const title=el('epTitle').value.trim(),premise=el('premise').value.trim();if(!title||!premise){alert(ui[fa?'fa':'en'].missing);return}const lang=el('scriptLang').value;lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);el('output').textContent=lastDraft};
+const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
+const savedEndpoint=localStorage.getItem('lunaAiEndpoint')||'';
+endpointInput.value=savedEndpoint;
+function updateAiStatus(message){aiStatus.textContent=message;}
+updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
+el('saveAiEndpoint').onclick=()=>{
+ const value=endpointInput.value.trim();
+ if(value && (!/^https:\/\//i.test(value) || !/workers\.dev\/?$/i.test(new URL(value).host))){
+   updateAiStatus('لطفاً آدرس HTTPS معتبر از نوع workers.dev وارد کن.'); return;
+ }
+ if(value){localStorage.setItem('lunaAiEndpoint',value.replace(/\/$/,''));updateAiStatus('آدرس ذخیره شد. حالا «ساخت پیش‌نویس» را بزن تا اتصال آزمایش شود.');}
+ else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
+};
+el('generate').onclick=async()=>{
+ const title=el('epTitle').value.trim(),premise=el('premise').value.trim();
+ if(!title||!premise){alert(ui[fa?'fa':'en'].missing);return}
+ const lang=el('scriptLang').value,endpoint=localStorage.getItem('lunaAiEndpoint');
+ const button=el('generate');button.disabled=true;
+ try{
+   if(endpoint){
+     updateAiStatus('در حال اتصال به مدل هوش مصنوعی…');
+     button.textContent=fa?'در حال تولید…':'Generating…';
+     const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang})});
+     const data=await response.json();
+     if(!response.ok)throw new Error(data.error||'AI endpoint request failed');
+     lastDraft=data.script;
+     updateAiStatus('اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+').');
+   }else{
+     lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
+     updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
+   }
+   el('output').textContent=lastDraft;
+ }catch(error){
+   updateAiStatus('اتصال ناموفق: '+(error.message||'خطای ناشناخته')+' — آدرس Worker، secret و لاگ‌های Worker را بررسی کن.');
+   alert('اتصال هوش مصنوعی انجام نشد. پیش‌نویس قالبی ساخته می‌شود؛ لطفاً وضعیت اتصال را بررسی کن.');
+   lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
+   el('output').textContent=lastDraft;
+ }finally{
+   button.disabled=false;button.textContent=ui[fa?'fa':'en'].generate;
+ }
+};
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;arr.push({id,en:title,fa:title,storyEn:[lastDraft],storyFa:[lastDraft]});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
 el('copy').onclick=async()=>{if(!lastDraft)return;try{await navigator.clipboard.writeText(lastDraft);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=lastDraft;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
 el('download').onclick=()=>{if(!lastDraft)return;const blob=new Blob([lastDraft],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
