@@ -1,25 +1,44 @@
 const ALLOWED_ORIGIN = "https://madahisaeid200-glitch.github.io";
 const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    const allowedOrigin = !origin || origin === ALLOWED_ORIGIN;
     const cors = {
       "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "null",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400",
       "Vary": "Origin"
     };
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const json = (data, status = 200) => new Response(JSON.stringify(data), {
-      status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" }
+      status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
     });
-    if (origin !== ALLOWED_ORIGIN) return json({ error: "Origin not allowed." }, 403);
-    if (request.method !== "POST") return json({ error: "Use POST." }, 405);
-    if (!env.AI) return json({ error: "Cloudflare Workers AI binding is missing. Add a Workers AI binding named AI in Worker settings." }, 500);
+
+    if (request.method === "OPTIONS") {
+      if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+      return new Response(null, { status: 204, headers: cors });
+    }
+    if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+
+    // A lightweight endpoint check; it does not spend AI tokens.
+    if (request.method === "GET") {
+      return json({
+        ok: true,
+        service: "LUNA AI Worker",
+        aiBinding: Boolean(env.AI),
+        model: env.AI_MODEL || DEFAULT_MODEL,
+        fallbackModel: FALLBACK_MODEL,
+        message: env.AI ? "Worker is reachable and the AI binding exists." : "Worker is reachable, but the AI binding named AI is missing."
+      }, env.AI ? 200 : 503);
+    }
+    if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
+    if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
 
     let body;
-    try { body = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
+    try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
     const { title, premise, duration, tone, language } = body || {};
     if (![title, premise].every(v => typeof v === "string" && v.trim())) return json({ error: "Please provide a title and premise." }, 400);
     if (title.length > 240 || premise.length > 3000) return json({ error: "Title or premise is too long." }, 400);
@@ -35,21 +54,30 @@ Core premise: ${premise.trim()}
 Structure: 1) hook in the first 1–2 seconds, 2) scene-by-scene action, 3) natural dialogue with speaker names, 4) visual/comedic beats, 5) a clear funny payoff, 6) a small cliffhanger teasing the next episode, 7) concise production notes for vertical video and captions.
 Avoid generic filler and repeated stock jokes. Make the plot coherent and easy to produce. Clearly label scenes and speakers. Return only the script, no commentary.`;
 
-    try {
-      const model = env.AI_MODEL || DEFAULT_MODEL;
-      const result = await env.AI.run(model, {
-        messages: [
-          { role: "system", content: "You are an expert comedy screenwriter for short-form vertical videos. Follow the user's language and structure requirements exactly." },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 2200,
-        temperature: 0.8
-      });
-      const script = result?.response || result?.result?.response || "";
-      if (!script.trim()) return json({ error: "The AI returned an empty script. Check the selected model and Worker logs." }, 502);
-      return json({ script: script.trim(), model });
-    } catch (error) {
-      return json({ error: "Workers AI request failed. Check the AI binding, model availability, daily free allocation, and Worker logs." }, 502);
+    const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
+    const modelsToTry = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+    const failures = [];
+    for (const model of modelsToTry) {
+      try {
+        const result = await env.AI.run(model, {
+          messages: [
+            { role: "system", content: "You are an expert comedy screenwriter for short-form vertical videos. Follow the user's language and structure requirements exactly." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 2200,
+          temperature: 0.8
+        });
+        const script = result?.response || result?.result?.response || "";
+        if (typeof script === "string" && script.trim()) return json({ script: script.trim(), model, fallbackUsed: model !== primaryModel });
+        failures.push(model + ": model returned an empty response");
+      } catch (error) {
+        failures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 220));
+      }
     }
+    return json({
+      error: "AI generation failed on all configured models.",
+      details: failures,
+      checks: ["Confirm Workers AI is enabled for this account.", "Check Workers AI usage/quota.", "Review the Worker logs in Cloudflare.", "If needed, set AI_MODEL to an active text-generation model ID."]
+    }, 502);
   }
 };
