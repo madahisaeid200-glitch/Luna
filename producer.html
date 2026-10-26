@@ -85,6 +85,9 @@ return (isFa?'عنوان: ':'Title: ')+title+'\n\n'+lines.join('\n\n');
 if(lang==='both')return one('en')+'\n\n====================\n\n'+one('fa');
 return one(lang);
 }
+// Preload a ready-to-run sample so the user can test with one tap.
+if (!el('epTitle').value.trim()) el('epTitle').value='LUNA و LEO: سورپرایز لوکس خراب می‌شود';
+if (!el('premise').value.trim()) el('premise').value='لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
 const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
 const defaultEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
 const savedEndpoint=localStorage.getItem('lunaAiEndpoint')||defaultEndpoint;
@@ -102,7 +105,10 @@ el('saveAiEndpoint').onclick=()=>{
 };
 el('generate').onclick=async()=>{
  const title=el('epTitle').value.trim(),premise=el('premise').value.trim();
- if(!title||!premise){alert(ui[fa?'fa':'en'].missing);return}
+ if(!title||!premise){
+   el('epTitle').value=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
+   el('premise').value=premise||'لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
+ }
  const lang=el('scriptLang').value,endpoint=localStorage.getItem('lunaAiEndpoint');
  const button=el('generate');button.disabled=true;
  try{
