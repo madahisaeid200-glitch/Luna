@@ -104,10 +104,11 @@ el('saveAiEndpoint').onclick=()=>{
  else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
 };
 el('generate').onclick=async()=>{
- const title=el('epTitle').value.trim(),premise=el('premise').value.trim();
+ let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
-   el('epTitle').value=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
-   el('premise').value=premise||'لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
+   title=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
+   premise=premise||'لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
+   el('epTitle').value=title; el('premise').value=premise;
  }
  const lang=el('scriptLang').value,endpoint=localStorage.getItem('lunaAiEndpoint');
  const button=el('generate');button.disabled=true;
