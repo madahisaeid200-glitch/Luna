@@ -26,7 +26,7 @@
 <h2>اتصال به هوش مصنوعی / AI Connection</h2>
 <p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
 <div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" placeholder="https://orange-firefly-6434.madahisaeid200.workers.dev"></div>
-<div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
+<div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><button id="testAiEndpoint" type="button">آزمایش اتصال / Test connection</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
 <p class="hint" id="aiStatus" role="status">وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.</p>
 </section>
 
@@ -103,6 +103,23 @@ el('saveAiEndpoint').onclick=()=>{
  if(value){localStorage.setItem('lunaAiEndpoint',value.replace(/\/$/,''));updateAiStatus('آدرس ذخیره شد. حالا «ساخت پیش‌نویس» را بزن تا اتصال آزمایش شود.');}
  else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
 };
+el('testAiEndpoint').onclick=async()=>{
+ const endpoint=localStorage.getItem('lunaAiEndpoint')||endpointInput.value.trim();
+ if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
+ const button=el('testAiEndpoint');button.disabled=true;
+ updateAiStatus('در حال آزمایش دسترسی به Worker…');
+ try{
+   const response=await fetch(endpoint,{method:'GET',cache:'no-store'});
+   let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').')}
+   if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
+   if(!data.aiBinding)throw new Error('Worker در دسترس است، اما binding با نام AI وجود ندارد. در Cloudflare آن را اضافه و Deploy کن.');
+   updateAiStatus('آزمایش موفق: Worker در دسترس است و binding هوش مصنوعی وجود دارد. برای اطمینان از تولید واقعی، حالا «ساخت پیش‌نویس قسمت» را بزن.');
+ }catch(error){
+   const msg=String(error.message||error);
+   if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال شبکه/CORS ناموفق است. آدرس Worker را بررسی کن و مطمئن شو نسخه جدید Worker در Cloudflare Deploy شده است.');
+   else updateAiStatus('آزمایش ناموفق: '+msg);
+ }finally{button.disabled=false;}
+};
 el('generate').onclick=async()=>{
  let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
@@ -118,7 +135,7 @@ el('generate').onclick=async()=>{
      button.textContent=fa?'در حال تولید…':'Generating…';
      const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang})});
      const data=await response.json();
-     if(!response.ok)throw new Error(data.error||'AI endpoint request failed');
+     if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      lastDraft=data.script;
      updateAiStatus('اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+').');
    }else{
