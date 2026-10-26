@@ -1,0 +1,6 @@
+name = "orange-firefly-6434"
+main = "worker.js"
+compatibility_date = "2026-10-26"
+
+[ai]
+binding = "AI"
