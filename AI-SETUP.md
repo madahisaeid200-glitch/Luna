@@ -1,21 +1,29 @@
-# LUNA AI endpoint setup
+# LUNA AI endpoint setup — low-cost Cloudflare Workers AI
 
-The public GitHub Pages app must never contain an OpenAI API key. This Cloudflare Worker is a small private-key proxy for the Episode Producer.
+This setup uses Cloudflare Workers AI so you do not need an OpenAI API account or an OpenAI API key. The public GitHub Pages app must never contain provider secrets.
 
-## 1. Create the Worker
-1. Sign in to Cloudflare and open **Workers & Pages**.
-2. Create a Worker named `luna-ai-producer`.
-3. Replace its starter code with the complete contents of `worker.js` from this repository and deploy it.
-4. In Worker **Settings → Variables and Secrets**, add a secret named `OPENAI_API_KEY` with your API key. Do not put the key in GitHub or in the webpage.
-5. Optional: add a text variable `OPENAI_MODEL` if you want to override the default model. The default in this Worker is `gpt-4.1-mini`.
-6. Copy the deployed Worker URL (for example, `https://luna-ai-producer.<your-subdomain>.workers.dev`).
+## 1. Open Cloudflare
+1. Sign in to Cloudflare (create a free account if needed): https://dash.cloudflare.com/
+2. Open **Workers & Pages** and create a Worker named `luna-ai-producer`.
+3. In the Worker editor, replace the starter code with the complete contents of `worker.js` from this repository, then deploy.
+   - File: https://github.com/madahisaeid200-glitch/Luna/blob/main/worker.js
 
-## 2. Connect the page
-Open https://madahisaeid200-glitch.github.io/Luna/producer.html. In the **AI connection** section, paste the Worker URL and press **Save connection**. Then generate a script. The URL is saved only in that browser; the API key stays on the Worker.
+## 2. Add the Workers AI binding
+1. Open your new Worker and choose **Settings → Bindings** (the exact menu wording may vary).
+2. Select **Add binding** and choose **Workers AI**.
+3. Set the variable/binding name to exactly `AI`.
+4. Save and deploy the Worker again.
+5. Do not create an OpenAI API key or paste any key into the website. The selected default model is `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. If that model is unavailable to your account, check the Cloudflare Workers AI model catalog and choose an available text-generation model; optionally add a text variable named `AI_MODEL` with its exact model ID.
 
-## 3. Billing and safety
-- API usage is billed separately by the API provider; ChatGPT subscriptions do not automatically include API credit.
-- Never paste an API key into the public page or a chat.
-- The Worker accepts requests only from the LUNA GitHub Pages origin and limits title/premise sizes. If you later move the site to another domain, update `ALLOWED_ORIGIN` in `worker.js`.
-- Test with a short prompt first and review provider usage limits.
-- This endpoint generates scripts only. Image/video generation is a separate integration and may incur separate costs.
+## 3. Connect LUNA
+1. Open https://madahisaeid200-glitch.github.io/Luna/producer.html
+2. In **AI Connection**, paste your Worker URL, normally ending in `.workers.dev`.
+3. Press **Save connection**.
+4. Enter an episode title and premise, choose the language and length, then press **Generate episode draft**. The status message should confirm that an AI-generated script was returned.
+
+## 4. Costs and limits
+- Cloudflare Workers AI currently includes 10,000 Neurons per day on its free allocation. If you use up the allocation, requests may stop until the daily reset unless you enable paid usage. See https://developers.cloudflare.com/workers-ai/platform/pricing/
+- Cloudflare Workers also has a free plan for the Worker endpoint. See https://developers.cloudflare.com/workers/platform/pricing/
+- Usage limits and model availability can change; check the Cloudflare dashboard before relying on it for production.
+- This endpoint generates scripts only. Image/video generation is a separate integration and may cost extra.
+- Keep the Worker restricted to the LUNA site origin. Do not publish provider tokens or secrets in GitHub, the browser, or this public repository.
