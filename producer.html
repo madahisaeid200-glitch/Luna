@@ -133,7 +133,12 @@ el('generate').onclick=async()=>{
    if(endpoint){
      updateAiStatus('در حال اتصال به مدل هوش مصنوعی…');
      button.textContent=fa?'در حال تولید…':'Generating…';
-     const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang})});
+     const controller=new AbortController();
+     const requestTimeout=setTimeout(()=>controller.abort(),75000);
+     let response;
+     try{
+       response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang}),signal:controller.signal});
+     }finally{clearTimeout(requestTimeout);}
      const data=await response.json();
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      lastDraft=data.script;
@@ -144,7 +149,8 @@ el('generate').onclick=async()=>{
    }
    el('output').textContent=lastDraft;
  }catch(error){
-   updateAiStatus('اتصال ناموفق: '+(error.message||'خطای ناشناخته')+' — آدرس Worker، secret و لاگ‌های Worker را بررسی کن.');
+   const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ پیش‌نویس جایگزین آماده شد.':(error.message||'خطای ناشناخته');
+   updateAiStatus('اتصال ناموفق: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
    alert('اتصال هوش مصنوعی انجام نشد. پیش‌نویس قالبی ساخته می‌شود؛ لطفاً وضعیت اتصال را بررسی کن.');
    lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
    el('output').textContent=lastDraft;
