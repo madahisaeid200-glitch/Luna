@@ -104,7 +104,8 @@ el('saveAiEndpoint').onclick=()=>{
  else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
 };
 el('testAiEndpoint').onclick=async()=>{
- const endpoint=localStorage.getItem('lunaAiEndpoint')||endpointInput.value.trim();
+ const endpoint=endpointInput.value.trim()||defaultEndpoint;
+ localStorage.setItem('lunaAiEndpoint',endpoint.replace(/\/$/,''));
  if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
  const button=el('testAiEndpoint');button.disabled=true;
  updateAiStatus('در حال آزمایش دسترسی به Worker…');
@@ -116,7 +117,7 @@ el('testAiEndpoint').onclick=async()=>{
    updateAiStatus('آزمایش موفق: Worker در دسترس است و binding هوش مصنوعی وجود دارد. برای اطمینان از تولید واقعی، حالا «ساخت پیش‌نویس قسمت» را بزن.');
  }catch(error){
    const msg=String(error.message||error);
-   if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال شبکه/CORS ناموفق است. آدرس Worker را بررسی کن و مطمئن شو نسخه جدید Worker در Cloudflare Deploy شده است.');
+   if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال مرورگر به این Worker برقرار نشد: '+endpoint+' . آدرس در فیلد بالا را بررسی کن؛ اگر همین آدرس است، احتمال محدودیت شبکه یا CORS باقی است.');
    else updateAiStatus('آزمایش ناموفق: '+msg);
  }finally{button.disabled=false;}
 };
