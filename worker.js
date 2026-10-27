@@ -5,9 +5,9 @@ const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
-    const allowedOrigin = true;
+    const allowedOrigin = !origin || origin === ALLOWED_ORIGIN;
     const cors = {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin || "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",
