@@ -14,8 +14,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Validate deployable files and JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in index.html producer.html _worker.js worker.js; do
+            test -s "$file" || { echo "::error::Required file is missing or empty: $file"; exit 1; }
+          done
+          node --input-type=module --check < worker.js
+          node --input-type=module --check < _worker.js
+          if [ -f functions/api.js ]; then
+            node --input-type=module --check < functions/api.js
+          fi
+          grep -Fq 'https://orange-firefly-6434.madahisaeid200.workers.dev' _worker.js
+          echo "Validation passed: required files exist, JavaScript parses, and the proxy upstream is configured."
+
       - name: Build upload ZIP
         run: |
+          set -euo pipefail
           mkdir -p /tmp/luna-pages
           cp -a index.html producer.html _worker.js /tmp/luna-pages/
           if [ -d assets ]; then cp -a assets /tmp/luna-pages/; fi
@@ -25,6 +42,8 @@ jobs:
           if [ -d functions ]; then cp -a functions /tmp/luna-pages/; fi
           cd /tmp/luna-pages
           zip -r "$GITHUB_WORKSPACE/luna-pages-upload.zip" .
+          unzip -l "$GITHUB_WORKSPACE/luna-pages-upload.zip"
+
       - name: Upload the ZIP without wrapping it in another ZIP
         uses: actions/upload-artifact@v7
         with:
