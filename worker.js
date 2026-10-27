@@ -1,6 +1,6 @@
 const ALLOWED_ORIGIN = "https://madahisaeid200-glitch.github.io";
-const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const DEFAULT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 export default {
   async fetch(request, env) {
@@ -64,7 +64,7 @@ Avoid generic filler and repeated stock jokes. Make the plot coherent and easy t
             { role: "system", content: "You are an expert comedy screenwriter for short-form vertical videos. Follow the user's language and structure requirements exactly." },
             { role: "user", content: prompt }
           ],
-          max_tokens: 2200,
+          max_tokens: duration === "long" ? 1800 : 900,
           temperature: 0.8
         });
         const script = result?.response || result?.result?.response || "";
