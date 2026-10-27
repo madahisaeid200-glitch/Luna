@@ -7,7 +7,7 @@ export default {
     const origin = request.headers.get("Origin") || "";
     const allowedOrigin = !origin || origin === ALLOWED_ORIGIN;
     const cors = {
-      "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "null",
+      "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",
