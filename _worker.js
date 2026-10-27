@@ -1,9 +1,19 @@
 const UPSTREAM = "https://orange-firefly-6434.madahisaeid200.workers.dev";
 const ALLOWED_ORIGIN = "https://madahisaeid200-glitch.github.io";
 
+function isAllowedOrigin(origin) {
+  if (!origin || origin === ALLOWED_ORIGIN) return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === "https:" && url.hostname.endsWith(".pages.dev");
+  } catch {
+    return false;
+  }
+}
+
 function cors(origin) {
   return {
-    "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : "null",
+    "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? (origin || ALLOWED_ORIGIN) : "null",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -23,7 +33,7 @@ export default {
       headers: { ...headers, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
     });
 
-    if (origin && origin !== ALLOWED_ORIGIN) return json({ error: "Origin not allowed." }, 403);
+    if (!isAllowedOrigin(origin)) return json({ error: "Origin not allowed." }, 403);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     if (request.method !== "GET" && request.method !== "POST") {
       return json({ error: "Use GET for health check or POST to generate a script." }, 405);
