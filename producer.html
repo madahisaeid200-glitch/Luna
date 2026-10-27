@@ -89,9 +89,16 @@ return one(lang);
 if (!el('epTitle').value.trim()) el('epTitle').value='LUNA و LEO: سورپرایز لوکس خراب می‌شود';
 if (!el('premise').value.trim()) el('premise').value='لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
 const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
-const defaultEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
-const savedEndpoint=localStorage.getItem('lunaAiEndpoint')||defaultEndpoint;
-if(!localStorage.getItem('lunaAiEndpoint')) localStorage.setItem('lunaAiEndpoint',defaultEndpoint);
+const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
+// On Cloudflare Pages, use its same-origin /api proxy so visitors do not need
+// to connect directly to workers.dev (which may be blocked on some networks).
+const isCloudflarePages=location.protocol==='https:' && location.hostname.endsWith('.pages.dev');
+const defaultEndpoint=isCloudflarePages ? (location.origin+'/api') : workerEndpoint;
+const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
+const savedEndpoint=isCloudflarePages
+  ? (storedEndpoint && storedEndpoint.endsWith('/api') ? storedEndpoint : defaultEndpoint)
+  : (storedEndpoint||defaultEndpoint);
+if(!storedEndpoint || (isCloudflarePages && storedEndpoint!==defaultEndpoint)) localStorage.setItem('lunaAiEndpoint',defaultEndpoint);
 endpointInput.value=savedEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
