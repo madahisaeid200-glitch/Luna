@@ -1,0 +1,33 @@
+name: Package LUNA for Cloudflare Pages Direct Upload
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build upload ZIP
+        run: |
+          mkdir -p /tmp/luna-pages
+          cp -a index.html producer.html _worker.js /tmp/luna-pages/
+          if [ -d assets ]; then cp -a assets /tmp/luna-pages/; fi
+          if [ -d images ]; then cp -a images /tmp/luna-pages/; fi
+          if [ -d styles ]; then cp -a styles /tmp/luna-pages/; fi
+          if [ -d scripts ]; then cp -a scripts /tmp/luna-pages/; fi
+          if [ -d functions ]; then cp -a functions /tmp/luna-pages/; fi
+          cd /tmp/luna-pages
+          zip -r "$GITHUB_WORKSPACE/luna-pages-upload.zip" .
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-pages-upload
+          path: luna-pages-upload.zip
+          if-no-files-found: error
