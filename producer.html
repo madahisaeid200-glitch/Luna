@@ -123,14 +123,19 @@ el('testAiEndpoint').onclick=async()=>{
  const button=el('testAiEndpoint');button.disabled=true;
  updateAiStatus('در حال آزمایش دسترسی به Worker…');
  try{
-   const response=await fetch(endpoint,{method:'GET',cache:'no-store'});
+   const controller=new AbortController();
+   const timeoutId=setTimeout(()=>controller.abort(),12000);
+   let response;
+   try{response=await fetch(endpoint,{method:'GET',cache:'no-store',signal:controller.signal});}
+   finally{clearTimeout(timeoutId);}
    let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').')}
    if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
    if(!data.aiBinding)throw new Error('Worker در دسترس است، اما binding با نام AI وجود ندارد. در Cloudflare آن را اضافه و Deploy کن.');
    updateAiStatus('آزمایش موفق: Worker در دسترس است و binding هوش مصنوعی وجود دارد. برای اطمینان از تولید واقعی، حالا «ساخت پیش‌نویس قسمت» را بزن.');
  }catch(error){
    const msg=String(error.message||error);
-   if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال مرورگر به این Worker برقرار نشد: '+endpoint+' . آدرس در فیلد بالا را بررسی کن؛ اگر همین آدرس است، احتمال محدودیت شبکه یا CORS باقی است.');
+   if(error.name==='AbortError')updateAiStatus('آزمایش پس از ۱۲ ثانیه پاسخ نگرفت. احتمالاً Worker در دسترس نیست یا شبکه اتصال را مسدود کرده است.');
+   else if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال مرورگر به این Worker برقرار نشد: '+endpoint+' . اگر آدرس درست است، احتمال محدودیت شبکه یا CORS وجود دارد.');
    else updateAiStatus('آزمایش ناموفق: '+msg);
  }finally{button.disabled=false;}
 };
