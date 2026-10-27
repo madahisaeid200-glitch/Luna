@@ -97,8 +97,14 @@ function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
 el('saveAiEndpoint').onclick=()=>{
  const value=endpointInput.value.trim();
- if(value && (!/^https:\/\//i.test(value) || !/workers\.dev\/?$/i.test(new URL(value).host))){
-   updateAiStatus('لطفاً آدرس HTTPS معتبر از نوع workers.dev وارد کن.'); return;
+ if(value){
+   let parsed;
+   try { parsed = new URL(value); } catch(e) { updateAiStatus('آدرس معتبر نیست؛ URL کامل با https:// وارد کن.'); return; }
+   const workerUrl = parsed.protocol === 'https:' && parsed.hostname.endsWith('.workers.dev') && (parsed.pathname === '/' || parsed.pathname === '');
+   const pagesProxyUrl = parsed.protocol === 'https:' && parsed.hostname.endsWith('.pages.dev') && parsed.pathname.replace(/\/$/,'') === '/api';
+   if(!workerUrl && !pagesProxyUrl){
+     updateAiStatus('آدرس باید Worker از نوع workers.dev یا آدرس API از نوع https://نام-پروژه.pages.dev/api باشد.'); return;
+   }
  }
  if(value){localStorage.setItem('lunaAiEndpoint',value.replace(/\/$/,''));updateAiStatus('آدرس ذخیره شد. حالا «ساخت پیش‌نویس» را بزن تا اتصال آزمایش شود.');}
  else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
