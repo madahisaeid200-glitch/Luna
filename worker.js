@@ -96,7 +96,7 @@ ${script.trim()}`;
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
       const prompt = script.trim().slice(0, 2000);
       try {
-        const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4, seed: Math.floor(Math.random() * 2147483647) });
+        const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 });
         const image = result?.image || result?.result?.image;
         if (typeof image !== "string" || !image) return json({ error: "Image model returned no image data." }, 502);
         return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", mode: "image" });
