@@ -214,8 +214,8 @@ el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!
 el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
 
  function extractFirstImagePrompt(pack){
-   const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
-   return (section.split(/SHOT\\s*2|SCENE\\s*2|\\n\\s*2[.):]/i)[0]||section).replace(/^\\s*[:\\n-]+/,'').replace(/^(?:SHOT\\s*1|SCENE\\s*1|1[.):])\\s*/i,'').trim().slice(0,1800);
+   const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
+   return (section.split(/SHOT\s*2|SCENE\s*2|\n\s*2[.):]/i)[0]||section).replace(/^\s*[:\n-]+/,'').replace(/^(?:SHOT\s*1|SCENE\s*1|1[.):])\s*/i,'').trim().slice(0,1800);
  }
  let generatedImageData='',generatedImageObjectUrl='';
  el('generateSceneImage').onclick=async()=>{
