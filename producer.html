@@ -19,7 +19,7 @@
 <div class="field"><label id="toneLabel" for="tone">حال‌وهوای داستان</label><select id="tone"><option value="romcom">عاشقانه و بامزه</option><option value="chaos">سوءتفاهم و آشوب</option><option value="luxury">لوکس و سفر</option></select></div>
 <div class="field"><label id="langLabel" for="scriptLang">زبان متن خروجی</label><select id="scriptLang"><option value="en">English</option><option value="fa">فارسی</option><option value="both">هر دو زبان / Both</option></select></div>
 <div class="actions"><button class="primary" id="generate">ساخت پیش‌نویس قسمت</button><button id="save">ذخیره در داشبورد</button></div><p class="hint" id="saveHint">ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.</p></section>
-<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button></div></section>
+<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
 </div>
 
 <section class="panel" id="aiConnection">
@@ -38,7 +38,7 @@
 </section>
 </main><footer>LUNA Studio · Episode Producer Beta</footer>
 <script>
-const el=id=>document.getElementById(id);let fa=true;let lastDraft='';
+const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastProductionPack='';
 const ui={
 fa:{subtitle:'استودیو آماده‌سازی قسمت‌ها',heading:'کارگاه تولید قسمت LUNA',description:'ایده قسمت را وارد کن و یک پیش‌نویس منظم شامل شروع جذاب، صحنه‌ها، دیالوگ و پایان بامزه بساز.',notice:'آدرس امن هوش مصنوعی از پیش تنظیم شده است. ایده قسمت را وارد کن و تولید پیش‌نویس را بزن تا اتصال آزمایش شود.',settingsTitle:'تنظیمات قسمت',titleLabel:'عنوان یا ایده قسمت',premiseLabel:'اتفاق اصلی / سوءتفاهم',durationLabel:'مدت ویدیو',toneLabel:'حال‌وهوای داستان',langLabel:'زبان متن خروجی',generate:'ساخت پیش‌نویس قسمت',save:'ذخیره در داشبورد',saveHint:'ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.',outputEyebrow:'پیش‌نویس سناریو',outputTitle:'پیش‌نویس داستان',placeholder:'برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.',copy:'کپی متن',download:'دانلود فایل متنی',checkTitle:'چک‌لیست قبل از تولید ویدیو',checks:['شروع ۲ ثانیه اول کنجکاوی ایجاد می‌کند.','شوخی قابل فهم است و شخصیت‌ها را ثابت نگه می‌دارد.','پایان، مخاطب را به قسمت بعدی کنجکاو می‌کند.','اگر شخصیت‌ها AI هستند، شفافیت لازم در انتشار رعایت می‌شود.'],back:'بازگشت به داشبورد',button:'English',missing:'لطفاً عنوان و اتفاق اصلی را وارد کن.',saved:'پیش‌نویس در داشبورد این مرورگر ذخیره شد.',copied:'متن کپی شد.'},
 en:{subtitle:'Episode planning studio',heading:'LUNA Episode Workshop',description:'Enter an episode idea to draft a hook, scenes, dialogue beats and a funny ending.',notice:'The secure AI Worker address is preconfigured. Enter an episode idea and generate a draft to test the AI connection.',settingsTitle:'Episode settings',titleLabel:'Episode title or idea',premiseLabel:'Main event / misunderstanding',durationLabel:'Video length',toneLabel:'Story tone',langLabel:'Output language',generate:'Generate episode draft',save:'Save to dashboard',saveHint:'Drafts save in this browser only. Copy or download the text to move it to another device.',outputEyebrow:'SCRIPT DRAFT',outputTitle:'Story draft',placeholder:'Enter a title and the main event, then select Generate episode draft.',copy:'Copy text',download:'Download text file',checkTitle:'Before video production',checks:['The first 2 seconds create curiosity.','The joke is clear and character voices stay consistent.','The ending makes viewers curious about the next episode.','Clearly disclose that the characters are AI when publishing.'],back:'Back to dashboard',button:'فارسی',missing:'Please enter a title and the main event.',saved:'Draft saved to this browser’s dashboard.',copied:'Text copied.'}
@@ -140,6 +140,7 @@ el('testAiEndpoint').onclick=async()=>{
  }finally{button.disabled=false;}
 };
 el('generate').onclick=async()=>{
+ lastProductionPack='';
  let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
    title=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
@@ -177,8 +178,29 @@ el('generate').onclick=async()=>{
    button.disabled=false;button.textContent=ui[fa?'fa':'en'].generate;
  }
 };
+el('makeProductionPack').onclick=async()=>{
+ if(!lastDraft){alert(fa?'اول سناریوی قسمت را با هوش مصنوعی تولید کن.':'Generate an episode script first.');return;}
+ const endpoint=localStorage.getItem('lunaAiEndpoint');
+ if(!endpoint){alert(fa?'اتصال هوش مصنوعی تنظیم نشده است.':'AI connection is not configured.');return;}
+ const button=el('makeProductionPack');button.disabled=true;button.textContent=fa?'در حال ساخت بسته تولید…':'Building video pack…';
+ updateAiStatus('در حال تبدیل سناریو به نماها و دستورهای تولید ویدئو…');
+ try{
+   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),75000);
+   let response;
+   try{response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'production',script:lastDraft}),signal:controller.signal});}
+   finally{clearTimeout(timeout);}
+   const data=await response.json();
+   if(!response.ok)throw new Error((data.error||'Production-pack request failed')+(Array.isArray(data.details)?' — '+data.details.join(' | '):''));
+   lastProductionPack=data.script;
+   el('output').textContent=lastProductionPack;
+   updateAiStatus('بسته تولید ویدئو با هوش مصنوعی آماده شد ('+(data.model||'AI')+'). از «کپی متن» یا «دانلود فایل متنی» برای استفاده در ابزارهای تصویر و ویدئو استفاده کن.');
+ }catch(error){
+   updateAiStatus('ساخت بسته تولید ناموفق بود: '+(error.name==='AbortError'?'زمان درخواست تمام شد.':(error.message||'خطای نامشخص')));
+   alert('ساخت بسته تولید ناموفق بود: '+(error.message||'خطای نامشخص'));
+ }finally{button.disabled=false;button.textContent='ساخت بسته تولید ویدئو / Video pack';}
+};
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;const parts=lastDraft.split(/══════════ نسخه فارسی ══════════/);const englishDraft=(parts[0]||lastDraft).trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const persianDraft=parts[1]?parts[1].trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean):['نسخه فارسی این قسمت هنوز آماده نشده است.'];arr.push({id,en:title,fa:title,storyEn:englishDraft.length?englishDraft:[lastDraft],storyFa:persianDraft.length?persianDraft:['نسخه فارسی این قسمت هنوز آماده نشده است.']});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
-el('copy').onclick=async()=>{if(!lastDraft)return;try{await navigator.clipboard.writeText(lastDraft);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=lastDraft;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
-el('download').onclick=()=>{if(!lastDraft)return;const blob=new Blob([lastDraft],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
+el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!textToCopy)return;try{await navigator.clipboard.writeText(textToCopy);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
+el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
 el('language').onclick=()=>{fa=!fa;setUi()};setUi();
 </script></body></html>
