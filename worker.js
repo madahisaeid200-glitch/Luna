@@ -164,8 +164,10 @@ Rules:
               }
             }
             if (!persian) {
-              failures.push(model + ": Persian translation failed");
-              continue;
+              // Translation failure must not discard a successfully generated English episode.
+              failures.push(model + ": Persian translation failed; returning the English script.");
+              finalScript += "\n\n══════════ نسخه فارسی ══════════\n\nترجمه فارسی این بار آماده نشد. نسخه انگلیسی بالا تولید شده است؛ لطفاً فقط بخش فارسی را دوباره امتحان کنید.";
+              return json({ script: finalScript, model, translationModel: null, translationWarning: true, details: failures.slice(-8), fallbackUsed: model !== primaryModel });
             }
             finalScript += "\n\n══════════ نسخه فارسی ══════════\n\n" + persian;
           }
