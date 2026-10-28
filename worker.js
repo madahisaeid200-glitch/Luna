@@ -112,9 +112,17 @@ ${script.trim()}`;
       }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
       try {
+        // Workers AI vision models expect image bytes as an integer array,
+        // not the browser's "data:image/...;base64,..." URL string.
+        const comma = body.image.indexOf(",");
+        if (comma < 0) return json({ error: "Image data URL is malformed." }, 400);
+        const base64 = body.image.slice(comma + 1);
+        const binary = atob(base64);
+        const imageBytes = new Array(binary.length);
+        for (let i = 0; i < binary.length; i++) imageBytes[i] = binary.charCodeAt(i);
         const result = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
           prompt: analysisPrompt,
-          image: body.image,
+          image: imageBytes,
           max_tokens: 450,
           temperature: 0.2
         });
