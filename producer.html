@@ -22,6 +22,15 @@
 <section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
 </div>
 
+<section class="panel" id="visualProduction">
+<div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
+<p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
+<div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
+<div id="sceneImageWrap" style="display:none;margin-top:14px"><img id="sceneImage" alt="LUNA scene image" style="display:block;width:100%;max-width:560px;max-height:720px;object-fit:contain;margin:auto;border-radius:14px;background:#eee"><a id="downloadVideoLink" class="link" style="display:none;margin-top:12px" download="LUNA-scene-preview.webm">دانلود ویدئوی آزمایشی</a></div>
+<canvas id="videoCanvas" width="720" height="1280" style="display:none"></canvas></section>
+
 <section class="panel" id="aiConnection">
 <h2>اتصال به هوش مصنوعی / AI Connection</h2>
 <p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
@@ -192,6 +201,7 @@ el('makeProductionPack').onclick=async()=>{
    const data=await response.json();
    if(!response.ok)throw new Error((data.error||'Production-pack request failed')+(Array.isArray(data.details)?' — '+data.details.join(' | '):''));
    lastProductionPack=data.script;
+    const firstPrompt=extractFirstImagePrompt(lastProductionPack);if(firstPrompt)el('imagePrompt').value=firstPrompt;
    el('output').textContent=lastProductionPack;
    updateAiStatus('بسته تولید ویدئو با هوش مصنوعی آماده شد ('+(data.model||'AI')+'). از «کپی متن» یا «دانلود فایل متنی» برای استفاده در ابزارهای تصویر و ویدئو استفاده کن.');
  }catch(error){
@@ -202,5 +212,41 @@ el('makeProductionPack').onclick=async()=>{
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;const parts=lastDraft.split(/══════════ نسخه فارسی ══════════/);const englishDraft=(parts[0]||lastDraft).trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const persianDraft=parts[1]?parts[1].trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean):['نسخه فارسی این قسمت هنوز آماده نشده است.'];arr.push({id,en:title,fa:title,storyEn:englishDraft.length?englishDraft:[lastDraft],storyFa:persianDraft.length?persianDraft:['نسخه فارسی این قسمت هنوز آماده نشده است.']});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
 el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!textToCopy)return;try{await navigator.clipboard.writeText(textToCopy);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
 el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
-el('language').onclick=()=>{fa=!fa;setUi()};setUi();
+
+ function extractFirstImagePrompt(pack){
+   const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
+   return (section.split(/SHOT\\s*2|SCENE\\s*2|\\n\\s*2[.):]/i)[0]||section).replace(/^\\s*[:\\n-]+/,'').replace(/^(?:SHOT\\s*1|SCENE\\s*1|1[.):])\\s*/i,'').trim().slice(0,1800);
+ }
+ let generatedImageData='',generatedImageObjectUrl='';
+ el('generateSceneImage').onclick=async()=>{
+   if(!lastProductionPack){alert('اول بستهٔ تولید ویدئو را بساز.');return;}
+   let prompt=el('imagePrompt').value.trim()||extractFirstImagePrompt(lastProductionPack);
+   if(!prompt){alert('توضیح تصویر در بسته پیدا نشد.');return;}
+   prompt=(prompt+' Vertical 9:16 composition, cinematic photorealism, stylish luxury European romantic comedy, natural cinematic lighting, no text, no watermark.').slice(0,2000);
+   const button=el('generateSceneImage');button.disabled=true;button.textContent='در حال ساخت تصویر…';el('visualStatus').textContent='در حال ساخت تصویر با مدل هوش مصنوعی…';
+   try{
+     const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
+     try{response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'image',script:prompt}),signal:controller.signal});}finally{clearTimeout(timer);}
+     const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
+     if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
+     el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('downloadSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
+     el('visualStatus').textContent='تصویر واقعی با هوش مصنوعی ساخته شد ('+(data.model||'FLUX')+'). تصویر را دانلود کن یا ویدئوی آزمایشی بساز.';
+   }catch(error){el('visualStatus').textContent='ساخت تصویر ناموفق بود: '+(error.name==='AbortError'?'زمان درخواست تمام شد.':(error.message||'خطای نامشخص'));}
+   finally{button.disabled=false;button.textContent='۱. ساخت تصویر واقعی صحنه';}
+ };
+ el('downloadSceneImage').onclick=()=>{if(!generatedImageData)return;const a=document.createElement('a');a.href=generatedImageData;a.download='LUNA-scene-01.jpg';document.body.appendChild(a);a.click();a.remove();};
+ el('makePreviewVideo').onclick=async()=>{
+   if(!generatedImageData){alert('اول تصویر صحنه را بساز.');return;}const button=el('makePreviewVideo');button.disabled=true;button.textContent='در حال ساخت ویدئو…';el('visualStatus').textContent='در حال رندر ویدئو در همین مرورگر…';
+   try{
+     const img=el('sceneImage');if(!img.complete)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+     const canvas=el('videoCanvas'),ctx=canvas.getContext('2d'),stream=canvas.captureStream(24),mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));if(!mime)throw new Error('این مرورگر ضبط ویدئوی WebM را پشتیبانی نمی‌کند.');
+     const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000}),chunks=[];recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+     const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئو ناموفق بود.'));});recorder.start();const start=performance.now(),duration=6000;
+     await new Promise(resolve=>{const draw=now=>{const t=Math.min(1,(now-start)/duration);ctx.fillStyle='#17121b';ctx.fillRect(0,0,720,1280);const scale=Math.max(720/img.naturalWidth,1280/img.naturalHeight)*(1+0.07*t),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,(720-dw)/2,(1280-dh)/2,dw,dh);ctx.fillStyle='rgba(12,8,15,0.45)';ctx.fillRect(0,1040,720,240);ctx.textAlign='center';ctx.direction='ltr';ctx.fillStyle='#fff';ctx.font='bold 42px system-ui';ctx.fillText('LUNA & LEO',360,1140);ctx.font='28px system-ui';ctx.fillText('A luxury surprise… gone wrong.',360,1190);if(t<1)requestAnimationFrame(draw);else resolve();};requestAnimationFrame(draw);});
+     recorder.stop();await stopped;stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mime});if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);generatedImageObjectUrl=URL.createObjectURL(blob);const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.textContent='دانلود ویدئوی آزمایشی (WebM)';el('visualStatus').textContent='ویدئوی آزمایشی ۶ ثانیه‌ای ساخته شد. این خروجی تصویر متحرک و عنوان دارد؛ هنوز دیالوگ و صدای شخصیت‌ها ندارد.';
+   }catch(error){el('visualStatus').textContent='ساخت ویدئو ناموفق بود: '+(error.message||'خطای نامشخص');}
+   finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای';}
+ };
+
+ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
 </script></body></html>
