@@ -161,16 +161,16 @@ el('generate').onclick=async()=>{
      const data=await response.json();
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      lastDraft=data.script;
-     updateAiStatus('اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
+     updateAiStatus(data.translationWarning ? 'سناریوی انگلیسی با هوش مصنوعی تولید شد، اما ترجمه فارسی ناموفق بود. جزئیات: '+(Array.isArray(data.details)?data.details.slice(-4).join(' | '):'ترجمه در دسترس نبود') : 'اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
    }else{
      lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
      updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
    }
    el('output').textContent=lastDraft;
  }catch(error){
-   const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ پیش‌نویس جایگزین آماده شد.':(error.message||'خطای ناشناخته');
-   updateAiStatus('اتصال ناموفق: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
-   alert('اتصال هوش مصنوعی انجام نشد. پیش‌نویس قالبی ساخته می‌شود؛ لطفاً وضعیت اتصال را بررسی کن.');
+   const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
+   updateAiStatus('خطای واقعی تولید: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
+   alert('تولید هوش مصنوعی ناموفق بود. علت: '+errorMessage);
    lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
    el('output').textContent=lastDraft;
  }finally{
