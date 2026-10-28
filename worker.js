@@ -96,7 +96,7 @@ CORE PREMISE: ${premise.trim()}
 OUTPUT FORMAT:
 ${outputFormatText}
 
-If language is BOTH, repeat the complete structure for the Persian version after the English version. Ensure both versions tell exactly the same story.`;
+If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
@@ -144,7 +144,13 @@ Rules:
                 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
-                  persian = candidate.trim();
+                  const cleanedCandidate = candidate.trim();
+                  // Reject obvious cross-language corruption (Devanagari, CJK, or Japanese kana) and try the next model.
+                  if (/[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(cleanedCandidate)) {
+                    failures.push(translationModel + " translation: rejected mixed-script output");
+                    continue;
+                  }
+                  persian = cleanedCandidate;
                   break;
                 }
               } catch (translationError) {
