@@ -173,7 +173,23 @@ el('testAiEndpoint').onclick=async()=>{
    let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').')}
    if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
    if(!data.aiBinding)throw new Error('Worker در دسترس است، اما binding با نام AI وجود ندارد. در Cloudflare آن را اضافه و Deploy کن.');
-   updateAiStatus('آزمایش موفق: Worker در دسترس است و binding هوش مصنوعی وجود دارد. برای اطمینان از تولید واقعی، حالا «ساخت پیش‌نویس قسمت» را بزن.');
+   updateAiStatus('آزمایش اول موفق بود؛ در حال آزمایش واقعی تولید متن…');
+   const postController=new AbortController(),postTimeout=setTimeout(()=>postController.abort(),75000);
+   let postResponse,postData={};
+   try{
+     postResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+       title:'LUNA & LEO: Luxury Surprise Goes Wrong',
+       premise:'Leo plans a romantic surprise for Luna in a five-star hotel suite, but a funny reservation-card misunderstanding causes confusion. Only Luna and Leo are present.',
+       duration:'short',tone:'romantic_funny',language:'en',
+       characterProfile:readCharacterProfile()
+     }),signal:postController.signal});
+     try{postData=await postResponse.json()}catch(e){throw new Error('Worker GET موفق بود، اما پاسخ POST قابل خواندن نیست (HTTP '+postResponse.status+').')}
+   }finally{clearTimeout(postTimeout)}
+   if(!postResponse.ok)throw new Error('Worker در دسترس است اما تولید واقعی متن شکست خورد (HTTP '+postResponse.status+'): '+(postData.error||postData.message||'بدون جزئیات'));
+   if(typeof postData.script!=='string'||!postData.script.trim())throw new Error('درخواست POST پاسخ داد، اما متن سناریو برنگشت.');
+   lastDraft=postData.script.trim();
+   el('output').textContent=lastDraft;
+   updateAiStatus('تأیید کامل: GET و POST موفق‌اند؛ سناریوی واقعی با مدل '+(postData.model||'هوش مصنوعی')+' تولید شد. حالا می‌توانیم تولید تصویر را جداگانه آزمایش کنیم.');
  }catch(error){
    const msg=String(error.message||error);
    if(error.name==='AbortError')updateAiStatus('آزمایش پس از ۱۲ ثانیه پاسخ نگرفت. احتمالاً Worker در دسترس نیست یا شبکه اتصال را مسدود کرده است.');
