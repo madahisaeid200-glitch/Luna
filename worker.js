@@ -131,7 +131,7 @@ Rules:
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
-            const translationModels = [model, ...modelsToTry.filter(m => m !== model)];
+            const translationModels = [FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL)];
             for (const translationModel of translationModels) {
               try {
                 const translated = await env.AI.run(translationModel, {
