@@ -161,7 +161,7 @@ el('generate').onclick=async()=>{
      const data=await response.json();
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      lastDraft=data.script;
-     updateAiStatus('اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+').');
+     updateAiStatus('اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
    }else{
      lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
      updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
