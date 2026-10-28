@@ -131,7 +131,7 @@ Rules:
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
-            const translationModels = [FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL)];
+            const translationModels = ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL && m !== "@cf/zai-org/glm-4.7-flash")];
             for (const translationModel of translationModels) {
               try {
                 const translated = await env.AI.run(translationModel, {
@@ -145,9 +145,13 @@ Rules:
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
                   const cleanedCandidate = candidate.trim();
-                  // Reject obvious cross-language corruption (Devanagari, CJK, or Japanese kana) and try the next model.
-                  if (/[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(cleanedCandidate)) {
-                    failures.push(translationModel + " translation: rejected mixed-script output");
+                  // Reject obvious cross-language corruption and untranslated English words, then try the next model.
+                  const hasForeignScript = /[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(cleanedCandidate);
+                  const latinWords = [...cleanedCandidate.matchAll(/\\b[A-Za-z]{2,}\\b/g)]
+                    .map(match => match[0].toUpperCase())
+                    .filter(word => word !== "LUNA" && word !== "LEO");
+                  if (hasForeignScript || latinWords.length > 0) {
+                    failures.push(translationModel + " translation: rejected mixed-language output");
                     continue;
                   }
                   persian = cleanedCandidate;
