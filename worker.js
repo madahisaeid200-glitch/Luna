@@ -131,6 +131,7 @@ Rules:
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
+            let translationModelUsed = null;
             const translationModels = ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL && m !== "@cf/zai-org/glm-4.7-flash")];
             for (const translationModel of translationModels) {
               try {
@@ -155,6 +156,7 @@ Rules:
                     continue;
                   }
                   persian = cleanedCandidate;
+                  translationModelUsed = translationModel;
                   break;
                 }
               } catch (translationError) {
@@ -167,7 +169,7 @@ Rules:
             }
             finalScript += "\n\n══════════ نسخه فارسی ══════════\n\n" + persian;
           }
-          return json({ script: finalScript, model, fallbackUsed: model !== primaryModel });
+          return json({ script: finalScript, model, translationModel: language === "both" ? translationModelUsed : null, fallbackUsed: model !== primaryModel });
         }
         failures.push(model + ": model returned an empty response");
       } catch (error) {
