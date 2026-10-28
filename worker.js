@@ -155,7 +155,45 @@ Rules:
                     failures.push(translationModel + " translation: rejected mixed-language output");
                     continue;
                   }
-                  persian = cleanedCandidate;
+                  // Catch known high-impact Persian translation failures seen in real tests.
+                  const hasObviousPersianErrors = /آپارتمان|دروازه را باز|پارادایس|بوق بوق|سیاه‌چاله|خیس‌خنک|خبط‌گر|اگه می‌خواستی، می‌تونی ازش خوشت بیاد|این زندگی است/u.test(cleanedCandidate);
+                  let acceptedCandidate = cleanedCandidate;
+                  if (hasObviousPersianErrors) {
+                    try {
+                      const repairPrompt = `Rewrite and proofread the Persian screenplay below as a native Iranian comedy screenwriter. The current translation contains obvious mistranslations. Keep the same plot and events, but correct every awkward phrase and make all dialogue natural spoken Persian.
+Mandatory corrections where relevant: use «سوئیت هتل» rather than «آپارتمان» for a hotel suite; use «در را باز می‌کند» rather than «دروازه را باز می‌کند»; translate "dog's paradise" naturally as «بهشت سگ‌ها»; use «با خجالت» or «با دستپاچگی» for sheepish/nervous, not «با عصبانیت»; translate "goofball" naturally as «شیطون بلا» or «عجب دست‌وپاچلفتی‌ای» depending on context; never use «بوق بوق» for barking, «سیاه‌چاله» for fade to black, or «خیس‌خنک» for whispering. Do not repeat dialogue lines unless the source repeats them. Keep only LUNA and LEO as character names. Preserve all events and the full ending. Output Persian script only, no commentary.
+  
+PERSIAN DRAFT TO FIX:
+${cleanedCandidate}
+  
+ENGLISH SOURCE SCRIPT (for meaning and continuity):
+${finalScript}`;
+                      const repaired = await env.AI.run(translationModel, {
+                        messages: [
+                          { role: "system", content: "You are a meticulous native Iranian Persian screenplay editor. Fix mistranslations and unnatural dialogue while preserving the story." },
+                          { role: "user", content: repairPrompt }
+                        ],
+                        max_tokens: duration === "long" ? 2200 : 1200,
+                        temperature: 0.1
+                      });
+                      const repairedText = repaired?.response || repaired?.result?.response || "";
+                      const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
+                      const repairedHasForeignScript = /[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(repairedCandidate);
+                      const repairedLatinWords = [...repairedCandidate.matchAll(/\\b[A-Za-z]{2,}\\b/g)]
+                        .map(match => match[0].toUpperCase())
+                        .filter(word => word !== "LUNA" && word !== "LEO");
+                      const stillHasObviousErrors = /آپارتمان|دروازه را باز|پارادایس|بوق بوق|سیاه‌چاله|خیس‌خنک|خبط‌گر|اگه می‌خواستی، می‌تونی ازش خوشت بیاد|این زندگی است/u.test(repairedCandidate);
+                      if (!repairedCandidate || repairedHasForeignScript || repairedLatinWords.length > 0 || stillHasObviousErrors) {
+                        failures.push(translationModel + " translation: rejected low-quality Persian and tried next model");
+                        continue;
+                      }
+                      acceptedCandidate = repairedCandidate;
+                    } catch (repairError) {
+                      failures.push(translationModel + " Persian repair: " + String(repairError?.message || repairError || "unknown error").slice(0, 140));
+                      continue;
+                    }
+                  }
+                  persian = acceptedCandidate;
                   translationModelUsed = translationModel;
                   break;
                 }
