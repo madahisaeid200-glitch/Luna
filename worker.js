@@ -23,7 +23,6 @@ export default {
     }
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
-    // A lightweight endpoint check; it does not spend AI tokens.
     if (request.method === "GET") {
       return json({
         ok: true,
@@ -43,16 +42,56 @@ export default {
     if (![title, premise].every(v => typeof v === "string" && v.trim())) return json({ error: "Please provide a title and premise." }, 400);
     if (title.length > 240 || premise.length > 3000) return json({ error: "Title or premise is too long." }, 400);
 
-    const durationText = duration === "long" ? "3–5 minutes, with 6–8 clearly staged scenes" : "30–60 seconds, optimized for Shorts/Reels";
-    const languageText = language === "fa" ? "Write entirely in natural Persian." : language === "both" ? "Write the complete script first in English, then provide a faithful, natural Persian version." : "Write entirely in natural English.";
-    const toneText = ({ romcom: "warm romantic comedy and affectionate banter", chaos: "escalating misunderstandings and playful chaos", luxury: "luxury travel and fashion comedy" })[tone] || "warm romantic comedy";
-    const prompt = `Create an original, production-ready episode script for the fictional AI influencer couple LUNA and LEO.
-Characters: Luna is stylish, confident, warm, and witty. Leo is charming, affectionate, overconfident, and adorably chaotic. Their relationship is loving; humor should come from misunderstandings, timing, and their different personalities, never cruelty.
-Style: ${toneText}. Length: ${durationText}. ${languageText}
-Episode title: ${title.trim()}
-Core premise: ${premise.trim()}
-Structure: 1) hook in the first 1–2 seconds, 2) scene-by-scene action, 3) natural dialogue with speaker names, 4) visual/comedic beats, 5) a clear funny payoff, 6) a small cliffhanger teasing the next episode, 7) concise production notes for vertical video and captions.
-Avoid generic filler and repeated stock jokes. Make the plot coherent and easy to produce. Clearly label scenes and speakers. Return only the script, no commentary.`;
+    const durationText = duration === "long"
+      ? "3–5 minutes. Use 6–8 clearly staged scenes and enough dialogue for the full runtime."
+      : "30–60 seconds. Keep it tight enough to fit the runtime, but complete: hook, setup, escalation, payoff, and cliffhanger.";
+    const languageText = language === "fa"
+      ? "Write the complete script only in natural, fluent Persian. Do not mix English into Persian dialogue except proper names or necessary production terms."
+      : language === "both"
+        ? "Write the complete script first in natural English. Then provide a complete, faithful Persian version of the SAME story. Do not translate literally or mix the two languages."
+        : "Write the complete script only in natural English.";
+    const toneText = ({
+      romcom: "warm romantic comedy, cute chemistry, playful teasing, and an affectionate misunderstanding",
+      chaos: "escalating misunderstanding, playful chaos, fast comedic timing, and a satisfying resolution",
+      luxury: "stylish luxury travel/fashion setting, elegant visuals, playful comedy, and romantic chemistry"
+    })[tone] || "warm romantic comedy";
+
+    const prompt = `You are the lead writer for the fictional AI influencer couple LUNA and LEO. Create ONE original, production-ready short-form episode.
+
+NON-NEGOTIABLE CHARACTER RULES:
+- The two main characters are ONLY LUNA and LEO. Never rename either character. Never use Alex, Luna & Alex, or any other substitute name.
+- Luna: stylish, confident, warm, witty, romantic, and playful.
+- Leo: charming, affectionate, confident, slightly overconfident, and adorably chaotic.
+- They are a loving couple. Humor comes from misunderstandings, timing, and personality differences, never cruelty or humiliation.
+- Do not introduce random fantasy creatures, centaurs, tour groups, unrelated characters, or unrelated locations unless the user's premise explicitly requires them.
+
+STORY RULES:
+- Follow the user's core premise exactly. Do not replace the central misunderstanding with a different joke or plot.
+- Keep the same location, situation, and objective throughout the episode unless a scene change is necessary for the premise.
+- Make the story feel like an episode in an ongoing series about a stylish romantic virtual couple whose luxury plans often go hilariously wrong.
+- The first 1–2 seconds must create curiosity.
+- Include concise visual/action directions, natural dialogue with clear speaker names, a funny payoff, and a small cliffhanger teasing the next episode.
+- The ending must be complete, not cut off.
+- For a 30–60 second Short/Reel, target approximately 120–170 spoken words per language version and keep production directions concise.
+- Return only the script. Do not add explanations, apologies, analysis, or meta-commentary.
+
+STYLE: ${toneText}
+LENGTH: ${durationText}
+LANGUAGE: ${languageText}
+
+EPISODE TITLE: ${title.trim()}
+CORE PREMISE: ${premise.trim()}
+
+OUTPUT FORMAT:
+TITLE
+HOOK
+SCENE 1
+SCENE 2
+SCENE 3
+PAYOFF
+NEXT-EPISODE TEASE
+
+If language is BOTH, repeat the complete structure for the Persian version after the English version. Ensure both versions tell exactly the same story.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
@@ -61,11 +100,11 @@ Avoid generic filler and repeated stock jokes. Make the plot coherent and easy t
       try {
         const result = await env.AI.run(model, {
           messages: [
-            { role: "system", content: "You are an expert comedy screenwriter for short-form vertical videos. Follow the user's language and structure requirements exactly." },
+            { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
             { role: "user", content: prompt }
           ],
-          max_tokens: duration === "long" ? 1800 : 900,
-          temperature: 0.8
+          max_tokens: duration === "long" ? 2200 : 1200,
+          temperature: 0.7
         });
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) return json({ script: script.trim(), model, fallbackUsed: model !== primaryModel });
