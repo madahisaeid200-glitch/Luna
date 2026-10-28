@@ -146,8 +146,8 @@ Rules:
                 if (typeof candidate === "string" && candidate.trim()) {
                   const cleanedCandidate = candidate.trim();
                   // Reject obvious cross-language corruption and untranslated English words, then try the next model.
-                  const hasForeignScript = /[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(cleanedCandidate);
-                  const latinWords = [...cleanedCandidate.matchAll(/\\b[A-Za-z]{2,}\\b/g)]
+                  const hasForeignScript = /[\u0900-\u097F\u3040-\u30FF\u3400-\u9FFF]/u.test(cleanedCandidate);
+                  const latinWords = [...cleanedCandidate.matchAll(/\b[A-Za-z]{2,}\b/g)]
                     .map(match => match[0].toUpperCase())
                     .filter(word => word !== "LUNA" && word !== "LEO");
                   if (hasForeignScript || latinWords.length > 0) {
