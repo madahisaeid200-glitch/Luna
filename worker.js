@@ -38,7 +38,59 @@ export default {
 
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
-    const { title, premise, duration, tone, language } = body || {};
+    const { title, premise, duration, tone, language, mode, script } = body || {};
+
+    // A second AI workflow turns a finished episode into a practical video-production pack.
+    if (mode === "production") {
+      if (typeof script !== "string" || !script.trim()) return json({ error: "Generate or paste an episode script first." }, 400);
+      if (script.length > 14000) return json({ error: "The episode script is too long for one production-pack request." }, 400);
+      const productionPrompt = `You are the production director for LUNA & LEO, a stylish, funny, romantic virtual couple. Convert the supplied finished screenplay into a practical, low-budget short-video production pack. Do not rewrite the story or add plot events.
+
+CHARACTER CONTINUITY:
+- Only LUNA and LEO are visible or speaking unless the source explicitly requires someone else.
+- Luna: stylish European luxury look, confident, warm, witty.
+- Leo: stylish European luxury look, affectionate, charming, adorably chaotic.
+- Keep faces, hair, outfits, body proportions and visual style consistent across every shot.
+- Cinematic photorealistic luxury lifestyle, expressive comedy, vertical 9:16 framing for Shorts/Reels.
+
+OUTPUT IN NATURAL ENGLISH ONLY, using these headings:
+1. EPISODE SUMMARY (one sentence)
+2. CHARACTER CONTINUITY (fixed appearance and wardrobe)
+3. SHOT LIST (6–10 shots for a short, or 10–16 for a long episode; each shot has duration, camera/framing, visible action, emotion, and exact dialogue/voiceover if any)
+4. IMAGE PROMPTS (one self-contained prompt per shot; describe only what should be visible, include 9:16, photorealistic cinematic lighting, consistent character appearance; no text or logos rendered inside images)
+5. VIDEO/MOTION PROMPTS (one short motion prompt per shot: camera movement, facial expression, gestures, natural movement)
+6. VOICE AND SOUND (voice direction for Luna and Leo, ambience, sound effects; no copyrighted song requests)
+7. ON-SCREEN CAPTIONS (short caption lines in order, suitable for mobile)
+8. EDITING PLAN (cuts, pacing, punchline pause, ending tease)
+9. FINAL QUALITY CHECK (continuity, no extra characters, no invented props/locations, safe margins for vertical text)
+
+Keep prompts usable with common image/video tools and do not assume a paid provider. Prefer a workflow that can start with still images and simple motion. Preserve every important source event and the ending. Return the production pack only.
+
+FINISHED EPISODE SCRIPT:
+${script.trim()}`;
+      const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
+      const productionModels = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+      const productionFailures = [];
+      for (const model of productionModels) {
+        try {
+          const result = await env.AI.run(model, {
+            messages: [
+              { role: "system", content: "You are a precise video production planner. Preserve the source story, character continuity and sequence of events." },
+              { role: "user", content: productionPrompt }
+            ],
+            max_tokens: 2200,
+            temperature: 0.35
+          });
+          const pack = result?.response || result?.result?.response || "";
+          if (typeof pack === "string" && pack.trim()) return json({ script: pack.trim(), model, mode: "production", fallbackUsed: model !== primaryModel });
+          productionFailures.push(model + ": empty response");
+        } catch (error) {
+          productionFailures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 180));
+        }
+      }
+      return json({ error: "AI production-pack generation failed.", details: productionFailures }, 502);
+    }
+
     if (![title, premise].every(v => typeof v === "string" && v.trim())) return json({ error: "Please provide a title and premise." }, 400);
     if (title.length > 240 || premise.length > 3000) return json({ error: "Title or premise is too long." }, 400);
 
