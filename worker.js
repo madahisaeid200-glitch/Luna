@@ -105,6 +105,27 @@ ${script.trim()}`;
       return json({ error: "AI production-pack generation failed.", details: productionFailures }, 502);
     }
 
+    // Analyze generated images inside LUNA so users do not need to upload every image to chat.
+    if (mode === "analyze_image") {
+      if (typeof body.image !== "string" || !body.image.startsWith("data:image/") || body.image.length > 7_000_000) {
+        return json({ error: "Image data is missing, unsupported, or too large (maximum about 5 MB)." }, 400);
+      }
+      const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
+      try {
+        const result = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
+          prompt: analysisPrompt,
+          image: body.image,
+          max_tokens: 450,
+          temperature: 0.2
+        });
+        const analysis = result?.response || result?.description || result?.result?.response || "";
+        if (typeof analysis !== "string" || !analysis.trim()) return json({ error: "Vision model returned no analysis." }, 502);
+        return json({ analysis: analysis.trim(), model: "@cf/meta/llama-3.2-11b-vision-instruct", mode: "analyze_image" });
+      } catch (error) {
+        return json({ error: "AI image analysis failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+      }
+    }
+
     // Generate one real scene image with Cloudflare-hosted FLUX.1 schnell.
     if (mode === "image") {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
