@@ -67,7 +67,12 @@ NON-NEGOTIABLE CHARACTER RULES:
 
 STORY RULES:
 - Follow the user's core premise exactly. Do not replace the central misunderstanding with a different joke or plot.
-- Keep the same location, situation, and objective throughout the episode unless a scene change is necessary for the premise.
+- Treat every concrete detail in the premise as canon: the planned activity, venue, object, misunderstanding, and reason for the misunderstanding must remain consistent from hook to ending.
+- Do not add a bus, bus stop, tour, tourist group, restaurant, second venue, scenic viewpoint, pet, fantasy creature, or any new plot thread unless that exact element is explicitly required by the premise.
+- If the premise says the couple is in a five-star hotel suite, keep the episode in that suite; do not move them to a street, restaurant, bus, or tour.
+- Only LUNA and LEO may speak or act as characters. Background people may not appear unless the premise explicitly requires them.
+- Build the comedy by escalating the specific misunderstanding in the premise, then resolve it clearly with an affectionate punchline. Never invent a different misunderstanding to fill space.
+- Before returning the script, silently check: (1) the premise is unchanged, (2) every scene follows from the previous scene, (3) no unrequested venue or characters appear, (4) the ending resolves the main gag and teases a relevant next episode.
 - Make the story feel like an episode in an ongoing series about a stylish romantic virtual couple whose luxury plans often go hilariously wrong.
 - The first 1–2 seconds must create curiosity.
 - Include concise visual/action directions, natural dialogue with clear speaker names, a funny payoff, and a small cliffhanger teasing the next episode.
