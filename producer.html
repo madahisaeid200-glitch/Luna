@@ -22,6 +22,29 @@
 <section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
 </div>
 
+<section class="panel" id="characterManager">
+<div class="eyebrow">CHARACTER STUDIO · SAVED PROFILE</div>
+<h2>مدیریت شخصیت‌ها / Character Manager</h2>
+<p class="hint">نام و ظاهر شخصیت‌ها را هر زمان خواستی تغییر بده. این مشخصات در همین مرورگر ذخیره می‌شوند و در تولیدهای بعدی استفاده خواهند شد.</p>
+<div class="layout">
+<div>
+<h3>شخصیت اول / Luna</h3>
+<div class="field"><label for="charLunaName">نام شخصیت</label><input id="charLunaName" maxlength="40" value="LUNA"></div>
+<div class="field"><label for="charLunaLook">ظاهر ثابت</label><textarea id="charLunaLook" maxlength="700">Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.</textarea></div>
+<div class="field"><label for="charLunaPersonality">شخصیت و رفتار</label><textarea id="charLunaPersonality" maxlength="400">Confident, warm, witty, romantic, playful, stylish, affectionate.</textarea></div>
+</div>
+<div>
+<h3>شخصیت دوم / Leo</h3>
+<div class="field"><label for="charLeoName">نام شخصیت</label><input id="charLeoName" maxlength="40" value="LEO"></div>
+<div class="field"><label for="charLeoLook">ظاهر ثابت</label><textarea id="charLeoLook" maxlength="700">Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.</textarea></div>
+<div class="field"><label for="charLeoPersonality">شخصیت و رفتار</label><textarea id="charLeoPersonality" maxlength="400">Charming, affectionate, confident, slightly overconfident, adorably chaotic, romantic.</textarea></div>
+</div>
+</div>
+<div class="field"><label for="charStyle">سبک بصری مشترک / Shared visual style</label><textarea id="charStyle" maxlength="500">Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.</textarea></div>
+<div class="actions"><button class="primary" id="saveCharacters" type="button">ذخیره مشخصات شخصیت‌ها</button><button id="resetCharacters" type="button">بازگشت به مشخصات اولیه</button></div>
+<p class="hint" id="characterStatus" role="status">مشخصات اولیه آماده است.</p>
+</section>
+
 <section class="panel" id="visualProduction">
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
 <p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
