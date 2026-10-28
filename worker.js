@@ -91,6 +91,20 @@ ${script.trim()}`;
       return json({ error: "AI production-pack generation failed.", details: productionFailures }, 502);
     }
 
+    // Generate one real scene image with Cloudflare-hosted FLUX.1 schnell.
+    if (mode === "image") {
+      if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
+      const prompt = script.trim().slice(0, 2000);
+      try {
+        const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4, seed: Math.floor(Math.random() * 2147483647) });
+        const image = result?.image || result?.result?.image;
+        if (typeof image !== "string" || !image) return json({ error: "Image model returned no image data." }, 502);
+        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", mode: "image" });
+      } catch (error) {
+        return json({ error: "AI image generation failed.", details: String(error?.message || error || "unknown error").slice(0, 240) }, 502);
+      }
+    }
+
     if (![title, premise].every(v => typeof v === "string" && v.trim())) return json({ error: "Please provide a title and premise." }, 400);
     if (title.length > 240 || premise.length > 3000) return json({ error: "Title or premise is too long." }, 400);
 
