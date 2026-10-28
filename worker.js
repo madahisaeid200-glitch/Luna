@@ -119,9 +119,14 @@ If language is BOTH, repeat the complete structure for the Persian version after
 Rules:
 - Preserve every event, joke, character action, object, location, and ending exactly. Do not add or remove plot details.
 - Keep character names exactly LUNA and LEO.
+- Translate every ordinary English word into Persian; for example, "necklace" must become «گردنبند». Do not leave English nouns or stage-direction phrases in the Persian version.
+- Rewrite awkward English-shaped sentences into natural Iranian Persian. For example, prefer «بذار از اول شروع کنیم؛ این بار شام رو فقط برای خودمون رزرو می‌کنم» over «من یک شام جدید را رزرو کنم»، and «تولدم نزدیکه» over «من یک تولد دارم».
+- Use warm, informal, believable dialogue for an affectionate couple. Prefer «امیدوارم غافلگیرت کرده باشم» over stiff formal wording such as «امیدوارم بتوانم شما را شگفت زده کنم».
+- Make stage directions clear and physically logical; explain who is holding or handing over an object, and do not create contradictory object movements.
 - Write all dialogue and production directions in Persian, except the names LUNA and LEO.
 - Use only Persian script for headings: عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد. Never translate PAYOFF as «پرداخت».
 - Never output Japanese or Chinese characters, and never leave stray English words such as "joking" in Persian sentences.
+- Before returning, silently proofread the Persian for natural phrasing, grammar, missing words, foreign-language fragments, and continuity.
 - Preserve the complete ending; do not truncate or stop mid-sentence.
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
