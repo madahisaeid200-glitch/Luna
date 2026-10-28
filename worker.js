@@ -46,10 +46,8 @@ export default {
       ? "3–5 minutes. Use 6–8 clearly staged scenes and enough dialogue for the full runtime."
       : "30–60 seconds. Keep it tight enough to fit the runtime, but complete: hook, setup, escalation, payoff, and cliffhanger.";
     const languageText = language === "fa"
-      ? "Write the complete script only in natural, fluent Persian. Do not mix English into Persian dialogue except proper names or necessary production terms."
-      : language === "both"
-        ? "Write the complete script first in natural English. Then provide a complete, faithful Persian version of the SAME story. Do not translate literally or mix the two languages."
-        : "Write the complete script only in natural English.";
+      ? "Write the complete script only in natural, fluent Persian. Do not mix English into Persian dialogue except the character names LUNA and LEO. Use Persian scene headings (قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد). Never output Japanese, Chinese, or other non-Persian scripts."
+      : "Write the complete script only in natural English.";
     const toneText = ({
       romcom: "warm romantic comedy, cute chemistry, playful teasing, and an affectionate misunderstanding",
       chaos: "escalating misunderstanding, playful chaos, fast comedic timing, and a satisfying resolution",
@@ -76,8 +74,10 @@ STORY RULES:
 - Make the story feel like an episode in an ongoing series about a stylish romantic virtual couple whose luxury plans often go hilariously wrong.
 - The first 1–2 seconds must create curiosity.
 - Include concise visual/action directions, natural dialogue with clear speaker names, a funny payoff, and a small cliffhanger teasing the next episode.
-- The ending must be complete, not cut off.
-- For a 30–60 second Short/Reel, target approximately 120–170 spoken words per language version and keep production directions concise.
+- The ending must be complete, not cut off. Include the final dialogue and the next-episode tease; never stop mid-sentence.
+- Use plain, consistent headings and character labels. Do not use Japanese/Chinese characters, mixed-language fragments, or corrupted words.
+- Keep each scene physically and logically continuous with the previous scene.
+- For a 30–60 second Short/Reel, target approximately 120–170 spoken words and keep production directions concise.
 - Return only the script. Do not add explanations, apologies, analysis, or meta-commentary.
 
 STYLE: ${toneText}
@@ -112,7 +112,48 @@ If language is BOTH, repeat the complete structure for the Persian version after
           temperature: 0.7
         });
         const script = result?.response || result?.result?.response || "";
-        if (typeof script === "string" && script.trim()) return json({ script: script.trim(), model, fallbackUsed: model !== primaryModel });
+        if (typeof script === "string" && script.trim()) {
+          let finalScript = script.trim();
+          if (language === "both") {
+            const translationPrompt = `Translate the following complete screenplay into natural, fluent Persian. This is a faithful translation task, not a rewrite.
+Rules:
+- Preserve every event, joke, character action, object, location, and ending exactly. Do not add or remove plot details.
+- Keep character names exactly LUNA and LEO.
+- Write all dialogue and production directions in Persian, except the names LUNA and LEO.
+- Use only Persian script for headings: عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد.
+- Never output Japanese or Chinese characters, and never leave stray English words such as "joking" in Persian sentences.
+- Preserve the complete ending; do not truncate or stop mid-sentence.
+- Return only the Persian script, with no explanation.
+\n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
+            let persian = "";
+            const translationModels = [model, ...modelsToTry.filter(m => m !== model)];
+            for (const translationModel of translationModels) {
+              try {
+                const translated = await env.AI.run(translationModel, {
+                  messages: [
+                    { role: "system", content: "You are a professional Persian screenplay translator. Produce fluent Persian only and preserve all source events exactly." },
+                    { role: "user", content: translationPrompt }
+                  ],
+                  max_tokens: duration === "long" ? 2200 : 1200,
+                  temperature: 0.2
+                });
+                const candidate = translated?.response || translated?.result?.response || "";
+                if (typeof candidate === "string" && candidate.trim()) {
+                  persian = candidate.trim();
+                  break;
+                }
+              } catch (translationError) {
+                failures.push(translationModel + " translation: " + String(translationError?.message || translationError || "unknown error").slice(0, 180));
+              }
+            }
+            if (!persian) {
+              failures.push(model + ": Persian translation failed");
+              continue;
+            }
+            finalScript += "\\n\\n══════════ نسخه فارسی ══════════\\n\\n" + persian;
+          }
+          return json({ script: finalScript, model, fallbackUsed: model !== primaryModel });
+        }
         failures.push(model + ": model returned an empty response");
       } catch (error) {
         failures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 220));
