@@ -49,8 +49,8 @@ export default {
       style: String(characterProfile?.style || "Photorealistic live-action luxury European fashion editorial, natural cinematic lighting, realistic anatomy.").trim().slice(0, 500)
     };
     const customizeCharacterPrompt = (text) => {
-      let result = text.replace(/\\bLUNA\\b/gi, profile.lunaName).replace(/\\bLEO\\b/gi, profile.leoName);
-      return result + "\\n\\nCUSTOM CHARACTER CANON — OVERRIDES ANY CONFLICTING DEFAULT CHARACTER DESCRIPTION ABOVE:\\n- Main character 1 name must be exactly: " + profile.lunaName + ". Appearance: " + profile.lunaLook + " Personality: " + profile.lunaPersonality + "\\n- Main character 2 name must be exactly: " + profile.leoName + ". Appearance: " + profile.leoLook + " Personality: " + profile.leoPersonality + "\\n- Shared visual style: " + profile.style + "\\n- Use only these two names for the couple. Keep their appearance and personalities consistent in every scene. Do not use the old default names if the user changed them.";
+      let result = text.replace(/\bLUNA\b/gi, profile.lunaName).replace(/\bLEO\b/gi, profile.leoName);
+      return result + "\n\nCUSTOM CHARACTER CANON — OVERRIDES ANY CONFLICTING DEFAULT CHARACTER DESCRIPTION ABOVE:\n- Main character 1 name must be exactly: " + profile.lunaName + ". Appearance: " + profile.lunaLook + " Personality: " + profile.lunaPersonality + "\n- Main character 2 name must be exactly: " + profile.leoName + ". Appearance: " + profile.leoLook + " Personality: " + profile.leoPersonality + "\n- Shared visual style: " + profile.style + "\n- Use only these two names for the couple. Keep their appearance and personalities consistent in every scene. Do not use the old default names if the user changed them.";
     };
 
     // A second AI workflow turns a finished episode into a practical video-production pack.
