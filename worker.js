@@ -150,7 +150,7 @@ Rules:
               failures.push(model + ": Persian translation failed");
               continue;
             }
-            finalScript += "\\n\\n══════════ نسخه فارسی ══════════\\n\\n" + persian;
+            finalScript += "\n\n══════════ نسخه فارسی ══════════\n\n" + persian;
           }
           return json({ script: finalScript, model, fallbackUsed: model !== primaryModel });
         }
