@@ -178,8 +178,8 @@ ${finalScript}`;
                       });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
-                      const repairedHasForeignScript = /[\\u0900-\\u097F\\u3040-\\u30FF\\u3400-\\u9FFF]/u.test(repairedCandidate);
-                      const repairedLatinWords = [...repairedCandidate.matchAll(/\\b[A-Za-z]{2,}\\b/g)]
+                      const repairedHasForeignScript = /[\u0900-\u097F\u3040-\u30FF\u3400-\u9FFF]/u.test(repairedCandidate);
+                      const repairedLatinWords = [...repairedCandidate.matchAll(/\b[A-Za-z]{2,}\b/g)]
                         .map(match => match[0].toUpperCase())
                         .filter(word => word !== "LUNA" && word !== "LEO");
                       const stillHasObviousErrors = /آپارتمان|دروازه را باز|پارادایس|بوق بوق|سیاه‌چاله|خیس‌خنک|خبط‌گر|اگه می‌خواستی، می‌تونی ازش خوشت بیاد|این زندگی است/u.test(repairedCandidate);
