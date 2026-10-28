@@ -52,7 +52,7 @@ const lines=isFa?(short?[
 'صحنه ۱ — انتظار: لونا با ظاهر لوکس منتظر است. لونا: «فقط بگو این بار چیزی رو اشتباه رزرو نکردی.»',
 'صحنه ۲ — سوءتفاهم اصلی: '+premise,
 'صحنه ۳ — واکنش: لئو با اعتمادبه‌نفس توضیح می‌دهد؛ اما جزئیات نشان می‌دهد یک اشتباه بامزه رخ داده است.',
-'پایان بامزه: لونا به دوربین نگاه می‌کند: «قسمت بعدی، خودم همه‌چیز رو رزرو می‌کنم!» لئو: «عالیه… فقط برای سگ هم جا بگیر!»',
+'پایان بامزه: لونا به دوربین نگاه می‌کند: «قسمت بعدی، خودم همه‌چیز رو رزرو می‌کنم!» لئو: «قبوله… دفعه بعد حتی سفارش دسر رو هم درست می‌دم!»',
 'یادداشت اجرا: کات‌های سریع، واکنش چهره واضح، زیرنویس کوتاه و مکث قبل از شوخی آخر.'
 ]:[
 'قلاب آغازین: یک نمای لوکس و یک جمله غیرمنتظره که سؤال ایجاد کند.',
@@ -68,7 +68,7 @@ const lines=isFa?(short?[
 'Scene 1 — Setup: Luna looks perfectly glamorous and waits. Luna: “Just tell me you didn’t book the wrong thing again.”',
 'Scene 2 — Main misunderstanding: '+premise,
 'Scene 3 — Reaction: Leo confidently explains his plan, but the details reveal a ridiculous mistake.',
-'Funny ending: Luna looks at the camera: “Next time, I’m booking everything myself!” Leo: “Great—just save a spot for the dog!”',
+'Funny ending: Luna looks at the camera: “Next time, I’m booking everything myself!” Leo: “Great—next time, I’ll surprise you with the correct room service!”',
 'Production note: quick cuts, expressive reactions, short captions and a beat before the final punchline.'
 ]:[
 'Opening hook: Start with a glamorous visual and an unexpected line that raises a question.',
@@ -87,7 +87,7 @@ return one(lang);
 }
 // Preload a ready-to-run sample so the user can test with one tap.
 if (!el('epTitle').value.trim()) el('epTitle').value='LUNA و LEO: سورپرایز لوکس خراب می‌شود';
-if (!el('premise').value.trim()) el('premise').value='لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
+if (!el('premise').value.trim()) el('premise').value='لئو برای لونا یک سورپرایز عاشقانه در سوئیت هتل پنج‌ستاره آماده کرده، اما یک سوءتفاهم بامزه باعث می‌شود لونا فکر کند رزرو برای شخص دیگری است؛ فقط لونا و لئو حضور دارند.';
 const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
 const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
 // On Cloudflare Pages, use its same-origin /api proxy so visitors do not need
@@ -143,7 +143,7 @@ el('generate').onclick=async()=>{
  let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
    title=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
-   premise=premise||'لئو می‌خواهد برای لونا یک سورپرایز لوکس ترتیب بدهد، اما اشتباهی به‌جای رزرو رستوران رمانتیک، یک تور اتوبوس توریستی گروهی رزرو کرده است.';
+   premise=premise||'لئو برای لونا یک سورپرایز عاشقانه در سوئیت هتل پنج‌ستاره آماده کرده، اما یک سوءتفاهم بامزه باعث می‌شود لونا فکر کند رزرو برای شخص دیگری است؛ فقط لونا و لئو حضور دارند.';
    el('epTitle').value=title; el('premise').value=premise;
  }
  const lang=el('scriptLang').value,endpoint=localStorage.getItem('lunaAiEndpoint');
