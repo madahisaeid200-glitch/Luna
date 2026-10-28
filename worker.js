@@ -115,7 +115,7 @@ If language is BOTH, repeat the complete structure for the Persian version after
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
           if (language === "both") {
-            const translationPrompt = `Translate the following complete screenplay into natural, fluent Persian. This is a faithful translation task, not a rewrite.
+            const translationPrompt = `Translate and adapt the complete screenplay into fluent, idiomatic Iranian Persian as a native comedy screenwriter would write it. Preserve all story events faithfully, but do not translate English sentence structure or idioms word-for-word. Natural spoken Persian is more important than mirroring English grammar.
 Rules:
 - Preserve every event, joke, character action, object, location, and ending exactly. Do not add or remove plot details.
 - Keep character names exactly LUNA and LEO.
