@@ -38,7 +38,20 @@ export default {
 
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
-    const { title, premise, duration, tone, language, mode, script } = body || {};
+    const { title, premise, duration, tone, language, mode, script, characterProfile } = body || {};
+    const profile = {
+      lunaName: String(characterProfile?.lunaName || "LUNA").trim().slice(0, 40) || "LUNA",
+      lunaLook: String(characterProfile?.lunaLook || "Adult elegant European woman with natural realistic features and understated luxury styling.").trim().slice(0, 700),
+      lunaPersonality: String(characterProfile?.lunaPersonality || "Confident, warm, witty, romantic and playful.").trim().slice(0, 400),
+      leoName: String(characterProfile?.leoName || "LEO").trim().slice(0, 40) || "LEO",
+      leoLook: String(characterProfile?.leoLook || "Adult elegant European man with natural realistic features and tailored luxury styling.").trim().slice(0, 700),
+      leoPersonality: String(characterProfile?.leoPersonality || "Charming, affectionate, romantic and adorably chaotic.").trim().slice(0, 400),
+      style: String(characterProfile?.style || "Photorealistic live-action luxury European fashion editorial, natural cinematic lighting, realistic anatomy.").trim().slice(0, 500)
+    };
+    const customizeCharacterPrompt = (text) => {
+      let result = text.replace(/\\bLUNA\\b/gi, profile.lunaName).replace(/\\bLEO\\b/gi, profile.leoName);
+      return result + "\\n\\nCUSTOM CHARACTER CANON — OVERRIDES ANY CONFLICTING DEFAULT CHARACTER DESCRIPTION ABOVE:\\n- Main character 1 name must be exactly: " + profile.lunaName + ". Appearance: " + profile.lunaLook + " Personality: " + profile.lunaPersonality + "\\n- Main character 2 name must be exactly: " + profile.leoName + ". Appearance: " + profile.leoLook + " Personality: " + profile.leoPersonality + "\\n- Shared visual style: " + profile.style + "\\n- Use only these two names for the couple. Keep their appearance and personalities consistent in every scene. Do not use the old default names if the user changed them.";
+    };
 
     // A second AI workflow turns a finished episode into a practical video-production pack.
     if (mode === "production") {
@@ -68,6 +81,7 @@ Keep prompts usable with common image/video tools and do not assume a paid provi
 
 FINISHED EPISODE SCRIPT:
 ${script.trim()}`;
+      const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
       const productionFailures = [];
@@ -76,7 +90,7 @@ ${script.trim()}`;
           const result = await env.AI.run(model, {
             messages: [
               { role: "system", content: "You are a precise video production planner. Preserve the source story, character continuity and sequence of events." },
-              { role: "user", content: productionPrompt }
+              { role: "user", content: customizedProductionPrompt }
             ],
             max_tokens: 2200,
             temperature: 0.35
@@ -164,6 +178,7 @@ ${outputFormatText}
 
 If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
+    const customizedPrompt = customizeCharacterPrompt(prompt);
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
     const failures = [];
@@ -172,7 +187,7 @@ If language is BOTH, output the English version only. The Worker will translate 
         const result = await env.AI.run(model, {
           messages: [
             { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-            { role: "user", content: prompt }
+            { role: "user", content: customizedPrompt }
           ],
           max_tokens: duration === "long" ? 2200 : 1200,
           temperature: 0.7
