@@ -220,9 +220,12 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
  let generatedImageData='',generatedImageObjectUrl='';
  el('generateSceneImage').onclick=async()=>{
    if(!lastProductionPack){alert('اول بستهٔ تولید ویدئو را بساز.');return;}
-   let prompt=el('imagePrompt').value.trim()||extractFirstImagePrompt(lastProductionPack);
-   if(!prompt){alert('توضیح تصویر در بسته پیدا نشد.');return;}
-   prompt=(prompt+' Vertical 9:16 composition, cinematic photorealism, stylish luxury European romantic comedy, natural cinematic lighting, no text, no watermark.').slice(0,2000);
+   let sceneDescription=el('imagePrompt').value.trim()||extractFirstImagePrompt(lastProductionPack);
+   if(!sceneDescription){alert('توضیح تصویر در بسته پیدا نشد.');return;}
+   // Keep the same visual character bible on every generation; reserve prompt space for scene-specific action.
+   const characterBible='LUNA & LEO VISUAL CONTINUITY: Luna is an adult 27-year-old elegant European woman with long glossy chestnut-brown hair, hazel eyes, refined natural features, realistic skin texture, graceful proportions and understated luxury styling. Leo is an adult 29-year-old elegant European man with neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture and athletic but natural proportions. They are a romantic couple; preserve these exact hair colors, eye colors, facial traits, age impression and body proportions. Wardrobe: impeccably tailored quiet-luxury designer-inspired clothing, premium natural fabrics, tasteful neutral colors, realistic folds and seams, no visible brand logos.';
+   const qualityDirection='Photorealistic live-action editorial photograph, premium European luxury fashion campaign, shot on a full-frame professional cinema camera, natural human anatomy, believable hands with five fingers each when visible, anatomically correct faces, realistic eyes and teeth, natural skin pores, detailed hair strands, physically accurate fabric and lighting, subtle cinematic depth of field, refined color grading, elegant believable environment. One coherent moment, two clearly distinct adult people only, natural candid expressions and body language. Vertical 9:16 composition. Avoid cartoon, illustration, CGI, plastic skin, doll-like faces, beauty-filter skin, distorted anatomy, extra fingers, fused fingers, duplicate limbs, malformed hands, warped clothing, text, watermark, logos, collage, split screen.';
+   const prompt=(sceneDescription.slice(0,850)+' SCENE ACTION AND LOCATION: '+sceneDescription.slice(0,850)+' '+characterBible+' '+qualityDirection).slice(0,2048);
    const button=el('generateSceneImage');button.disabled=true;button.textContent='در حال ساخت تصویر…';el('visualStatus').textContent='در حال ساخت تصویر با مدل هوش مصنوعی…';
    try{
      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
