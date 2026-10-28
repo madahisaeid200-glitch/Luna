@@ -114,6 +114,7 @@ If language is BOTH, output the English version only. The Worker will translate 
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
+          let translationModelUsed = null;
           if (language === "both") {
             const translationPrompt = `Translate and adapt the complete screenplay into fluent, idiomatic Iranian Persian as a native comedy screenwriter would write it. Preserve all story events faithfully, but do not translate English sentence structure or idioms word-for-word. Natural spoken Persian is more important than mirroring English grammar.
 Rules:
@@ -131,7 +132,6 @@ Rules:
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
-            let translationModelUsed = null;
             const translationModels = ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL && m !== "@cf/zai-org/glm-4.7-flash")];
             for (const translationModel of translationModels) {
               try {
