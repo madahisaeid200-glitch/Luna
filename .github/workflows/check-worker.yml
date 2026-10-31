@@ -74,21 +74,30 @@ jobs:
           echo "5/5 Real FLUX.2 Klein reference-image edit test"
           python3 -m pip install --quiet pillow
           python3 - <<'PY'
-          import base64, io, json
+          import base64, io, json, random
           from PIL import Image
-          image = Image.new("RGB", (384, 384), (178, 155, 132))
+          random.seed(20261031)
+          image = Image.new("RGB", (480, 480))
           pixels = image.load()
-          for y in range(384):
-              for x in range(384):
-                  if (x // 48 + y // 48) % 2 == 0:
-                      pixels[x, y] = (194, 176, 153)
-          buffer = io.BytesIO()
-          image.save(buffer, format="JPEG", quality=82, optimize=True)
-          data = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
-          body = {"mode":"image_edit","image":data,"prompt":"Transform this simple abstract color-block image into a polished photorealistic editorial photograph of an elegant luxury European hotel lobby, warm natural light, realistic materials, sophisticated composition. Preserve a square composition.","width":384,"height":384}
+          for y in range(480):
+              for x in range(480):
+                  base = int(115 + 65 * x / 479 + 25 * y / 479)
+                  grain = random.randint(-28, 28)
+                  pixels[x, y] = (max(0,min(255,base+grain)), max(0,min(255,base-12+grain)), max(0,min(255,base-28+grain)))
+          best = None
+          for quality in range(5, 96):
+              buffer = io.BytesIO()
+              image.save(buffer, format="JPEG", quality=quality, optimize=True)
+              data = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+              candidate = (abs(len(data)-40963), data, quality)
+              if best is None or candidate[0] < best[0]:
+                  best = candidate
+          data, quality = best[1], best[2]
+          body = {"mode":"image_edit","image":data,"prompt":"Refine this reference into a polished photorealistic editorial photograph of an elegant luxury European hotel lobby, warm natural light, realistic materials, sophisticated composition. Preserve the main composition and square framing.","width":768,"height":768}
           with open("/tmp/flux-edit.json", "w") as f:
               json.dump(body, f, separators=(",", ":"))
-          print("Reference image dimensions: 384x384; request bytes:", __import__("os").path.getsize("/tmp/flux-edit.json"))
+          print("Reference image dimensions: 480x480; image chars:", len(data), "JPEG quality:", quality, "request bytes:", __import__("os").path.getsize("/tmp/flux-edit.json"))
+          assert 35000 <= len(data) <= 45000, "Synthetic reference image is not close enough to the user's reported payload size"
           PY
           curl --fail-with-body --silent --show-error --max-time 150 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
