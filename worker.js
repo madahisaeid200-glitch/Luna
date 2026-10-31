@@ -40,6 +40,10 @@ export default {
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
     const { title, premise, duration, tone, language, mode, script, characterProfile } = body || {};
     if (mode === "ping") return json({ ok: true, service: "LUNA AI Worker", receivedContentType: request.headers.get("Content-Type") || "", message: "POST and CORS path are working." });
+    if (mode === "image_ping") {
+      if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) return json({ ok: false, error: "Image data URL missing or unsupported." }, 400);
+      return json({ ok: true, receivedImageChars: body.image.length, mimeType: body.image.slice(5, body.image.indexOf(";")), message: "The full compressed image reached the Worker and was parsed successfully." });
+    }
     const profile = {
       lunaName: String(characterProfile?.lunaName || "LUNA").trim().slice(0, 40) || "LUNA",
       lunaLook: String(characterProfile?.lunaLook || "Adult elegant European woman with natural realistic features and understated luxury styling.").trim().slice(0, 700),
