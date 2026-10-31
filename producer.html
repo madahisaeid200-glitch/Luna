@@ -289,6 +289,15 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     stage='ارسال تصویر آزمایشی به Worker';
     httpStatus=null;
     el('imageAnalysisStatus').textContent='در حال ارسال تصویر فشرده‌شده به Worker…';
+    // First isolate basic POST transport from image-body transport.
+    const basicPingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})});
+    httpStatus=basicPingResponse.status;
+    let basicPingData={};
+    try{basicPingData=await basicPingResponse.json()}catch(e){throw new Error('درخواست POST سبک پاسخ قابل‌خواندن نداد (HTTP '+basicPingResponse.status+').')}
+    if(!basicPingResponse.ok||!basicPingData.ok)throw new Error('درخواست POST سبک به Worker ناموفق بود (HTTP '+basicPingResponse.status+').');
+    logLunaDiagnostic('basic-post-success','Small POST reached Worker',{httpStatus:basicPingResponse.status});
+    stage='ارسال تصویر آزمایشی به Worker';
+    httpStatus=null;
     const imagePingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})});
     httpStatus=imagePingResponse.status;
     let imagePingText='';
