@@ -324,7 +324,7 @@ el('generateSceneImage').onclick=async()=>{
    const button=el('generateSceneImage');button.disabled=true;button.textContent='در حال ساخت تصویر…';el('visualStatus').textContent='در حال ساخت تصویر با مدل هوش مصنوعی…';
    try{
      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
-     try{response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
+     try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
      const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
      if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
