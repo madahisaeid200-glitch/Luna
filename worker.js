@@ -171,8 +171,10 @@ ${script.trim()}`;
         const form = new FormData();
         form.append("prompt", prompt);
         form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
-        form.append("width", "1024");
-        form.append("height", "1024");
+        const width = Math.min(1920, Math.max(256, Math.round(Number(body.width) || 1024)));
+        const height = Math.min(1920, Math.max(256, Math.round(Number(body.height) || 1024)));
+        form.append("width", String(width));
+        form.append("height", String(height));
         const formResponse = new Response(form);
         const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
           multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
