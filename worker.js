@@ -120,7 +120,11 @@ ${script.trim()}`;
         const binary = atob(base64);
         const imageBytes = new Array(binary.length);
         for (let i = 0; i < binary.length; i++) imageBytes[i] = binary.charCodeAt(i);
-        const result = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
+        const visionModel = "@cf/meta/llama-3.2-11b-vision-instruct";
+        // Cloudflare requires explicit acceptance of Meta's model license before first use.
+        // Repeating this tiny acknowledgement is safe and avoids a hidden first-run failure.
+        await env.AI.run(visionModel, { prompt: "agree" });
+        const result = await env.AI.run(visionModel, {
           prompt: analysisPrompt,
           image: imageBytes,
           max_tokens: 450,
@@ -128,7 +132,7 @@ ${script.trim()}`;
         });
         const analysis = result?.response || result?.description || result?.result?.response || "";
         if (typeof analysis !== "string" || !analysis.trim()) return json({ error: "Vision model returned no analysis." }, 502);
-        return json({ analysis: analysis.trim(), model: "@cf/meta/llama-3.2-11b-vision-instruct", mode: "analyze_image" });
+        return json({ analysis: analysis.trim(), model: visionModel, mode: "analyze_image" });
       } catch (error) {
         return json({ error: "AI image analysis failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
       }
