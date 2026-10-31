@@ -14,8 +14,44 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check public Worker endpoint from GitHub runner
+      - name: Check GET, small POST, and 58 KB image POST from an independent network
         shell: bash
         run: |
-          echo "Checking public health endpoint from an independent network..."
-          curl --verbose --max-time 25 --include --silent --show-error             "https://orange-firefly-6434.madahisaeid200.workers.dev/" || true
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          ORIGIN="https://madahisaeid200-glitch.github.io"
+
+          echo "1/3 GET health check"
+          curl --fail-with-body --silent --show-error --max-time 25 \
+            -H "Origin: $ORIGIN" "$URL" -o /tmp/get.json -D /tmp/get.headers
+          cat /tmp/get.json
+          grep -qi "access-control-allow-origin: $ORIGIN" /tmp/get.headers
+
+          echo "2/3 Small POST check"
+          printf '%s' '{"mode":"ping"}' >/tmp/ping.json
+          curl --fail-with-body --silent --show-error --max-time 25 \
+            -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/ping.json "$URL" -o /tmp/ping-response.json -D /tmp/ping.headers
+          cat /tmp/ping-response.json
+          python3 -c "import json; assert json.load(open('/tmp/ping-response.json')).get('ok') is True"
+
+          echo "3/3 58 KB image-shaped POST check"
+          python3 - <<'PY'
+          import base64, json
+          image = "data:image/jpeg;base64," + base64.b64encode(b"x" * 44000).decode("ascii")
+          with open("/tmp/image-ping.json", "w") as f:
+              json.dump({"mode": "image_ping", "image": image}, f, separators=(",", ":"))
+          print("Request body bytes:", __import__("os").path.getsize("/tmp/image-ping.json"))
+          PY
+          curl --fail-with-body --silent --show-error --max-time 25 \
+            -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/image-ping.json "$URL" -o /tmp/image-response.json -D /tmp/image.headers
+          cat /tmp/image-response.json
+          python3 - <<'PY'
+          import json
+          result = json.load(open("/tmp/image-response.json"))
+          assert result.get("ok") is True, result
+          assert result.get("receivedImageChars", 0) > 50000, result
+          print("PASS: Worker accepted the full image-shaped request.")
+          PY
+          grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
