@@ -113,18 +113,22 @@ ${script.trim()}`;
       }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
       try {
-        // Cloudflare's current vision tutorial accepts the browser data URL
-        // directly. Avoid decoding base64 into a large JS number array in the Worker.
+        // Validate the browser data URL and use Cloudflare's current multimodal
+        // messages format (text + image_url) rather than the deprecated top-level image input.
         if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
           return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
         }
         const visionModel = "@cf/meta/llama-3.2-11b-vision-instruct";
-        // Cloudflare requires explicit acceptance of Meta's model license before first use.
-        // Repeating this tiny acknowledgement is safe and avoids a hidden first-run failure.
-        await env.AI.run(visionModel, { prompt: "agree" });
+        // Meta license acceptance is a one-time setup step; the user has already
+        // accepted it if this model has successfully been invoked before.
         const result = await env.AI.run(visionModel, {
-          prompt: analysisPrompt,
-          image: body.image,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: analysisPrompt },
+              { type: "image_url", image_url: { url: body.image } }
+            ]
+          }],
           max_tokens: 450,
           temperature: 0.2
         });
