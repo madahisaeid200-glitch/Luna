@@ -283,14 +283,9 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
   try{
     endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint;
     compactImage=await prepareLunaImageForAnalysis(generatedImageData);
-    stage='آزمایش POST به Worker';
-    el('imageAnalysisStatus').textContent='تصویر آماده شد؛ در حال آزمایش POST…';
-    const pingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})});
-    httpStatus=pingResponse.status;
-    let pingData={};
-    try{pingData=await pingResponse.json()}catch(e){throw new Error('پاسخ آزمایش POST قابل خواندن نیست (HTTP '+pingResponse.status+').')}
-    if(!pingResponse.ok||!pingData.ok)throw new Error('آزمایش POST ناموفق بود: '+(pingData.error||'HTTP '+pingResponse.status));
     stage='ارسال تصویر آزمایشی به Worker';
+    httpStatus=null;
+    el('imageAnalysisStatus').textContent='در حال ارسال تصویر فشرده‌شده به Worker…';
     const imagePingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})});
     httpStatus=imagePingResponse.status;
     let imagePingText='';
