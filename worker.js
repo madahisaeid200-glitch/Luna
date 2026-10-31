@@ -154,6 +154,37 @@ ${script.trim()}`;
       }
     }
 
+    // Edit an existing LUNA image with FLUX.2 Klein reference-image support.
+    if (mode === "image_edit") {
+      if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image) || body.image.length > 4_500_000) {
+        return json({ error: "Reference image is missing, unsupported, or too large. Please use a compressed PNG, JPEG, or WebP image." }, 400);
+      }
+      const prompt = String(body.prompt || "").trim().slice(0, 1800);
+      if (!prompt) return json({ error: "An image-edit instruction is required." }, 400);
+      try {
+        const startedAt = Date.now();
+        const match = body.image.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([\s\S]+)$/i);
+        const mimeType = match[1].toLowerCase().replace("image/jpg", "image/jpeg");
+        const binary = atob(match[2]);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const form = new FormData();
+        form.append("prompt", prompt);
+        form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
+        form.append("width", "1024");
+        form.append("height", "1024");
+        const formResponse = new Response(form);
+        const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
+          multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
+        });
+        const image = result?.image || result?.result?.image;
+        if (typeof image !== "string" || !image) return json({ error: "Image editing model returned no image data." }, 502);
+        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-2-klein-4b", mode: "image_edit", generationMs: Date.now() - startedAt });
+      } catch (error) {
+        return json({ error: "AI reference-image editing failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+      }
+    }
+
     // Generate one real scene image with Cloudflare-hosted FLUX.1 schnell.
     if (mode === "image") {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
