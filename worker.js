@@ -34,7 +34,6 @@ export default {
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
-    if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
 
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
@@ -44,6 +43,8 @@ export default {
       if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) return json({ ok: false, error: "Image data URL missing or unsupported." }, 400);
       return json({ ok: true, receivedImageChars: body.image.length, mimeType: body.image.slice(5, body.image.indexOf(";")), message: "The full compressed image reached the Worker and was parsed successfully." });
     }
+    if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
+
     const profile = {
       lunaName: String(characterProfile?.lunaName || "LUNA").trim().slice(0, 40) || "LUNA",
       lunaLook: String(characterProfile?.lunaLook || "Adult elegant European woman with natural realistic features and understated luxury styling.").trim().slice(0, 700),
