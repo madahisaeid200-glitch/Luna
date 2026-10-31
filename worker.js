@@ -71,6 +71,11 @@ CHARACTER CONTINUITY:
 - Leo: stylish European luxury look, affectionate, charming, adorably chaotic.
 - Keep faces, hair, outfits, body proportions and visual style consistent across every shot.
 - Cinematic photorealistic luxury lifestyle, expressive comedy, vertical 9:16 framing for Shorts/Reels.
+- Give LUNA a consistently polished luxury wardrobe: premium silk, cashmere, fine tailoring or an elegant evening look appropriate to the actual scene; add tasteful visible jewelry such as refined earrings, a delicate necklace, bracelet or ring. A structured designer-style handbag may appear only when it naturally belongs in the scene. Never invent a branded logo.
+- Give LEO a consistently tailored premium wardrobe with a refined luxury wristwatch and subtle accessories appropriate to the scene. Keep both characters' outfits and accessories consistent across shots unless the screenplay explicitly includes a change.
+- In every IMAGE PROMPT, deliberately choose a medium-full or three-quarter composition whenever the action allows. Keep both forearms, hands and fingers visible inside the frame, naturally separated from the torso and props; never hide hands in pockets, behind objects or outside the crop. Describe a natural, simple hand pose and anatomically correct five-fingered hands.
+- Build a visually rich but story-faithful background: detailed architecture, refined furniture, premium materials, layered practical lighting and a beautiful city/landscape view when appropriate to the established location. Do not change the screenplay venue or add unrequested plot props, characters or locations.
+- Each image prompt must explicitly specify wardrobe, visible accessories, hand placement/framing, and meaningful background details; do not rely on generic words such as “luxury” or “elegant”.
 
 OUTPUT IN NATURAL ENGLISH ONLY, using these headings:
 1. EPISODE SUMMARY (one sentence)
