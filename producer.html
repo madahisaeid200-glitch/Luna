@@ -166,37 +166,21 @@ el('testAiEndpoint').onclick=async()=>{
  localStorage.setItem('lunaAiEndpoint',endpoint.replace(/\/$/,''));
  if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
  const button=el('testAiEndpoint');button.disabled=true;
- updateAiStatus('در حال آزمایش دسترسی به Worker…');
+ updateAiStatus('در حال آزمایش GET و سپس POST ساده…');
  try{
-   const controller=new AbortController();
-   const timeoutId=setTimeout(()=>controller.abort(),12000);
-   let response;
-   try{response=await fetch(endpoint,{method:'GET',cache:'no-store',signal:controller.signal});}
-   finally{clearTimeout(timeoutId);}
-   let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').')}
-   if(!response.ok)throw new Error(data.message||data.error||('HTTP '+response.status));
-   if(!data.aiBinding)throw new Error('Worker در دسترس است، اما binding با نام AI وجود ندارد. در Cloudflare آن را اضافه و Deploy کن.');
-   updateAiStatus('آزمایش اول موفق بود؛ در حال آزمایش واقعی تولید متن…');
-   const postController=new AbortController(),postTimeout=setTimeout(()=>postController.abort(),75000);
-   let postResponse,postData={};
-   try{
-     postResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-       title:'LUNA & LEO: Luxury Surprise Goes Wrong',
-       premise:'Leo plans a romantic surprise for Luna in a five-star hotel suite, but a funny reservation-card misunderstanding causes confusion. Only Luna and Leo are present.',
-       duration:'short',tone:'romantic_funny',language:'en',
-       characterProfile:readCharacterProfile()
-     }),signal:postController.signal});
-     try{postData=await postResponse.json()}catch(e){throw new Error('Worker GET موفق بود، اما پاسخ POST قابل خواندن نیست (HTTP '+postResponse.status+').')}
-   }finally{clearTimeout(postTimeout)}
-   if(!postResponse.ok)throw new Error('Worker در دسترس است اما تولید واقعی متن شکست خورد (HTTP '+postResponse.status+'): '+(postData.error||postData.message||'بدون جزئیات'));
-   if(typeof postData.script!=='string'||!postData.script.trim())throw new Error('درخواست POST پاسخ داد، اما متن سناریو برنگشت.');
-   lastDraft=postData.script.trim();
-   el('output').textContent=lastDraft;
-   updateAiStatus('تأیید کامل: GET و POST موفق‌اند؛ سناریوی واقعی با مدل '+(postData.model||'هوش مصنوعی')+' تولید شد. حالا می‌توانیم تولید تصویر را جداگانه آزمایش کنیم.');
+   const getResponse=await fetchLunaWithTimeout(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},12000);
+   let getData={};try{getData=await getResponse.json()}catch(e){throw new Error('GET: پاسخ JSON معتبر نیست؛ HTTP '+getResponse.status);}
+   if(!getResponse.ok)throw new Error('GET ناموفق؛ HTTP '+getResponse.status);
+   if(!getData.aiBinding)throw new Error('GET موفق بود، اما AI binding موجود نیست.');
+   updateAiStatus('GET موفق؛ اکنون POST آزمایشی بدون اجرای مدل…');
+   const postResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},15000);
+   let postData={};try{postData=await postResponse.json()}catch(e){throw new Error('POST پاسخ JSON معتبر نداد؛ HTTP '+postResponse.status);}
+   if(!postResponse.ok||!postData.ok)throw new Error('POST ناموفق؛ HTTP '+postResponse.status+'؛ '+(postData.error||'بدون جزئیات'));
+   updateAiStatus('تأیید ارتباط: GET و POST هر دو موفق‌اند. این آزمایش مدل هوش مصنوعی را اجرا نمی‌کند.');
  }catch(error){
    const msg=String(error.message||error);
-   if(error.name==='AbortError')updateAiStatus('آزمایش پس از ۱۲ ثانیه پاسخ نگرفت. احتمالاً Worker در دسترس نیست یا شبکه اتصال را مسدود کرده است.');
-   else if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('اتصال مرورگر به این Worker برقرار نشد: '+endpoint+' . اگر آدرس درست است، احتمال محدودیت شبکه یا CORS وجود دارد.');
+   if(error.name==='AbortError')updateAiStatus('آزمایش ارتباط timeout شد؛ '+msg);
+   else if(msg==='Failed to fetch'||/NetworkError|Load failed/i.test(msg))updateAiStatus('درخواست شبکه شکست خورد (Failed to fetch). باید مسیر POST/CORS یا محدودیت شبکه را بررسی کنیم.');
    else updateAiStatus('آزمایش ناموفق: '+msg);
  }finally{button.disabled=false;}
 };
