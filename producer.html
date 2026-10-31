@@ -293,8 +293,10 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     stage='ارسال تصویر آزمایشی به Worker';
     const imagePingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})});
     httpStatus=imagePingResponse.status;
+    let imagePingText='';
+    try{imagePingText=await imagePingResponse.text()}catch(e){throw new Error('هدر پاسخ دریافت شد اما بدنه پاسخ خوانده نشد: '+(e.message||e)+' (HTTP '+imagePingResponse.status+').')}
     let imagePingData={};
-    try{imagePingData=await imagePingResponse.json()}catch(e){throw new Error('پاسخ دریافت تصویر قابل خواندن نیست (HTTP '+imagePingResponse.status+').')}
+    try{imagePingData=JSON.parse(imagePingText)}catch(e){throw new Error('بدنه پاسخ Worker JSON معتبر نیست؛ طول پاسخ '+imagePingText.length+' کاراکتر، HTTP '+imagePingResponse.status+'. ابتدای پاسخ: '+imagePingText.slice(0,160))}
     if(!imagePingResponse.ok||!imagePingData.ok)throw new Error('دریافت تصویر در Worker ناموفق بود: '+(imagePingData.error||'HTTP '+imagePingResponse.status));
     logLunaDiagnostic('image-transport-success','Worker received the compressed image',{receivedImageChars:imagePingData.receivedImageChars,mimeType:imagePingData.mimeType});
     stage='ارسال تصویر به مدل بینایی';
