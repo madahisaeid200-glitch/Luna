@@ -113,22 +113,15 @@ ${script.trim()}`;
       }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
       try {
-        // Validate the browser data URL and use Cloudflare's current multimodal
-        // messages format (text + image_url) rather than the deprecated top-level image input.
+        // Follow Cloudflare's official Llama Vision tutorial input shape:
+        // messages for the question plus the data-URL image in the top-level image field.
         if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
           return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
         }
         const visionModel = "@cf/meta/llama-3.2-11b-vision-instruct";
-        // Meta license acceptance is a one-time setup step; the user has already
-        // accepted it if this model has successfully been invoked before.
         const result = await env.AI.run(visionModel, {
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: analysisPrompt },
-              { type: "image_url", image_url: { url: body.image } }
-            ]
-          }],
+          messages: [{ role: "user", content: analysisPrompt }],
+          image: body.image,
           max_tokens: 450,
           temperature: 0.2
         });
