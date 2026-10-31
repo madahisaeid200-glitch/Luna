@@ -70,3 +70,36 @@ jobs:
           print("Model:", result.get("model"), "steps:", result.get("steps"), "generationMs:", result.get("generationMs"))
           print("Image base64 characters:", len(result["image"]))
           PY
+
+          echo "5/5 Real FLUX.2 Klein reference-image edit test"
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import base64, io, json
+          from PIL import Image
+          image = Image.new("RGB", (384, 384), (178, 155, 132))
+          pixels = image.load()
+          for y in range(384):
+              for x in range(384):
+                  if (x // 48 + y // 48) % 2 == 0:
+                      pixels[x, y] = (194, 176, 153)
+          buffer = io.BytesIO()
+          image.save(buffer, format="JPEG", quality=82, optimize=True)
+          data = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+          body = {"mode":"image_edit","image":data,"prompt":"Transform this simple abstract color-block image into a polished photorealistic editorial photograph of an elegant luxury European hotel lobby, warm natural light, realistic materials, sophisticated composition. Preserve a square composition.","width":384,"height":384}
+          with open("/tmp/flux-edit.json", "w") as f:
+              json.dump(body, f, separators=(",", ":"))
+          print("Reference image dimensions: 384x384; request bytes:", __import__("os").path.getsize("/tmp/flux-edit.json"))
+          PY
+          curl --fail-with-body --silent --show-error --max-time 150 \
+            -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.json \
+            -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
+          python3 - <<'PY'
+          import json
+          result = json.load(open("/tmp/flux-edit-response.json"))
+          if not isinstance(result.get("image"), str) or len(result["image"]) < 10000:
+              raise SystemExit("FAIL: FLUX.2 Klein edit did not return an image: " + json.dumps(result)[:1500])
+          print("PASS: FLUX.2 Klein reference-image edit returned an image.")
+          print("Model:", result.get("model"), "generationMs:", result.get("generationMs"))
+          print("Output image base64 characters:", len(result["image"]))
+          PY
