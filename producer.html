@@ -49,7 +49,7 @@
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
 <p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
-<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
 <p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
 <div class="actions"><button id="analyzeSceneImage" type="button" disabled>ارزیابی خودکار کیفیت تصویر</button><button id="downloadDiagnostic" type="button">دانلود گزارش خطا و آزمایش</button></div>
 <p class="hint" id="imageAnalysisStatus" role="status">ارزیابی تصویر با هوش مصنوعی پس از تولید تصویر در دسترس می‌شود.</p>
@@ -332,13 +332,44 @@ el('generateSceneImage').onclick=async()=>{
      try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
      const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
      if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
-     el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
+     el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX',prompt:prompt,title:el('epTitle').value,profile:readCharacterProfile()});
      el('visualStatus').textContent='تصویر ساخته شد ('+(data.model||'FLUX')+').' +(stored?' در کتابخانه خصوصی همین مرورگر ذخیره شد.':' ذخیره دائمی مرورگر ناموفق بود؛ تصویر را دانلود کن.')+' می‌توانی کیفیت را ارزیابی کنی.';
      logLunaDiagnostic('image-generation-success','Image generated',{model:data.model||'FLUX',promptLength:prompt.length,stored});
    }catch(error){const msg=error.name==='AbortError'?'زمان درخواست تمام شد (۹۰ ثانیه).':(error.message||'خطای نامشخص');el('visualStatus').textContent='ساخت تصویر ناموفق بود: '+msg;logLunaDiagnostic('image-generation-error',msg,{prompt:prompt.slice(0,1200),endpoint:(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).replace(/\?.*$/,'')});}
    finally{button.disabled=false;button.textContent='۱. ساخت تصویر واقعی صحنه';}
  };
+ el('editSceneImage').onclick=async()=>{
+    if(!generatedImageData) await restoreLatestLunaImage();
+    if(!generatedImageData){el('visualStatus').textContent='ابتدا یک تصویر مرجع در همین مرورگر بساز یا بازیابی کن.';return;}
+    const button=el('editSceneImage');button.disabled=true;button.textContent='در حال اصلاح همان تصویر…';
+    el('visualStatus').textContent='تصویر قبلی به‌عنوان مرجع ارسال می‌شود؛ تلاش می‌کنیم چهره‌ها، لباس‌ها و ترکیب صحنه حفظ شوند…';
+    try{
+      const reference=await prepareLunaImageForAnalysis(generatedImageData,480,0.82);
+      const img=new Image();img.src=generatedImageData;
+      await new Promise((resolve,reject)=>{if(img.complete&&img.naturalWidth)resolve();else{img.onload=resolve;img.onerror=reject;}});
+      const ratio=img.naturalWidth/Math.max(1,img.naturalHeight);
+      let width=1024,height=1024;
+      if(ratio>=1){width=1024;height=Math.max(256,Math.round((1024/ratio)/64)*64);}
+      else{height=1024;width=Math.max(256,Math.round((1024*ratio)/64)*64);}
+      const instruction='EDIT IMAGE 0, DO NOT CREATE A NEW SCENE. Treat the supplied image as the source photograph and preserve its exact composition, camera angle, crop, location, lighting mood, furniture, props, clothing colors, jewelry, and the same two people. Preserve LUNA and LEO facial identity, age, hair, expressions and body proportions as closely as possible. Make only careful photorealistic refinements: (1) improve the woman’s visible hands so fingers, knuckles, joints, wrists, nails and subtle skin creases look anatomically natural and relaxed; understated clear or nude nail polish only. Do not add fingers or change the gesture. (2) improve the man’s face in the background so it is naturally sharp and detailed, with clear eyes, brows, hair and realistic skin texture, while keeping the original depth and perspective; do not blur his face. (3) add subtle realistic fabric weave, fine folds, stitching and restrained texture to the existing clothing and accessories without changing their design. Keep the same scene and people; do not add or remove objects or people. Natural unretouched high-end photograph, no beauty filter, no CGI, no text, no logos.';
+      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint;
+      const response=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:reference,prompt:instruction,width,height})},120000);
+      let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ مدل ویرایش قابل خواندن نیست (HTTP '+response.status+').');}
+      if(!response.ok)throw new Error((data.error||'ویرایش تصویر ناموفق بود')+(data.details?' — '+data.details:''));
+      if(!data.image)throw new Error('مدل ویرایش تصویر خروجی نداد.');
+      generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
+      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';
+      el('makePreviewVideo').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;
+      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX.2 Klein',mode:'image_edit',prompt:instruction,title:el('epTitle').value,profile:readCharacterProfile()});
+      el('visualStatus').textContent='نسخه اصلاح‌شده ساخته شد ('+(data.model||'FLUX.2 Klein')+'). '+(stored?'در کتابخانه خصوصی مرورگر ذخیره شد. ':'')+'حالا می‌توانی آن را ارزیابی کنی. تصویر قبلی نیز در تاریخچه کتابخانه باقی می‌ماند.';
+      logLunaDiagnostic('image-edit-success','Reference image edited',{model:data.model||'FLUX.2 Klein',stored,width,height});
+    }catch(error){
+      const msg=error.name==='AbortError'?'ویرایش بیش از ۱۲۰ ثانیه طول کشید و متوقف شد.':(error.message||'خطای نامشخص');
+      el('visualStatus').textContent='اصلاح تصویر ناموفق بود: '+msg;
+      logLunaDiagnostic('image-edit-error',msg,{endpoint:(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).replace(/\\?.*$/,'')});
+    }finally{button.disabled=false;button.textContent='اصلاح همین تصویر با حفظ صحنه';}
+  };
  el('downloadSceneImage').onclick=async()=>{if(!generatedImageData)await restoreLatestLunaImage();if(!generatedImageData){el('visualStatus').textContent='تصویری در کتابخانه این مرورگر پیدا نشد؛ ابتدا تصویر را دوباره بساز.';return;}const a=document.createElement('a');a.href=generatedImageData;a.download='LUNA-scene-01.jpg';document.body.appendChild(a);a.click();a.remove();};
   restoreLatestLunaImage();
  el('makePreviewVideo').onclick=async()=>{
