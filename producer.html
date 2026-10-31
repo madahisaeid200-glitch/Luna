@@ -137,10 +137,13 @@ const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
 const isCloudflarePages=location.protocol==='https:' && location.hostname.endsWith('.pages.dev');
 const defaultEndpoint=isCloudflarePages ? (location.origin+'/api') : workerEndpoint;
 const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
+// Keep the published GitHub Pages app pinned to the Worker that is actually
+// deployed by this repository. Older test Workers (for example super-wave)
+// must not silently override the production endpoint after a refresh.
 const savedEndpoint=isCloudflarePages
   ? (storedEndpoint && storedEndpoint.endsWith('/api') ? storedEndpoint : defaultEndpoint)
-  : (storedEndpoint||defaultEndpoint);
-if(!storedEndpoint || (isCloudflarePages && storedEndpoint!==defaultEndpoint)) localStorage.setItem('lunaAiEndpoint',defaultEndpoint);
+  : defaultEndpoint;
+if(storedEndpoint!==savedEndpoint) localStorage.setItem('lunaAiEndpoint',savedEndpoint);
 endpointInput.value=savedEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
