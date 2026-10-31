@@ -119,9 +119,16 @@ ${script.trim()}`;
           return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
         }
         const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
+        // Llama 4 Scout expects image input inside the user message content array.
+        // The separate top-level "image" field belongs to the older Llama 3.2 Vision API shape.
         const result = await env.AI.run(visionModel, {
-          messages: [{ role: "user", content: analysisPrompt }],
-          image: body.image,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: analysisPrompt },
+              { type: "image_url", image_url: { url: body.image } }
+            ]
+          }],
           max_tokens: 450,
           temperature: 0.2
         });
