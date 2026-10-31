@@ -159,10 +159,12 @@ ${script.trim()}`;
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
       const prompt = script.trim().slice(0, 2000);
       try {
-        const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 8 });
+        const generationStartedAt = Date.now();
+        // Use FLUX schnell default (4 steps) to keep generation responsive on the free tier.
+        const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 });
         const image = result?.image || result?.result?.image;
         if (typeof image !== "string" || !image) return json({ error: "Image model returned no image data." }, 502);
-        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", mode: "image" });
+        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", mode: "image", generationMs: Date.now() - generationStartedAt, steps: 4 });
       } catch (error) {
         return json({ error: "AI image generation failed.", details: String(error?.message || error || "unknown error").slice(0, 240) }, 502);
       }
