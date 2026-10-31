@@ -55,3 +55,18 @@ jobs:
           print("PASS: Worker accepted the full image-shaped request.")
           PY
           grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
+
+          echo "4/4 Real FLUX image generation timing test (4 steps)"
+          printf '%s' '{"mode":"image","script":"Photorealistic editorial photograph of an elegant adult couple in a luxury European hotel suite, natural skin texture, candid expressions, soft window light, realistic anatomy, vertical portrait."}' >/tmp/flux.json
+          curl --fail-with-body --silent --show-error --max-time 180 \
+            -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/flux.json "$URL" -o /tmp/flux-response.json \
+            -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
+          python3 - <<'PY'
+          import json, os
+          result = json.load(open('/tmp/flux-response.json'))
+          assert isinstance(result.get('image'), str) and len(result['image']) > 10000, result
+          print("PASS: FLUX generated an image.")
+          print("Model:", result.get("model"), "steps:", result.get("steps"), "generationMs:", result.get("generationMs"))
+          print("Image base64 characters:", len(result["image"]))
+          PY
