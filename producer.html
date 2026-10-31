@@ -277,6 +277,7 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
  async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;rows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=rows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
 function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{profile:readCharacterProfile(),title:el('epTitle').value,worker:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,'')});}
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
+ async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
  async function prepareLunaImageForAnalysis(dataUrl,maxSide=512,quality=0.42){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{try{const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان آماده‌سازی تصویر را ندارد.');ctx.drawImage(img,0,0,canvas.width,canvas.height);const compact=canvas.toDataURL('image/jpeg',quality);if(compact.length>1800000)throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ این نسخه باید کوچک‌تر شود.');resolve(compact);}catch(e){reject(e)}};img.onerror=()=>reject(new Error('تصویر بازیابی‌شده قابل خواندن نیست.'));img.src=dataUrl})}
  el('analyzeSceneImage').onclick=async()=>{
   if(!generatedImageData){el('imageAnalysisStatus').textContent='ابتدا یک تصویر بساز.';return;}
@@ -288,19 +289,20 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     compactImage=await prepareLunaImageForAnalysis(generatedImageData);
     stage='ارسال تصویر آزمایشی به Worker';
     httpStatus=null;
-    el('imageAnalysisStatus').textContent='در حال ارسال تصویر فشرده‌شده به Worker…';
+    el('imageAnalysisStatus').textContent='در حال آزمایش اتصال سبک به Worker…';
     // First isolate basic POST transport from image-body transport.
-    const basicPingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})});
+    const basicPingResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},12000);
     httpStatus=basicPingResponse.status;
     let basicPingData={};
     try{basicPingData=await basicPingResponse.json()}catch(e){throw new Error('درخواست POST سبک پاسخ قابل‌خواندن نداد (HTTP '+basicPingResponse.status+').')}
     if(!basicPingResponse.ok||!basicPingData.ok)throw new Error('درخواست POST سبک به Worker ناموفق بود (HTTP '+basicPingResponse.status+').');
     logLunaDiagnostic('basic-post-success','Small POST reached Worker',{httpStatus:basicPingResponse.status});
-    stage='ارسال تصویر آزمایشی به Worker';
+    stage='ارسال تصویر فشرده‌شده به Worker';
     httpStatus=null;
+    el('imageAnalysisStatus').textContent='اتصال برقرار شد؛ در حال ارسال تصویر فشرده‌شده…';
     let imagePingResponse;
     try{
-      imagePingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})});
+      imagePingResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})},20000);
     }catch(firstUploadError){
       const firstSize=compactImage.length;
       compactImage=await prepareLunaImageForAnalysis(generatedImageData,384,0.28);
@@ -317,7 +319,7 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     stage='ارسال تصویر به مدل بینایی';
     httpStatus=null;
     el('imageAnalysisStatus').textContent='تصویر با موفقیت به Worker رسید؛ اکنون مدل بینایی در حال تحلیل است…';
-    const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'analyze_image',image:compactImage,prompt:'Evaluate this generated image for a photorealistic AI influencer series called LUNA. Reply in Persian with concise scores from 1-10 for photorealism, face quality, anatomy/hands, luxury styling, and character continuity. State what is visibly present, any defects, and 3 concrete prompt improvements. Do not claim to verify consistency with unseen images.'})});
+    const response=await fetchLunaWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'analyze_image',image:compactImage,prompt:'Evaluate this generated image for a photorealistic AI influencer series called LUNA. Reply in Persian with concise scores from 1-10 for photorealism, face quality, anatomy/hands, luxury styling, and character continuity. State what is visibly present, any defects, and 3 concrete prompt improvements. Do not claim to verify consistency with unseen images.'})},45000);
     httpStatus=response.status;
     let data={};
     try{data=await response.json()}catch(e){throw new Error('پاسخ تحلیل قابل خواندن نیست (HTTP '+response.status+')')}
@@ -327,7 +329,7 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     el('imageAnalysisStatus').textContent='ارزیابی انجام شد؛ گزارش در همین صفحه قابل مشاهده است.';
     logLunaDiagnostic('image-analysis-success','Image analysis completed',{model:data.model||'vision-model',compressedImageChars:compactImage.length});
   }catch(e){
-    const msg=e.name==='AbortError'?'زمان تحلیل تمام شد.':(e.message||'خطای نامشخص');
+    const msg=e.name==='AbortError'?'مهلت ارسال/پاسخ تمام شد؛ درخواست پس از محدودیت زمانی متوقف شد.':(e.message||'خطای نامشخص');
     el('imageAnalysisStatus').textContent='خطا در مرحله «'+stage+'»: '+msg+(httpStatus?' (HTTP '+httpStatus+')':'');
     logLunaDiagnostic('image-analysis-error',msg,{stage,endpoint:endpoint.replace(/\?.*$/,''),httpStatus,online:navigator.onLine,imageChars:compactImage.length});
   }finally{button.disabled=false}
