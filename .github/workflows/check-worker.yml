@@ -56,7 +56,7 @@ jobs:
           PY
           grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
 
-          echo "4/4 Real FLUX image generation timing test (4 steps)"
+          echo "4/4 Real FLUX image generation timing test (4 steps, after Worker deploy)"
           printf '%s' '{"mode":"image","script":"Photorealistic editorial photograph of an elegant adult couple in a luxury European hotel suite, natural skin texture, candid expressions, soft window light, realistic anatomy, vertical portrait."}' >/tmp/flux.json
           curl --fail-with-body --silent --show-error --max-time 180 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
