@@ -112,21 +112,18 @@ ${script.trim()}`;
       }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
       try {
-        // Workers AI vision models expect image bytes as an integer array,
-        // not the browser's "data:image/...;base64,..." URL string.
-        const comma = body.image.indexOf(",");
-        if (comma < 0) return json({ error: "Image data URL is malformed." }, 400);
-        const base64 = body.image.slice(comma + 1);
-        const binary = atob(base64);
-        const imageBytes = new Array(binary.length);
-        for (let i = 0; i < binary.length; i++) imageBytes[i] = binary.charCodeAt(i);
+        // Cloudflare's current vision tutorial accepts the browser data URL
+        // directly. Avoid decoding base64 into a large JS number array in the Worker.
+        if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
+          return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
+        }
         const visionModel = "@cf/meta/llama-3.2-11b-vision-instruct";
         // Cloudflare requires explicit acceptance of Meta's model license before first use.
         // Repeating this tiny acknowledgement is safe and avoids a hidden first-run failure.
         await env.AI.run(visionModel, { prompt: "agree" });
         const result = await env.AI.run(visionModel, {
           prompt: analysisPrompt,
-          image: imageBytes,
+          image: body.image,
           max_tokens: 450,
           temperature: 0.2
         });
