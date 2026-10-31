@@ -39,6 +39,7 @@ export default {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body. Send a JSON object with Content-Type: application/json." }, 400); }
     const { title, premise, duration, tone, language, mode, script, characterProfile } = body || {};
+    if (mode === "ping") return json({ ok: true, service: "LUNA AI Worker", receivedContentType: request.headers.get("Content-Type") || "", message: "POST and CORS path are working." });
     const profile = {
       lunaName: String(characterProfile?.lunaName || "LUNA").trim().slice(0, 40) || "LUNA",
       lunaLook: String(characterProfile?.lunaLook || "Adult elegant European woman with natural realistic features and understated luxury styling.").trim().slice(0, 700),
