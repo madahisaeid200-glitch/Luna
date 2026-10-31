@@ -290,9 +290,16 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
     let pingData={};
     try{pingData=await pingResponse.json()}catch(e){throw new Error('پاسخ آزمایش POST قابل خواندن نیست (HTTP '+pingResponse.status+').')}
     if(!pingResponse.ok||!pingData.ok)throw new Error('آزمایش POST ناموفق بود: '+(pingData.error||'HTTP '+pingResponse.status));
+    stage='ارسال تصویر آزمایشی به Worker';
+    const imagePingResponse=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:compactImage})});
+    httpStatus=imagePingResponse.status;
+    let imagePingData={};
+    try{imagePingData=await imagePingResponse.json()}catch(e){throw new Error('پاسخ دریافت تصویر قابل خواندن نیست (HTTP '+imagePingResponse.status+').')}
+    if(!imagePingResponse.ok||!imagePingData.ok)throw new Error('دریافت تصویر در Worker ناموفق بود: '+(imagePingData.error||'HTTP '+imagePingResponse.status));
+    logLunaDiagnostic('image-transport-success','Worker received the compressed image',{receivedImageChars:imagePingData.receivedImageChars,mimeType:imagePingData.mimeType});
     stage='ارسال تصویر به مدل بینایی';
     httpStatus=null;
-    el('imageAnalysisStatus').textContent='POST موفق بود؛ تصویر فشرده‌شده در حال تحلیل است…';
+    el('imageAnalysisStatus').textContent='تصویر با موفقیت به Worker رسید؛ اکنون مدل بینایی در حال تحلیل است…';
     const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'analyze_image',image:compactImage,prompt:'Evaluate this generated image for a photorealistic AI influencer series called LUNA. Reply in Persian with concise scores from 1-10 for photorealism, face quality, anatomy/hands, luxury styling, and character continuity. State what is visibly present, any defects, and 3 concrete prompt improvements. Do not claim to verify consistency with unseen images.'})});
     httpStatus=response.status;
     let data={};
