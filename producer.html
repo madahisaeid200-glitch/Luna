@@ -372,9 +372,9 @@ el('generateSceneImage').onclick=async()=>{
     }catch(error){
       const msg=error.name==='AbortError'?'ویرایش بیش از ۱۲۰ ثانیه طول کشید و متوقف شد.':(error.message||'خطای نامشخص');
       let probe={get:'not-run',post:'not-run'};
-      if(endpoint && msg.toLowerCase().includes('fetch')){
-        try{const health=await fetchLunaWithTimeout(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},10000);probe.get='HTTP '+health.status;}catch(pe){probe.get=pe.name+': '+String(pe.message||pe).slice(0,120);}
-        try{const ping=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},10000);probe.post='HTTP '+ping.status;}catch(pe){probe.post=pe.name+': '+String(pe.message||pe).slice(0,120);}
+      if(endpoint && (error.name==='AbortError' || msg.toLowerCase().includes('fetch') || /NetworkError|Load failed/i.test(msg))){
+        try{const health=await fetchLunaWithTimeout(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},10000);probe.get='HTTP '+health.status;}catch(pe){probe.get=pe.name+': '+String(pe.message||pe.message||pe).slice(0,120);}
+        try{const ping=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:reference})},15000);let pd={};try{pd=await ping.json()}catch{}probe.post='HTTP '+ping.status+(pd.receivedImageChars?' imageChars='+pd.receivedImageChars:'')+(pd.error?' '+pd.error:'');}catch(pe){probe.post=pe.name+': '+String(pe.message||pe).slice(0,120);}
       }
       el('visualStatus').textContent='اصلاح تصویر ناموفق بود: '+msg+' | آزمایش ارتباط: GET '+probe.get+'؛ POST '+probe.post;
       logLunaDiagnostic('image-edit-error',msg,{stage,endpoint:endpoint.replace(/\\?.*$/,'').replace(/\?.*$/,''),httpStatus,online:navigator.onLine,imageChars:reference.length,connectivityProbe:probe});
