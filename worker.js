@@ -118,7 +118,7 @@ ${script.trim()}`;
         if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
           return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
         }
-        const visionModel = "@cf/meta/llama-3.2-11b-vision-instruct";
+        const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
         const result = await env.AI.run(visionModel, {
           messages: [{ role: "user", content: analysisPrompt }],
           image: body.image,
