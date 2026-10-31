@@ -329,9 +329,11 @@ el('generateSceneImage').onclick=async()=>{
    const button=el('testImageUpload');button.disabled=true;button.textContent='در حال ارسال آزمایشی تصویر…';
    let reference='';
    try{
-     reference=await prepareLunaImageForAnalysis(generatedImageData,480,0.82);
+     // Use a deliberately tiny diagnostic copy so this test measures transport, not image quality.
+     reference=await prepareLunaImageForAnalysis(generatedImageData,256,0.24);
      const endpoint=(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).trim();
-     const response=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:reference})},25000);
+     el('visualStatus').textContent='نسخه آزمایشی کوچک آماده شد ('+Math.round(reference.length*0.75/1024)+' کیلوبایت)؛ در حال ارسال…';
+     const response=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:reference})},45000);
      let data={};try{data=await response.json()}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست؛ HTTP '+response.status);}
      if(!response.ok||!data.ok)throw new Error((data.error||'ارسال تصویر ناموفق بود')+' (HTTP '+response.status+')');
      el('visualStatus').textContent='موفق: تصویر فشرده‌شده با اندازه '+reference.length.toLocaleString()+' نویسه به Worker رسید و اعتبارسنجی شد. هیچ مدل هوش مصنوعی اجرا نشد و هیچ تصویری تغییر نکرد.';
