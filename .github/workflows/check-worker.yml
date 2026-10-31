@@ -1,4 +1,4 @@
-name: Diagnose LUNA Worker reachability
+name: Diagnose LUNA Worker reachability and FLUX latency
 
 on:
   push:
