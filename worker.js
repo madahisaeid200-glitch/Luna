@@ -144,7 +144,7 @@ ${script.trim()}`;
           raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
           const plan = JSON.parse(raw);
           if (plan.schemaVersion !== "luna-video-plan@1.0.0" || !Array.isArray(plan.shots) || plan.shots.length < 4) throw new Error("response does not match LUNA video-plan schema");
-          const allowed = new Set([${JSON.stringify(profile.lunaName)}, ${JSON.stringify(profile.leoName)}, "LUNA", "LEO"]);
+          const allowed = new Set([profile.lunaName, profile.leoName, "LUNA", "LEO"]);
           for (let index = 0; index < plan.shots.length; index++) {
             const shot = plan.shots[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
