@@ -47,9 +47,9 @@
 
 <section class="panel" id="visualProduction">
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
-<p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
+<p class="hint">پس از ساخت تصویر مرجع، Wan 2.2 آن را به یک کلیپ واقعی و متحرک تبدیل می‌کند. تولید از GPU ابری رایگان Hugging Face استفاده می‌کند و ممکن است در صف بماند.</p>
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
-<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="generateMoreScenes" type="button" disabled>۲. ساخت تصاویر مستقل صحنه‌های بعدی</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت ویدئوی صداگذاری‌شده</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="generateMoreScenes" type="button" disabled>۲. ساخت تصاویر مستقل صحنه‌های بعدی</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی واقعی Wan 2.2</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت ویدئوی صداگذاری‌شده</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
 <p class="hint" id="sceneImagesStatus" role="status">تصاویر مستقل داستان: ۰ از ۳</p><p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
  <div class="field"><label for="voiceTestText">متن آزمایشی صدای انگلیسی / English voice test</label><textarea id="voiceTestText" maxlength="1200">LUNA: Wait… Mr. and Mrs. Thompson? LEO: I booked this suite for our special night! LUNA: Darling, we are Luna and Leo, not the Thompsons. LEO: Next time, I’ll book under our real names… unless the hotel has a Mr. and Mrs. Genius suite!</textarea></div>
  <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
@@ -550,18 +550,48 @@ el('testImageUpload').onclick=async()=>{
   el('downloadSceneImage').onclick=async()=>{if(!generatedImageData)await restoreLatestLunaImage();if(!generatedImageData){el('visualStatus').textContent='تصویری در کتابخانه این مرورگر پیدا نشد؛ ابتدا تصویر را دوباره بساز.';return;}const a=document.createElement('a');a.href=generatedImageData;a.download='LUNA-scene-01.jpg';document.body.appendChild(a);a.click();a.remove();};
   restoreLatestLunaImage();
  el('makePreviewVideo').onclick=async()=>{
-   if(!generatedImageData){alert('اول تصویر صحنه را بساز.');return;}const button=el('makePreviewVideo');button.disabled=true;button.textContent='در حال ساخت ویدئو…';el('visualStatus').textContent='در حال رندر ویدئو در همین مرورگر…';
+   if(!generatedImageData){alert('اول تصویر مرجع صحنه را بساز.');return;}
+   const button=el('makePreviewVideo');
+   const endpoint=(el('aiEndpoint').value||'').trim().replace(/\/$/,'');
+   if(!endpoint){el('visualStatus').textContent='ابتدا آدرس Worker را تنظیم کن.';return;}
+   button.disabled=true;button.textContent='در حال تولید ویدئوی واقعی با Wan 2.2…';
+   el('visualStatus').textContent='تصویر مرجع به Wan 2.2 ارسال می‌شود؛ صف رایگان ممکن است چند دقیقه طول بکشد. صفحه را نبند.';
    try{
-     const img=el('sceneImage');if(!img.complete)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-     const canvas=el('videoCanvas'),ctx=canvas.getContext('2d'),stream=canvas.captureStream(24),mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));if(!mime)throw new Error('این مرورگر ضبط ویدئوی WebM را پشتیبانی نمی‌کند.');
-     const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000}),chunks=[];recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
-     const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئو ناموفق بود.'));});recorder.start();const start=performance.now(),duration=6000;
-     await new Promise(resolve=>{const draw=now=>{const t=Math.min(1,(now-start)/duration);ctx.fillStyle='#17121b';ctx.fillRect(0,0,720,1280);const scale=Math.max(720/img.naturalWidth,1280/img.naturalHeight)*(1+0.07*t),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,(720-dw)/2,(1280-dh)/2,dw,dh);ctx.fillStyle='rgba(12,8,15,0.45)';ctx.fillRect(0,1040,720,240);ctx.textAlign='center';ctx.direction='ltr';ctx.fillStyle='#fff';ctx.font='bold 42px system-ui';ctx.fillText('LUNA & LEO',360,1140);ctx.font='28px system-ui';ctx.fillText('A luxury surprise… gone wrong.',360,1190);if(t<1)requestAnimationFrame(draw);else resolve();};requestAnimationFrame(draw);});
-     recorder.stop();await stopped;stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mime});if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);generatedImageObjectUrl=URL.createObjectURL(blob);const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.textContent='دانلود ویدئوی آزمایشی (WebM)';el('visualStatus').textContent='ویدئوی آزمایشی ۶ ثانیه‌ای ساخته شد. این خروجی تصویر متحرک و عنوان دارد؛ هنوز دیالوگ و صدای شخصیت‌ها ندارد.';
-   }catch(error){el('visualStatus').textContent='ساخت ویدئو ناموفق بود: '+(error.message||'خطای نامشخص');}
-   finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای';}
+     const profile=saveCharacterProfile(false)||readCharacterProfile();
+     const motionPrompt=[
+       'Photorealistic live-action cinematic video, one continuous moving shot, 3.5 seconds, natural human motion.',
+       'Animate the exact people and scene in the supplied reference image. Preserve both identities, facial structure, age, hair, eye colour, gender presentation, wardrobe, accessories and location exactly. Do not add or remove people or objects.',
+       'Subtle believable movement only: natural breathing, a small eye movement, gentle head turn and a restrained authentic facial reaction; realistic cloth response and slight environmental motion. Smooth controlled camera push-in, natural 24fps film movement, physically consistent light.',
+       'No frozen still image, no slideshow, no montage, no scene cut, no face morphing, no identity drift, no wardrobe change, no extra limbs, no text, no subtitles, no logos.',
+       'Character identity reference: '+profile.lunaName+' — '+profile.lunaLook.slice(0,220)+'. '+profile.leoName+' — '+profile.leoLook.slice(0,220)+'.',
+       'Scene context: '+(el('imagePrompt').value||'luxury European hotel scene').slice(0,500)
+     ].join(' ');
+     const controller=new AbortController();
+     const timeout=setTimeout(()=>controller.abort(),240000);
+     let response;
+     try{
+       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:generatedImageData,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+     }finally{clearTimeout(timeout);}
+     if(!response.ok){
+       let detail='HTTP '+response.status;
+       try{const data=JSON.parse(await response.text());detail=(data.error||detail)+(data.details?' — '+data.details:'');}catch(e){}
+       throw new Error(detail);
+     }
+     const contentType=response.headers.get('Content-Type')||'';
+     if(!contentType.includes('video')){const body=await response.text();throw new Error('پاسخ سرویس ویدئو فایل ویدئویی نبود: '+body.slice(0,500));}
+     const blob=await response.blob();
+     if(blob.size<50000)throw new Error('فایل ویدئویی دریافتی غیرعادی و بسیار کوچک است ('+blob.size+' bytes).');
+     if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
+     generatedImageObjectUrl=URL.createObjectURL(blob);
+     const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.download='LUNA-Wan2.2-I2V.mp4';link.style.display='inline-block';link.textContent='دانلود ویدئوی واقعی Wan 2.2 (MP4)';
+     el('visualStatus').textContent='ویدئوی واقعی با Wan 2.2 ساخته شد. حجم فایل: '+(blob.size/1024/1024).toFixed(2)+' MB. این خروجی از مدل مولد ویدئو است، نه حرکت‌دادن یک عکس در مرورگر.';
+     logLunaDiagnostic('wan-video-success','Wan 2.2 returned a video file',{bytes:blob.size,type:contentType});
+   }catch(error){
+     const message=error.name==='AbortError'?'زمان انتظار تولید ویدئو تمام شد؛ ممکن است صف ZeroGPU شلوغ باشد.':(error.message||'خطای نامشخص');
+     el('visualStatus').textContent='تولید واقعی Wan ناموفق بود: '+message;
+     logLunaDiagnostic('wan-video-error',message,{endpoint});
+   }finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی واقعی Wan 2.2';}
  };
-
  
  el('makeVoicedVideo').onclick=async()=>{
    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
