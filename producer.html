@@ -49,7 +49,7 @@
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
 <p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
-<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت ویدئوی صداگذاری‌شده</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
 <p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
  <div class="field"><label for="voiceTestText">متن آزمایشی صدای انگلیسی / English voice test</label><textarea id="voiceTestText" maxlength="1200">Luna, I booked us a romantic dinner. Why are we standing in the hotel laundry room?</textarea></div>
  <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
@@ -502,6 +502,74 @@ el('generateSceneImage').onclick=async()=>{
    finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای';}
  };
 
+ 
+ el('makeVoicedVideo').onclick=async()=>{
+   if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
+   const audio=el('voicePreview');
+   if(!audio.src||!audio.src.startsWith('data:audio/')){el('visualStatus').textContent='ابتدا صدای دیالوگ را بساز.';return;}
+   const button=el('makeVoicedVideo');button.disabled=true;button.textContent='در حال تدوین و صداگذاری…';
+   el('visualStatus').textContent='در حال ترکیب تصویر متحرک و صدای واقعی تولیدشده…';
+   let audioStream=null,stream=null;
+   try{
+     const img=el('sceneImage');
+     if(!img.complete)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+     if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
+     audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
+     if(!audioStream.getAudioTracks().length)throw new Error('مسیر صدای ضبط‌شده خالی است.');
+     const canvas=el('videoCanvas'),ctx=canvas.getContext('2d');
+     stream=canvas.captureStream(24);
+     audioStream.getAudioTracks().forEach(track=>stream.addTrack(track));
+     const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+     if(!mime)throw new Error('مرورگر ضبط ویدئوی WebM همراه صدا را پشتیبانی نمی‌کند.');
+     const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000}),chunks=[];
+     recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+     const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئوی صداگذاری‌شده ناموفق بود.'));});
+     audio.pause();audio.currentTime=0;
+     const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:30;
+     recorder.start();
+     await audio.play();
+     const start=performance.now(),durationMs=Math.max(1000,duration*1000);
+     let frameId;
+     const draw=now=>{
+       const t=Math.min(1,(now-start)/durationMs);
+       const scale=Math.max(720/img.naturalWidth,1280/img.naturalHeight)*(1+0.09*t);
+       const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
+       const drift=Math.sin(t*Math.PI*2)*12;
+       ctx.fillStyle='#17121b';ctx.fillRect(0,0,720,1280);
+       ctx.drawImage(img,(720-dw)/2+drift,(1280-dh)/2,dw,dh);
+       const fade=Math.max(0,Math.min(1,(t-0.72)/0.08));
+       ctx.fillStyle='rgba(12,8,15,0.55)';ctx.fillRect(0,1030,720,250);
+       ctx.textAlign='center';ctx.direction='ltr';ctx.fillStyle='#fff';
+       ctx.font='bold 42px system-ui';ctx.fillText('LUNA & LEO',360,1125);
+       ctx.font='28px system-ui';ctx.fillText('A luxury surprise… gone wrong.',360,1175);
+       ctx.font='20px system-ui';ctx.fillStyle='rgba(255,255,255,'+(0.72+0.28*fade)+')';ctx.fillText('A romantic comedy series',360,1220);
+       if(!audio.ended&&!audio.paused)frameId=requestAnimationFrame(draw);
+     };
+     frameId=requestAnimationFrame(draw);
+     await new Promise((resolve,reject)=>{
+       const timer=setTimeout(()=>reject(new Error('مدت پخش صدا بیش از ۹۰ ثانیه شد.')),90000);
+       audio.onended=()=>{clearTimeout(timer);resolve();};
+       audio.onerror=()=>{clearTimeout(timer);reject(new Error('پخش صدای تولیدشده با خطا روبه‌رو شد.'));};
+     });
+     cancelAnimationFrame(frameId);
+     recorder.stop();await stopped;
+     const blob=new Blob(chunks,{type:mime});
+     if(blob.size<12000)throw new Error('فایل ویدئوی نهایی غیرعادی کوچک است.');
+     if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
+     generatedImageObjectUrl=URL.createObjectURL(blob);
+     const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-voiced-episode.webm';link.textContent='دانلود ویدئوی صداگذاری‌شده';
+     el('visualStatus').textContent='ویدئوی صداگذاری‌شده ساخته شد ('+Math.round(blob.size/1024)+' KB). تصویر دارای حرکت دوربین نرم است و صدای واقعی تولیدشده داخل فایل قرار گرفته است؛ هنوز چند صحنهٔ تصویری مستقل و انیمیشن لب‌خوانی ندارد.';
+     logLunaDiagnostic('voiced-video-success','Rendered video with generated voice audio track',{bytes:blob.size,durationSeconds:duration,mime});
+   }catch(error){
+     const msg=error.message||'خطای نامشخص';el('visualStatus').textContent='ساخت ویدئوی صداگذاری‌شده ناموفق بود: '+msg;
+     logLunaDiagnostic('voiced-video-error',msg,{audioDuration:audio.duration,audioReadyState:audio.readyState});
+   }finally{
+     if(stream)stream.getTracks().forEach(t=>t.stop());
+     if(audioStream)audioStream.getTracks().forEach(t=>t.stop());
+     button.disabled=false;button.textContent='۴. ساخت ویدئوی صداگذاری‌شده';
+   }
+ };
+
 
  el('generateVoice').onclick=async()=>{
    const button=el('generateVoice'),endpoint=(endpointInput.value.trim()||defaultEndpoint).replace(/\/$/,'');
@@ -513,7 +581,7 @@ el('generateSceneImage').onclick=async()=>{
      const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})},90000);
      if(!response.ok||data.error)throw new Error((data.error||'Voice generation failed')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
      if(!data.audio)throw new Error('Worker response did not contain audio data.');
-     const player=el('voicePreview');player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;player.style.display='block';
+     const player=el('voicePreview');player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;player.style.display='block';el('makeVoicedVideo').disabled=!generatedImageData;
      el('voiceStatus').textContent='صدای MP3 ساخته شد ('+(data.model||'MeloTTS')+')؛ مدت تولید: '+Math.round((data.generationMs||0)/1000)+' ثانیه. دکمه پخش را بزن.';
      logLunaDiagnostic('tts-success','English voice generated',{model:data.model,audioChars:data.audio.length,generationMs:data.generationMs});
    }catch(error){el('voiceStatus').textContent='ساخت صدا ناموفق بود: '+(error.message||'خطای نامشخص');logLunaDiagnostic('tts-error',error.message||error);}
