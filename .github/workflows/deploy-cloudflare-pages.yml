@@ -2,14 +2,7 @@ name: Deploy LUNA to Cloudflare Pages
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "index.html"
-      - "producer.html"
-      - "_worker.js"
-      - "functions/**"
-      - ".github/workflows/deploy-cloudflare-pages.yml"
+
 
 permissions:
   contents: read
