@@ -1,0 +1,120 @@
+{
+  "app": "LUNA Cloudflare diagnostics",
+  "createdAt": "2026-11-01T08:47:52.009Z",
+  "accountIdConfigured": true,
+  "tokenConfigured": true,
+  "worker": "orange-firefly-6434",
+  "checks": {
+    "tokenVerification": {
+      "httpStatus": 200,
+      "success": true,
+      "errors": [],
+      "resultSummary": {
+        "id": "a62fd4771d89bc5429733cc3311fb5e1"
+      }
+    },
+    "workerList": {
+      "httpStatus": 200,
+      "success": true,
+      "errors": [],
+      "resultSummary": {
+        "count": 7,
+        "items": [
+          {
+            "id": "broad-mud-b1f5",
+            "modified_on": "2026-10-27T09:24:58.305804Z",
+            "created_on": "2026-10-27T09:24:52.47825Z",
+            "compatibility_date": "2026-10-27",
+            "usage_model": "standard"
+          },
+          {
+            "id": "broken-resonance-6146",
+            "modified_on": "2026-10-26T06:43:13.915793Z",
+            "created_on": "2026-10-26T06:43:12.642368Z",
+            "compatibility_date": "2026-10-26",
+            "usage_model": "standard"
+          },
+          {
+            "id": "calm-brook-2661",
+            "modified_on": "2026-10-26T06:54:49.902824Z",
+            "created_on": "2026-10-26T06:54:48.437225Z",
+            "compatibility_date": "2026-10-26",
+            "usage_model": "standard"
+          },
+          {
+            "id": "mute-darkness-7308",
+            "modified_on": "2026-10-26T06:34:26.373994Z",
+            "created_on": "2026-10-26T06:34:24.843486Z",
+            "compatibility_date": "2026-10-26",
+            "usage_model": "standard"
+          },
+          {
+            "id": "orange-butterfly-e684",
+            "modified_on": "2026-10-27T09:05:45.896146Z",
+            "created_on": "2026-10-27T09:05:39.986939Z",
+            "compatibility_date": "2026-10-27",
+            "usage_model": "standard"
+          },
+          {
+            "id": "orange-firefly-6434",
+            "modified_on": "2026-11-01T07:51:34.63321Z",
+            "created_on": "2026-10-26T07:11:05.502081Z",
+            "compatibility_date": "2026-10-26",
+            "usage_model": "standard"
+          },
+          {
+            "id": "super-wave-0504",
+            "modified_on": "2026-10-27T10:46:05.079875Z",
+            "created_on": "2026-10-27T10:46:03.495085Z",
+            "compatibility_date": "2026-10-27",
+            "usage_model": "standard"
+          }
+        ]
+      }
+    },
+    "workerSettings": {
+      "httpStatus": 200,
+      "success": true,
+      "errors": [],
+      "resultSummary": {
+        "observability": null
+      }
+    },
+    "workerDeployments": {
+      "httpStatus": 200,
+      "success": true,
+      "errors": [],
+      "resultSummary": {}
+    },
+    "workerVersions": {
+      "httpStatus": 200,
+      "success": true,
+      "errors": [],
+      "resultSummary": {}
+    },
+    "workerHealth": {
+      "httpStatus": 400,
+      "elapsedMs": 60,
+      "responseBytes": 47,
+      "ok": false,
+      "model": null,
+      "generationMs": null,
+      "audioBase64Chars": null,
+      "error": "Please provide a title and premise.",
+      "details": null,
+      "resultType": null
+    },
+    "meloTtsTest": {
+      "httpStatus": 200,
+      "elapsedMs": 672,
+      "responseBytes": 336484,
+      "ok": false,
+      "model": "@cf/myshell-ai/melotts",
+      "generationMs": 566,
+      "audioBase64Chars": 336352,
+      "error": null,
+      "details": null,
+      "resultType": "[object Object]"
+    }
+  }
+}
