@@ -522,8 +522,10 @@ el('generateSceneImage').onclick=async()=>{
   const status=document.getElementById('aiStatus');
   const input=document.getElementById('aiEndpoint');
   if(!button||!status||!input)return;
+  // Prevent the older onclick handler from launching a duplicate request.
+  button.onclick=null;
   button.addEventListener('click',async function(){
-    const endpoint=(input.value||'https://orange-firefly-6434.madahisaeid200.workers.dev').trim().replace(/\\/$/,'');
+    const endpoint=(input.value||'https://orange-firefly-6434.madahisaeid200.workers.dev').trim().replace(/\/$/,'');
     button.disabled=true;
     status.textContent='آزمایش شروع شد؛ در حال ارتباط با Worker…';
     status.style.color='#b7791f';
