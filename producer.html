@@ -319,13 +319,13 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
     }
     const readPromptBlocks=section=>{
       const source=String(section||'');
-      const matches=[...source.matchAll(/^\\s*(?:[-*]\\s*)?(?:SHOT|SCENE)\\s*0*(\\d+)\\b[^\\n]*|^\\s*(?:[-*]\\s*)?0*(\\d+)[.)]\\s+[^\\n]+/gim)];
+      const matches=[...source.matchAll(/^\s*(?:[-*]\s*)?(?:SHOT|SCENE)\s*0*(\d+)\b[^\n]*|^\s*(?:[-*]\s*)?0*(\d+)[.)]\s+[^\n]+/gim)];
       const result={};
       for(let i=0;i<matches.length;i++){
         const match=matches[i],id=Number(match[1]||match[2]);
         const end=i+1<matches.length?matches[i+1].index:source.length;
         const block=source.slice(match.index,end).trim();
-        if(block)result[id]=block.replace(/^\\s*(?:[-*]\\s*)?(?:(?:SHOT|SCENE)\\s*0*\\d+|0*\\d+[.)])\\s*[:—-]?\\s*/i,'').trim();
+        if(block)result[id]=block.replace(/^\s*(?:[-*]\s*)?(?:(?:SHOT|SCENE)\s*0*\d+|0*\d+[.)])\s*[:—-]?\s*/i,'').trim();
       }
       return result;
     };
