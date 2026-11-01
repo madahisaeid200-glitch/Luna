@@ -1,0 +1,28 @@
+name: LUNA one-time vision inference test
+on:
+  push:
+    paths:
+      - ".github/workflows/luna-one-vision-test.yml"
+jobs:
+  one-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Send exactly one tiny test image to the configured vision model
+        shell: bash
+        run: |
+          cat > request.json <<'JSON'
+          {"mode":"analyze_image","image":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABcQERQRDhcUEhQaGBcbIjklIh8fIkYyNSk5UkhXVVFIUE5bZoNvW2F8Yk5QcptzfIeLkpSSWG2grJ+OqoOPko3/2wBDARgaGiIeIkMlJUONXlBejY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY3/wAARCABAAEADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAQF/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8ApwAAAAAAAAARgCVvAALMBUwQAEYAlbwACzAVMEAAAAAAAB//2Q==","prompt":"Describe this test image in one short sentence. State the main visible object and its color."}
+          JSON
+          curl --silent --show-error --max-time 75 \
+            --dump-header response-headers.txt \
+            --output response-body.txt \
+            --write-out "HTTP_STATUS=%{http_code}\n" \
+            --request POST \
+            --header "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @request.json \
+            "https://orange-firefly-6434.madahisaeid200.workers.dev"
+          echo "--- RESPONSE HEADERS ---"
+          cat response-headers.txt
+          echo "--- RESPONSE BODY ---"
+          cat response-body.txt
