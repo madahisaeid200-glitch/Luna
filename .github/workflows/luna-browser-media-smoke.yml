@@ -65,6 +65,9 @@ jobs:
               const imgSize=await page.locator('#sceneImage').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
               results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
               await fs.writeFile('luna-test-output/scene-image.png',Buffer.from((await page.locator('#sceneImage').getAttribute('src')).split(',')[1],'base64'));
+              await page.locator('#generateMoreScenes').click();
+              await waitFor(()=>/3\\s*از\\s*3/.test(document.querySelector('#sceneImagesStatus')?.textContent||''),240000,'independent-scene-images');
+              results.push('INDEPENDENT_SCENE_IMAGES: PASS (3 distinct generated images)');
               await page.locator('#analyzeSceneImage').click();
               await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال ارسال|در حال آماده‌سازی/.test(document.querySelector('#imageAnalysisStatus')?.textContent||'');},75000,'vision-analysis');
               results.push('VISION: PASS ('+(await page.locator('#imageAnalysisReport').innerText()).length+' chars)');
@@ -81,7 +84,7 @@ jobs:
               const videoData=await page.evaluate(async()=>Array.from(new Uint8Array(await (await fetch(document.querySelector('#downloadVideoLink').href)).arrayBuffer())));
               await fs.writeFile('luna-test-output/luna-preview.webm',Buffer.from(videoData));
               await page.locator('#makeVoicedVideo').click();
-              await waitFor(()=>/نسخه چندبرداشتی ساخته شد|ویدئوی صداگذاری‌شده ساخته شد/.test(document.querySelector('#visualStatus')?.textContent||''),45000,'voiced-video');
+              await waitFor(()=>/ویدئوی داستانی چندصحنه‌ای ساخته شد/.test(document.querySelector('#visualStatus')?.textContent||''),90000,'voiced-video');
               const voicedVideo=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return Array.from(new Uint8Array(await (await r.blob()).arrayBuffer()));});
               const voicedVideoBytes=Buffer.from(voicedVideo);
               if(voicedVideoBytes.length<12000) throw new Error('Voiced video unexpectedly small: '+voicedVideoBytes.length);
