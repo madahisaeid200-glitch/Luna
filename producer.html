@@ -143,6 +143,9 @@ const defaultEndpoint=workerEndpoint;
 let savedEndpoint=workerEndpoint;
 try {
   const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
+  if (storedEndpoint && /super-wave-0504\.madahisaeid200\.workers\.dev/i.test(storedEndpoint)) {
+    localStorage.setItem('lunaAiEndpoint',workerEndpoint);
+  }
   if (storedEndpoint && !/super-wave-0504\.madahisaeid200\.workers\.dev/i.test(storedEndpoint) && /^https:\/\/[a-z0-9-]+\.madahisaeid200\.workers\.dev$/i.test(storedEndpoint)) {
     savedEndpoint=storedEndpoint;
   } else if (!storedEndpoint) {
