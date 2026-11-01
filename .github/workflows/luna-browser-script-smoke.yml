@@ -1,0 +1,69 @@
+name: LUNA real browser script-generation smoke test
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "producer.html"
+      - "worker.js"
+      - ".github/workflows/luna-browser-script-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test the deployed Producer page and actual Generate button
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const page = await browser.newPage({viewport:{width:390,height:844}, locale:'en-US'});
+            const errors = [];
+            page.on('pageerror', e => errors.push('PAGE_ERROR: '+e.message));
+            page.on('console', m => { if(m.type()==='error') errors.push('CONSOLE_ERROR: '+m.text()); });
+            try {
+              const response = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html', {waitUntil:'domcontentloaded',timeout:30000});
+              if (!response || !response.ok()) throw new Error('Producer page HTTP failure: '+(response && response.status()));
+              await page.waitForSelector('#generate', {timeout:10000});
+              const endpoint = await page.locator('#aiEndpoint').inputValue();
+              if (!endpoint.includes('orange-firefly-6434.madahisaeid200.workers.dev')) throw new Error('Unexpected default Worker endpoint: '+endpoint);
+              await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
+              await page.locator('#premise').fill('Leo secretly books a romantic hotel suite surprise for Luna. Luna sees two champagne glasses and thinks the booking is for someone else. Only Luna and Leo are present, and the entire episode stays inside the suite.');
+              await page.locator('#scriptLang').selectOption('en');
+              await page.locator('#generate').click();
+              await page.waitForFunction(() => {
+                const out = document.querySelector('#output')?.textContent || '';
+                const status = document.querySelector('#aiStatus')?.textContent || '';
+                return out.length > 250 && /LUNA|LEO/i.test(out) && !/برای شروع|Enter a title/i.test(out) && !/در حال تولید|Generating/i.test(status);
+              }, null, {timeout:115000});
+              const output = (await page.locator('#output').innerText()).trim();
+              const status = (await page.locator('#aiStatus').innerText()).trim();
+              if (output.length < 250) throw new Error('Generated script too short: '+output.length);
+              if (!/LUNA/i.test(output) || !/LEO/i.test(output)) throw new Error('Generated script missing canonical couple names.');
+              if (/پیش‌نویس قالبی نمایش داده شد|template draft/i.test(status)) throw new Error('Frontend fell back to template instead of real AI: '+status);
+              if (errors.length) console.log('Browser warnings/errors:', errors.slice(0,10).join('\n'));
+              console.log('BROWSER SCRIPT GENERATION: PASS');
+              console.log('PAGE HTTP:', response.status());
+              console.log('WORKER:', endpoint);
+              console.log('AI STATUS:', status);
+              console.log('SCRIPT CHARACTERS:', output.length);
+              console.log('SCRIPT PREVIEW:', output.slice(0,700).replace(/\n/g,' '));
+            } finally {
+              await browser.close();
+            }
+          })().catch(e => { console.error(e); process.exit(1); });
+          NODE
