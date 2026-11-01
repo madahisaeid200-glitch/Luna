@@ -14,7 +14,8 @@ const demoPack = {
 };
 const duration = (s) => {
   const n = Number(String(s?.duration || '').match(/\d+(?:\.\d+)?/)?.[0] || 5);
-  return Math.max(2, Math.min(12, n));
+  // Remotion requires an integer frame count; quantize seconds to the 24 fps timeline.
+  return Math.round(Math.max(2, Math.min(12, n)) * 24) / 24;
 };
 const getTotalFrames = (shots) => shots.reduce((sum, s) => sum + duration(s) * 24, 0);
 
@@ -69,6 +70,7 @@ function App() {
     try {
       const support = await canRenderMediaOnWeb({width: 720, height: 1280, container: 'mp4', videoCodec: 'h264', videoBitrate: 'low', muted: true});
       if (!support.canRender) throw new Error(support.issues.map(issue => issue.message).join(' '));
+      setStatus(`Device check passed · ${support.resolvedVideoCodec || 'video codec ready'} · ${support.resolvedOutputTarget || 'browser storage'} · starting render…`);
       const result = await renderMediaOnWeb({
         composition: {id: 'LUNA-Browser-Render', component: LUNAComposition, durationInFrames: frames, fps: 24, width: 720, height: 1280},
         inputProps: {episode: pack.episode || {}, shots},
