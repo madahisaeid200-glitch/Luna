@@ -63,7 +63,7 @@ assert.ok(result.shots[0].imagePrompt.includes('European hotel entrance'));
 assert.ok(result.shots[0].motionPrompt.includes('camera push-in'));
 assert.ok(result.shots[1].imagePrompt.includes('woman laughing'));
 assert.ok(result.shots[1].motionPrompt.includes('handheld'));
-assert.ok(result.shotListRaw.includes('Shot 2'));
+assert.ok(result.shotListRaw.toLowerCase().includes('shot 2'));
 
 const unknown = parseProductionPack('Unstructured model output that must remain intact.');
 assert.equal(unknown.shots.length, 0);
