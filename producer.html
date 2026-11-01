@@ -291,7 +291,7 @@ el('makeProductionPack').onclick=async()=>{
 };
 el('makeDirectorPlan').onclick=async()=>{
  if(!lastDraft){alert('ابتدا سناریوی قسمت را تولید کن.');return;}
- const endpoint=(localStorage.getItem('lunaAiEndpoint')||defaultEndpoint||'').replace(/\\/$/,'');
+ const endpoint=(localStorage.getItem('lunaAiEndpoint')||defaultEndpoint||'').replace(/\/$/,'');
  if(!endpoint){updateAiStatus('اتصال هوش مصنوعی تنظیم نشده است.');return;}
  const button=el('makeDirectorPlan');button.disabled=true;button.textContent='در حال کارگردانی و شکستن داستان به نماها…';
  updateAiStatus('در حال ساخت نقشهٔ ساختاریافتهٔ فیلم؛ این مرحله هنوز ویدئو تولید نمی‌کند.');
