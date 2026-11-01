@@ -73,3 +73,5 @@ jobs:
           done
 
           echo "PASS: both Workers passed CORS, GET, POST and image-payload parsing checks. No AI model was invoked."
+
+# Re-run both live endpoints after the Producer endpoint-preservation fix (2026-11-01).
