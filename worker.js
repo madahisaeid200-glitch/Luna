@@ -43,6 +43,102 @@ export default {
       if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) return json({ ok: false, error: "Image data URL missing or unsupported." }, 400);
       return json({ ok: true, receivedImageChars: body.image.length, mimeType: body.image.slice(5, body.image.indexOf(";")), message: "The full compressed image reached the Worker and was parsed successfully." });
     }
+    // Real generative image-to-video through the public Hugging Face Wan 2.2 14B Fast Space.
+    // This route does not consume Cloudflare Workers AI neurons.
+    if (mode === "video") {
+      const imageData = typeof body.image === "string" ? body.image : "";
+      const promptText = String(body.prompt || "").trim().slice(0, 1800);
+      const durationSeconds = Math.max(0.5, Math.min(5, Number(body.durationSeconds) || 3.5));
+      const steps = Math.max(1, Math.min(8, Math.round(Number(body.steps) || 4)));
+      if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(imageData)) return json({ error: "A PNG, JPEG or WebP reference image is required." }, 400);
+      if (imageData.length > 12_000_000) return json({ error: "Reference image is too large. Please use an image under 8 MB." }, 413);
+      if (!promptText) return json({ error: "A motion prompt is required." }, 400);
+      const space = "https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space";
+      try {
+        const comma = imageData.indexOf(",");
+        const mime = imageData.slice(5, imageData.indexOf(";")).toLowerCase().replace("image/jpg", "image/jpeg");
+        const binary = atob(imageData.slice(comma + 1));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const form = new FormData();
+        form.append("files", new Blob([bytes], { type: mime }), "luna-reference." + (mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"));
+        const uploadResponse = await fetch(space + "/gradio_api/upload", { method: "POST", body: form });
+        if (!uploadResponse.ok) throw new Error("Wan reference upload failed (HTTP " + uploadResponse.status + ").");
+        const uploaded = await uploadResponse.json();
+        const uploadedPath = Array.isArray(uploaded) ? uploaded[0] : uploaded?.path;
+        if (typeof uploadedPath !== "string" || !uploadedPath) throw new Error("Wan upload did not return a usable file path.");
+        const payload = {
+          data: [
+            { path: uploadedPath, meta: { _type: "gradio.FileData" }, orig_name: "luna-reference." + (mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg") },
+            promptText,
+            steps,
+            "static, frozen frame, still image, slideshow, text, subtitles, watermark, distorted face, extra fingers, deformed hands, identity change, gender swap, wardrobe change, extra people",
+            durationSeconds,
+            1,
+            1,
+            42,
+            true
+          ]
+        };
+        const submitResponse = await fetch(space + "/gradio_api/call/generate_video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!submitResponse.ok) {
+          const detail = (await submitResponse.text()).slice(0, 500);
+          throw new Error("Wan job submission failed (HTTP " + submitResponse.status + "): " + detail);
+        }
+        const submitted = await submitResponse.json();
+        if (!submitted?.event_id) throw new Error("Wan did not return a generation job ID.");
+        const resultResponse = await fetch(space + "/gradio_api/call/generate_video/" + encodeURIComponent(submitted.event_id));
+        if (!resultResponse.ok) throw new Error("Wan result polling failed (HTTP " + resultResponse.status + ").");
+        const eventText = await resultResponse.text();
+        const dataLines = eventText.split(/\r?\n/).filter(line => line.startsWith("data:"));
+        let resultData = null;
+        for (let i = dataLines.length - 1; i >= 0; i--) {
+          try { resultData = JSON.parse(dataLines[i].slice(5).trim()); break; } catch {}
+        }
+        if (!resultData) throw new Error("Wan returned no completed video result: " + eventText.slice(-500));
+        const findFile = (value) => {
+          if (!value) return null;
+          if (Array.isArray(value)) { for (const item of value) { const found = findFile(item); if (found) return found; } }
+          else if (typeof value === "object") {
+            if (typeof value.url === "string" || typeof value.path === "string") return value;
+            for (const child of Object.values(value)) { const found = findFile(child); if (found) return found; }
+          }
+          return null;
+        };
+        const file = findFile(resultData);
+        if (!file) throw new Error("Wan completed but returned no downloadable video file.");
+        let fileUrl = file.url || "";
+        if (!fileUrl && file.path) fileUrl = "/gradio_api/file=" + encodeURIComponent(file.path);
+        if (fileUrl.startsWith("/")) fileUrl = space + fileUrl;
+        if (!/^https:\/\/zerogpu-aoti-wan2-2-fp8da-aoti-faster\.hf\.space\//.test(fileUrl)) throw new Error("Wan returned an unexpected video URL.");
+        const videoResponse = await fetch(fileUrl);
+        if (!videoResponse.ok) throw new Error("Wan video download failed (HTTP " + videoResponse.status + ").");
+        const videoType = videoResponse.headers.get("Content-Type") || "video/mp4";
+        if (!videoType.includes("video") && !fileUrl.toLowerCase().endsWith(".mp4")) throw new Error("Wan result is not a video file (" + videoType + ").");
+        return new Response(videoResponse.body, {
+          status: 200,
+          headers: {
+            ...cors,
+            "Content-Type": videoType.includes("video") ? videoType : "video/mp4",
+            "Content-Disposition": "attachment; filename=\"LUNA-Wan2.2-I2V.mp4\"",
+            "Cache-Control": "no-store",
+            "X-LUNA-Video-Engine": "Wan2.2-14B-Fast-I2V"
+          }
+        });
+      } catch (error) {
+        return json({
+          error: "Wan 2.2 video generation failed.",
+          details: String(error?.message || error || "unknown error").slice(0, 900),
+          engine: "Wan2.2-14B-Fast-I2V",
+          note: "The public ZeroGPU queue and free daily GPU quota are controlled by Hugging Face."
+        }, 502);
+      }
+    }
+
     if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
 
     // Generate a real English voice track with Cloudflare Workers AI MeloTTS.
