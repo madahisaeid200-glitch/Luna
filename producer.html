@@ -513,4 +513,41 @@ el('generateSceneImage').onclick=async()=>{
  };
 
  el('language').onclick=()=>{fa=!fa;setUi()};setUi();
+</script>
+<script>
+// Independent connection-test handler: remains available even if another
+// producer feature throws during initialization.
+(function(){
+  const button=document.getElementById('testAiEndpoint');
+  const status=document.getElementById('aiStatus');
+  const input=document.getElementById('aiEndpoint');
+  if(!button||!status||!input)return;
+  button.addEventListener('click',async function(){
+    const endpoint=(input.value||'https://orange-firefly-6434.madahisaeid200.workers.dev').trim().replace(/\\/$/,'');
+    button.disabled=true;
+    status.textContent='آزمایش شروع شد؛ در حال ارتباط با Worker…';
+    status.style.color='#b7791f';
+    const timeout=(ms)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('مهلت پاسخ تمام شد ('+Math.round(ms/1000)+' ثانیه)')),ms));
+    const request=async(url,options,ms)=>{
+      const response=await Promise.race([fetch(url,options),timeout(ms)]);
+      const raw=await response.text();
+      let data={};try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ غیر JSON؛ HTTP '+response.status);}
+      if(!response.ok)throw new Error('HTTP '+response.status+' — '+(data.error||'خطای سرور'));
+      return data;
+    };
+    try{
+      status.textContent='مرحله ۱/۲: بررسی Worker…';
+      const health=await request(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},12000);
+      if(!health.aiBinding)throw new Error('Worker پاسخ داد، اما AI Binding با نام AI فعال نیست.');
+      status.textContent='مرحله ۲/۲: بررسی مسیر POST…';
+      const ping=await request(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},15000);
+      if(!ping.ok)throw new Error(ping.error||'پاسخ POST تأیید نشد.');
+      status.textContent='اتصال موفق است: Worker و مسیر POST هر دو پاسخ دادند. هنوز تولید مدل آزمایش نشده است.';
+      status.style.color='#16834a';
+    }catch(error){
+      status.textContent='آزمایش اتصال ناموفق: '+(error.message||String(error));
+      status.style.color='#b42318';
+    }finally{button.disabled=false;}
+  },{capture:true});
+})();
 </script></body></html>
