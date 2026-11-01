@@ -77,6 +77,28 @@ jobs:
             }
           }
 
+          async function workerHealth() {
+            const started = Date.now();
+            try {
+              const response = await fetch(workerUrl, { signal: AbortSignal.timeout(15000) });
+              const raw = await response.text();
+              let data;
+              try { data = JSON.parse(raw); } catch { data = null; }
+              report.checks.workerHealth = {
+                httpStatus: response.status,
+                elapsedMs: Date.now() - started,
+                ok: Boolean(data?.ok),
+                service: data?.service || null,
+                aiBinding: typeof data?.aiBinding === 'boolean' ? data.aiBinding : null,
+                model: data?.model || null,
+                fallbackModel: data?.fallbackModel || null,
+                message: data?.message || null
+              };
+            } catch (error) {
+              report.checks.workerHealth = { elapsedMs: Date.now() - started, error: String(error?.message || error).slice(0, 220) };
+            }
+          }
+
           async function workerRequest(label, body) {
             const started = Date.now();
             try {
@@ -116,7 +138,7 @@ jobs:
             await cfGet('workerSettings', '/accounts/' + encodeURIComponent(accountId) + '/workers/scripts/' + encodeURIComponent(scriptName) + '/script-settings');
             await cfGet('workerDeployments', '/accounts/' + encodeURIComponent(accountId) + '/workers/scripts/' + encodeURIComponent(scriptName) + '/deployments');
             await cfGet('workerVersions', '/accounts/' + encodeURIComponent(accountId) + '/workers/scripts/' + encodeURIComponent(scriptName) + '/versions');
-            await workerRequest('workerHealth', null).catch(() => {});
+            await workerHealth();
             // A short, non-personal English test phrase checks the actual MeloTTS inference path.
             await workerRequest('meloTtsTest', { mode: 'tts', text: 'Hello from LUNA. This is a short voice test.', lang: 'en' });
             fs.mkdirSync(path.dirname('diagnostics/cloudflare-worker-report.json'), { recursive: true });
