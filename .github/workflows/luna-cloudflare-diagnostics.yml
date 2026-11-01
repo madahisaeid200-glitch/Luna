@@ -101,7 +101,10 @@ jobs:
             try {
               const response = await fetch(workerUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'text/plain;charset=UTF-8',
+                  'Origin': 'https://madahisaeid200-glitch.github.io'
+                },
                 body: JSON.stringify(body),
                 signal: AbortSignal.timeout(115000)
               });
@@ -137,7 +140,7 @@ jobs:
             await cfGet('workerVersions', '/accounts/' + encodeURIComponent(accountId) + '/workers/scripts/' + encodeURIComponent(scriptName) + '/versions');
             await workerHealth();
             // A short, non-personal English test phrase checks the actual MeloTTS inference path.
-            await workerRequest('meloTtsTest', { mode: 'tts', text: 'Hello from LUNA. This is a short voice test.', lang: 'en' });
+            await workerRequest('meloTtsTest', { mode: 'tts', text: 'Hello from LUNA. This is a short voice test to verify mobile browser request path!', lang: 'en' });
             fs.mkdirSync(path.dirname('diagnostics/cloudflare-worker-report.json'), { recursive: true });
             fs.writeFileSync('diagnostics/cloudflare-worker-report.json', JSON.stringify(report, null, 2) + '\n');
           })().catch(error => {
