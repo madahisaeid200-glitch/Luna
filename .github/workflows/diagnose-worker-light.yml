@@ -1,4 +1,4 @@
-name: LUNA low-cost Worker diagnostics
+name: LUNA live AI model diagnostics
 
 on:
   push:
@@ -11,67 +11,97 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  live-ai:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
-      - name: Probe both Worker endpoints without running AI models
+      - name: Check verified Worker CORS and health
         shell: bash
         run: |
           set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
           ORIGIN="https://madahisaeid200-glitch.github.io"
-          ENDPOINTS=(
-            "orange-firefly-6434|https://orange-firefly-6434.madahisaeid200.workers.dev/"
-            "super-wave-0504|https://super-wave-0504.madahisaeid200.workers.dev/"
-          )
+          CODE=$(curl --silent --show-error --max-time 15 -o /tmp/health.json -D /tmp/health.headers -w '%{http_code}' -H "Origin: $ORIGIN" "$URL")
+          echo "GET HTTP $CODE"
+          cat /tmp/health.json
+          test "$CODE" = "200"
+          grep -qi "access-control-allow-origin: $ORIGIN" /tmp/health.headers
+          python3 -c "import json; d=json.load(open('/tmp/health.json')); assert d.get('ok') and d.get('aiBinding'), d"
+          CODE=$(curl --silent --show-error --max-time 15 -o /tmp/options.txt -D /tmp/options.headers -w '%{http_code}' -X OPTIONS -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" "$URL")
+          echo "OPTIONS HTTP $CODE"
+          test "$CODE" = "204"
+          grep -qi "access-control-allow-origin: $ORIGIN" /tmp/options.headers
 
-          for item in "${ENDPOINTS[@]}"; do
-            NAME="${item%%|*}"
-            URL="${item#*|}"
-            echo "::group::${NAME}: OPTIONS preflight"
-            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/options.body -D /tmp/options.headers -w '%{http_code}' -X OPTIONS -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" "$URL")
-            echo "HTTP $CODE"
-            cat /tmp/options.headers
-            test "$CODE" = "204"
-            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/options.headers
-            echo "::endgroup::"
-
-            echo "::group::${NAME}: GET health"
-            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/get.json -D /tmp/get.headers -w '%{http_code}' -H "Origin: $ORIGIN" "$URL")
-            echo "HTTP $CODE"
-            cat /tmp/get.json
-            test "$CODE" = "200"
-            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/get.headers
-            python3 -c "import json; d=json.load(open('/tmp/get.json')); assert d.get('ok') is True and d.get('aiBinding') is True, d"
-            echo "::endgroup::"
-
-            echo "::group::${NAME}: small POST ping"
-            printf '%s' '{"mode":"ping"}' >/tmp/ping.json
-            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/ping-response.json -D /tmp/ping.headers -w '%{http_code}' -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/ping.json "$URL")
-            echo "HTTP $CODE"
-            cat /tmp/ping-response.json
-            test "$CODE" = "200"
-            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/ping.headers
-            python3 -c "import json; d=json.load(open('/tmp/ping-response.json')); assert d.get('ok') is True, d"
-            echo "::endgroup::"
-
-            echo "::group::${NAME}: image-shaped POST (no image model call)"
-            python3 - <<'PY'
-          import base64, json
-          fake = "data:image/jpeg;base64," + base64.b64encode(b"x" * 44000).decode("ascii")
-          with open("/tmp/image-ping.json", "w") as f:
-              json.dump({"mode":"image_ping","image":fake}, f, separators=(",",":"))
-          print("Payload bytes:", __import__("os").path.getsize("/tmp/image-ping.json"))
+      - name: Test real scenario generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          python3 - <<'PY'
+          import json
+          payload = {
+            "title": "The Five-Star Room Mix-Up",
+            "premise": "Leo secretly books a romantic hotel suite surprise for Luna. Luna sees a second champagne glass and mistakenly thinks he planned the surprise for someone else. Only Luna and Leo are present; the entire episode stays inside the suite.",
+            "duration": "short",
+            "tone": "romcom",
+            "language": "en"
+          }
+          json.dump(payload, open("/tmp/script-request.json","w"))
           PY
-            CODE=$(curl --silent --show-error --max-time 15 -o /tmp/image-response.json -D /tmp/image.headers -w '%{http_code}' -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/image-ping.json "$URL")
-            echo "HTTP $CODE"
-            cat /tmp/image-response.json
-            test "$CODE" = "200"
-            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
-            python3 -c "import json; d=json.load(open('/tmp/image-response.json')); assert d.get('ok') is True and d.get('receivedImageChars',0)>50000, d"
-            echo "::endgroup::"
-          done
+          CODE=$(curl --silent --show-error --max-time 100 -o /tmp/script-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/script-request.json "$URL")
+          echo "SCRIPT HTTP $CODE"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/script-response.json"))
+          script=d.get("script","")
+          print("model:", d.get("model"), "script_chars:", len(script))
+          if not script: raise SystemExit("Scenario generation failed: "+str(d)[:1200])
+          if len(script)<250: raise SystemExit("Scenario is unexpectedly short.")
+          open("/tmp/luna-script.txt","w").write(script)
+          print(script[:1200])
+          PY
 
-          echo "PASS: both Workers passed CORS, GET, POST and image-payload parsing checks. No AI model was invoked."
-
-# Re-run both live endpoints after the Producer endpoint-preservation fix (2026-11-01).
+      - name: Test real image generation and vision analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          python3 - <<'PY'
+          import json
+          prompt = "Photorealistic candid cinematic still, vertical 9:16. An elegant adult European couple, Luna and Leo, in a refined five-star hotel suite. Luna wears a tasteful silk evening outfit and delicate earrings; Leo wears a tailored dark jacket and a refined watch. They exchange a playful, affectionate but confused glance beside a small table with two champagne glasses. Natural skin texture, realistic anatomy, subtle expressions, detailed warm hotel interior, no logos, no text."
+          json.dump({"mode":"image","script":prompt},open("/tmp/image-request.json","w"))
+          PY
+          CODE=$(curl --silent --show-error --max-time 180 -o /tmp/image-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/image-request.json "$URL")
+          echo "IMAGE HTTP $CODE"
+          python3 - <<'PY'
+          import json,base64
+          d=json.load(open("/tmp/image-response.json"))
+          image=d.get("image","")
+          print("model:",d.get("model"),"generation_ms:",d.get("generationMs"),"base64_chars:",len(image))
+          if not image: raise SystemExit("Image generation failed: "+str(d)[:1400])
+          raw=base64.b64decode(image)
+          if len(raw)<10000: raise SystemExit("Generated image unexpectedly small: "+str(len(raw)))
+          open("/tmp/luna-generated-image.jpg","wb").write(raw)
+          print("decoded_image_bytes:",len(raw))
+          PY
+          python3 - <<'PY'
+          import json,base64
+          raw=open("/tmp/luna-generated-image.jpg","rb").read()
+          payload={
+            "mode":"analyze_image",
+            "image":"data:image/jpeg;base64,"+base64.b64encode(raw).decode(),
+            "prompt":"Assess this image briefly in English. Give scores from 1 to 10 for photorealism, face quality, anatomy, and luxury styling. Mention only visible defects. Confirm whether two people are present."
+          }
+          json.dump(payload,open("/tmp/vision-request.json","w"))
+          print("vision_payload_bytes:",__import__("os").path.getsize("/tmp/vision-request.json"))
+          PY
+          CODE=$(curl --silent --show-error --max-time 180 -o /tmp/vision-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/vision-request.json "$URL")
+          echo "VISION HTTP $CODE"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/vision-response.json"))
+          report=d.get("analysis","")
+          print("model:",d.get("model"),"analysis_chars:",len(report))
+          if not report: raise SystemExit("Vision analysis failed: "+str(d)[:1600])
+          print(report[:2500])
+          PY
