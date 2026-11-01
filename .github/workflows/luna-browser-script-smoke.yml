@@ -1,4 +1,4 @@
-name: LUNA real browser script-generation smoke test
+name: LUNA browser UI and Worker connection smoke test
 
 on:
   workflow_run:
@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Test the deployed Producer page and actual Generate button
+      - name: Test deployed Producer UI and Worker GET/POST ping without consuming AI quota
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
@@ -32,49 +32,22 @@ jobs:
             const browser = await chromium.launch({headless:true});
             const page = await browser.newPage({viewport:{width:390,height:844}, locale:'en-US'});
             const errors = [];
-            page.on('dialog', async d => { console.log('BROWSER_DIALOG:', d.message); await d.accept(); });
-            page.on('requestfailed', r => errors.push('REQUEST_FAILED: '+r.url()+' '+(r.failure()?.errorText||'')));
-            page.on('response', r => { if(r.url().includes('workers.dev')) console.log('WORKER_RESPONSE:',r.status(),r.url()); });
-            page.on('pageerror', e => errors.push('PAGE_ERROR: '+e.message));
-            page.on('console', m => { if(m.type()==='error') errors.push('CONSOLE_ERROR: '+m.text()); });
+            page.on('pageerror', e => errors.push(e.message));
             try {
-              const response = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html', {waitUntil:'domcontentloaded',timeout:30000});
-              if (!response || !response.ok()) throw new Error('Producer page HTTP failure: '+(response && response.status()));
+              const response = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html',{waitUntil:'domcontentloaded',timeout:30000});
+              if (!response?.ok()) throw new Error('Producer page HTTP failure');
               await page.waitForSelector('#generate', {timeout:10000});
+              if (errors.length) throw new Error('Producer JavaScript error: '+errors.join(' | '));
               const endpoint = await page.locator('#aiEndpoint').inputValue();
-              if (!endpoint.includes('orange-firefly-6434.madahisaeid200.workers.dev')) throw new Error('Unexpected default Worker endpoint: '+endpoint);
-              await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
-              await page.locator('#premise').fill('Leo secretly books a romantic hotel suite surprise for Luna. Luna sees two champagne glasses and thinks the booking is for someone else. Only Luna and Leo are present, and the entire episode stays inside the suite.');
-              await page.locator('#scriptLang').selectOption('en');
-              await page.locator('#generate').click();
-              try {
-                await page.waitForFunction(() => {
-                  const out = document.querySelector('#output')?.textContent || '';
-                  const status = document.querySelector('#aiStatus')?.textContent || '';
-                  return out.length > 250 && /LUNA|LEO/i.test(out) && !/برای شروع|Enter a title/i.test(out) && !/در حال تولید|Generating/i.test(status);
-                }, null, {timeout:115000});
-              } catch (e) {
-                console.log('TIMEOUT_STATUS:', await page.locator('#aiStatus').innerText().catch(()=>''));
-                console.log('TIMEOUT_OUTPUT:', (await page.locator('#output').innerText().catch(()=>'' )).slice(0,1000));
-                console.log('BUTTON_DISABLED:', await page.locator('#generate').isDisabled().catch(()=>null));
-                console.log('BUTTON_TEXT:', await page.locator('#generate').innerText().catch(()=>''));
-                console.log('BROWSER_ERRORS:', errors.slice(0,20).join('\\n'));
-                throw e;
-              }
-              const output = (await page.locator('#output').innerText()).trim();
-              const status = (await page.locator('#aiStatus').innerText()).trim();
-              if (output.length < 250) throw new Error('Generated script too short: '+output.length);
-              if (!/LUNA/i.test(output) || !/LEO/i.test(output)) throw new Error('Generated script missing canonical couple names.');
-              if (/پیش‌نویس قالبی نمایش داده شد|template draft/i.test(status)) throw new Error('Frontend fell back to template instead of real AI: '+status);
-              if (errors.length) console.log('Browser warnings/errors:', errors.slice(0,10).join('\n'));
-              console.log('BROWSER SCRIPT GENERATION: PASS');
-              console.log('PAGE HTTP:', response.status());
-              console.log('WORKER:', endpoint);
-              console.log('AI STATUS:', status);
-              console.log('SCRIPT CHARACTERS:', output.length);
-              console.log('SCRIPT PREVIEW:', output.slice(0,700).replace(/\n/g,' '));
-            } finally {
-              await browser.close();
-            }
-          })().catch(e => { console.error(e); process.exit(1); });
+              if (!endpoint.includes('orange-firefly-6434.madahisaeid200.workers.dev')) throw new Error('Unexpected Worker endpoint: '+endpoint);
+              await page.locator('#testAiEndpoint').click();
+              await page.waitForFunction(() => /اتصال موفق است: Worker و مسیر POST هر دو پاسخ دادند/.test(document.querySelector('#aiStatus')?.textContent||''), null, {timeout:35000});
+              if (errors.length) throw new Error('Browser JavaScript errors: '+errors.join(' | '));
+              console.log('PRODUCER UI: PASS');
+              console.log('WORKER GET + POST PING: PASS');
+              console.log('AI MODEL GENERATION: NOT RUN (preserves free daily AI quota)');
+              console.log('PAGE HTTP:',response.status());
+              console.log('WORKER:',endpoint);
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1);});
           NODE
