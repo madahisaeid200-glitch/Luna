@@ -55,3 +55,13 @@ npm install
 npm run render:sample
 ```
 The output is written to `renderer/renders/luna-demo.mp4`. GitHub Pages and an Android browser cannot run this Node/Chromium/FFmpeg render process by themselves; it needs a Node-capable runner or hosted render service.
+
+## On-device MP4 rendering (new prototype)
+
+The `browser-renderer/` app is a second Remotion path designed for phones and static hosting. It uses `@remotion/web-renderer` and the browser WebCodecs API to render an MP4 locally, without a Node server. After the Pages workflow builds it, open:
+
+`https://madahisaeid200-glitch.github.io/Luna/render/`
+
+Import the JSON downloaded from Producer, then render. The page checks whether the current browser can encode H.264 MP4 before starting. Chrome 94+ is the documented minimum for client-side rendering, but actual codec support varies by device/browser. Mobile rendering is limited by memory, battery and thermal performance; start with short episodes. Keep the server-side renderer in `renderer/` as a fallback for longer or heavier renders.
+
+The browser renderer currently outputs animated text-based scene cards, not AI-generated character footage. Client-side rendering uses WebCodecs/Mediabunny and supports a subset of CSS; richer footage, images, speech, lip-sync and music remain separate production stages. See the [Remotion client-side rendering guide](https://www.remotiondocs.com/docs/client-side-rendering) and [limitations](https://www.remotiondocs.com/docs/client-side-rendering/limitations).
