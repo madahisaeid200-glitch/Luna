@@ -104,16 +104,22 @@ jobs:
           PY
           curl --silent --show-error --max-time 150 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
-            --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.json \
+            --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.ndjson \
             -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
-          cat /tmp/flux-edit-response.json
+          cat /tmp/flux-edit-response.ndjson
           python3 - <<'PY'
           import json
-          result = json.load(open("/tmp/flux-edit-response.json"))
-          if not isinstance(result.get("image"), str) or len(result["image"]) < 10000:
-              raise SystemExit("FAIL: FLUX.2 Klein edit did not return an image: " + json.dumps(result)[:1500])
-          print("PASS: FLUX.2 Klein reference-image edit returned an image.")
-          print("Model:", result.get("model"), "generationMs:", result.get("generationMs"))
+          events = [json.loads(line) for line in open("/tmp/flux-edit-response.ndjson") if line.strip()]
+          stages = [e.get("stage") for e in events if e.get("type") == "progress"]
+          print("Worker progress stages:", stages)
+          result = next((e for e in events if e.get("type") == "complete"), None)
+          errors = [e for e in events if e.get("type") == "error"]
+          if result is None or not isinstance(result.get("image"), str) or len(result["image"]) < 10000:
+              raise SystemExit("FAIL: NDJSON edit stream did not return an image: " + json.dumps(errors or events[-3:])[:1800])
+          assert "worker_received" in stages, "Worker did not confirm receipt of the reference image"
+          assert "model_started" in stages, "Worker did not confirm model invocation"
+          print("PASS: streamed FLUX.2 Klein reference-image edit returned an image.")
+          print("Model:", result.get("model"), "generationMs:", result.get("generationMs"), "attempts:", result.get("attempts"))
           print("Output image base64 characters:", len(result["image"]))
           PY
 
