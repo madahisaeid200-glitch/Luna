@@ -45,6 +45,26 @@ export default {
     }
     if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
 
+    // Generate a real English voice track with Cloudflare Workers AI MeloTTS.
+    if (mode === "tts") {
+      const text = String(body.text || "").trim();
+      const lang = String(body.lang || "en").slice(0, 8);
+      if (!text) return json({ error: "Speech text is required." }, 400);
+      if (text.length > 1200) return json({ error: "Speech text is too long (maximum 1200 characters)." }, 400);
+      if (lang !== "en") return json({ error: "The first LUNA voice test currently supports English only." }, 400);
+      try {
+        const startedAt = Date.now();
+        const result = await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: "en" });
+        const audio = typeof result === "string" ? result : result?.audio;
+        if (typeof audio !== "string" || !audio.length) {
+          return json({ error: "MeloTTS returned no MP3 audio.", resultType: typeof result }, 502);
+        }
+        return json({ audio, mimeType: "audio/mpeg", model: "@cf/myshell-ai/melotts", mode: "tts", generationMs: Date.now() - startedAt });
+      } catch (error) {
+        return json({ error: "LUNA voice generation failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+      }
+    }
+
     const profile = {
       lunaName: String(characterProfile?.lunaName || "LUNA").trim().slice(0, 40) || "LUNA",
       lunaLook: String(characterProfile?.lunaLook || "Adult elegant European woman with natural realistic features and understated luxury styling.").trim().slice(0, 700),
