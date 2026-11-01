@@ -317,6 +317,24 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
         shots.push({id,raw,...(durationMatch?{duration:durationMatch[1].trim()}:{}),...(cameraMatch?{camera:cameraMatch[1].trim()}:{}),...(actionMatch?{action:actionMatch[1].trim()}:{}),...(emotionMatch?{emotion:emotionMatch[1].trim()}:{}),...(dialogueMatch?{dialogue:dialogueMatch[1].trim()}:{})});
       }
     }
+    const readPromptBlocks=section=>{
+      const source=String(section||'');
+      const matches=[...source.matchAll(/^\\s*(?:[-*]\\s*)?(?:SHOT|SCENE)\\s*0*(\\d+)\\b[^\\n]*|^\\s*(?:[-*]\\s*)?0*(\\d+)[.)]\\s+[^\\n]+/gim)];
+      const result={};
+      for(let i=0;i<matches.length;i++){
+        const match=matches[i],id=Number(match[1]||match[2]);
+        const end=i+1<matches.length?matches[i+1].index:source.length;
+        const block=source.slice(match.index,end).trim();
+        if(block)result[id]=block.replace(/^\\s*(?:[-*]\\s*)?(?:(?:SHOT|SCENE)\\s*0*\\d+|0*\\d+[.)])\\s*[:—-]?\\s*/i,'').trim();
+      }
+      return result;
+    };
+    const imageByShot=readPromptBlocks(sections.imagePrompts);
+    const motionByShot=readPromptBlocks(sections.motionPrompts);
+    for(const shot of shots){
+      if(imageByShot[shot.id])shot.imagePrompt=imageByShot[shot.id];
+      if(motionByShot[shot.id])shot.motionPrompt=motionByShot[shot.id];
+    }
     return {productionSections:sections,shotListRaw,shots};
   }
   el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const parsed=parseProductionPack(lastProductionPack);const payload={schema:'luna-production-pack',schemaVersion:'1.1.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,...parsed,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model. Raw productionPackMarkdown and shotListRaw are preserved even when parsing is incomplete.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
