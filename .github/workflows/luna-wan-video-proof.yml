@@ -1,0 +1,81 @@
+name: LUNA real Wan 2.2 video proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/luna-wan-video-proof.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wan-video-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Generate a real MP4 using Wan 2.2 through the deployed LUNA Worker
+        env:
+          LUNA_WORKER: https://orange-firefly-6434.madahisaeid200.workers.dev
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const page = await browser.newPage({viewport:{width:640,height:640}});
+            try {
+              await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html',{waitUntil:'domcontentloaded',timeout:30000});
+              const image = await page.evaluate(() => {
+                const c=document.createElement('canvas'); c.width=640; c.height=640;
+                const x=c.getContext('2d');
+                const g=x.createLinearGradient(0,0,640,640);g.addColorStop(0,'#14243d');g.addColorStop(1,'#bd8e72');
+                x.fillStyle=g;x.fillRect(0,0,640,640);
+                x.fillStyle='#f4d8b6';x.beginPath();x.arc(245,245,78,0,Math.PI*2);x.fill();
+                x.fillStyle='#241b20';x.beginPath();x.arc(245,218,82,Math.PI,Math.PI*2);x.fill();
+                x.fillStyle='#d5a27e';x.beginPath();x.arc(405,245,78,0,Math.PI*2);x.fill();
+                x.fillStyle='#33252a';x.beginPath();x.arc(405,218,82,Math.PI,Math.PI*2);x.fill();
+                x.fillStyle='#273f5a';x.beginPath();x.moveTo(150,640);x.quadraticCurveTo(160,390,245,365);x.quadraticCurveTo(340,390,340,640);x.fill();
+                x.fillStyle='#f0e6d8';x.beginPath();x.moveTo(315,640);x.quadraticCurveTo(320,390,405,365);x.quadraticCurveTo(500,390,515,640);x.fill();
+                x.fillStyle='#29201e';for(const cx of [218,378]){x.beginPath();x.arc(cx,250,7,0,Math.PI*2);x.fill();}
+                x.strokeStyle='#8a4c4c';x.lineWidth=5;x.beginPath();x.arc(245,280,22,.15,Math.PI-.15);x.stroke();
+                x.beginPath();x.arc(405,280,22,.15,Math.PI-.15);x.stroke();
+                x.fillStyle='rgba(255,255,255,.85)';x.font='bold 22px sans-serif';x.fillText('LUNA + LEO • TEST FRAME',28,42);
+                return c.toDataURL('image/png');
+              });
+              console.log('Synthetic fictional reference image prepared:',image.length,'base64 chars');
+              const result = await page.evaluate(async ({endpoint,image}) => {
+                const controller=new AbortController();
+                const timer=setTimeout(()=>controller.abort(),12*60*1000);
+                try {
+                  const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({
+                    mode:'video',image,prompt:'A cinematic live-action style short continuous shot. Two fictional stylish adults, a woman and a man, stand together in an elegant European hotel lobby. They exchange a warm amused glance, blink naturally, make a subtle head turn and smile. Gentle camera push-in, realistic movement, preserve the reference composition, no cuts, no slideshow, no text.',durationSeconds:2,steps:4
+                  }),signal:controller.signal});
+                  if(!response.ok){let detail='HTTP '+response.status;try{const j=await response.json();detail+=' '+(j.error||'')+' '+(j.details||'')}catch{};throw new Error(detail);}
+                  const type=response.headers.get('Content-Type')||'';
+                  if(!type.includes('video'))throw new Error('Worker returned non-video content: '+type);
+                  const blob=await response.blob();
+                  if(blob.size<50000)throw new Error('MP4 output unexpectedly small: '+blob.size);
+                  const bytes=Array.from(new Uint8Array(await blob.arrayBuffer()));
+                  return {type,size:blob.size,base64:btoa(bytes.map(b=>String.fromCharCode(b)).join(''))};
+                } finally {clearTimeout(timer);}
+              },{endpoint:process.env.LUNA_WORKER,image});
+              require('fs').writeFileSync('luna-wan-proof.mp4',Buffer.from(result.base64,'base64'));
+              console.log('WAN REAL VIDEO: PASS',JSON.stringify({type:result.type,size:result.size}));
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1);});
+          NODE
+      - name: Upload verified MP4 proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-wan-real-video-proof
+          path: luna-wan-proof.mp4
+          if-no-files-found: error
+          retention-days: 7
