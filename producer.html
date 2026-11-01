@@ -136,19 +136,22 @@ if (!el('epTitle').value.trim()) el('epTitle').value='LUNA و LEO: سورپرا�
 if (!el('premise').value.trim()) el('premise').value='لئو برای لونا یک سورپرایز عاشقانه در سوئیت هتل پنج‌ستاره آماده کرده، اما یک سوءتفاهم بامزه باعث می‌شود لونا فکر کند رزرو برای شخص دیگری است؛ فقط لونا و لئو حضور دارند.';
 const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
 const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
-// Use the repository's deployed Worker as the single canonical endpoint on
-// both GitHub Pages and Cloudflare Pages. Do not depend on browser storage
-// being present or writable for the first connection.
+// Keep the known deployed Worker as the first-run default, but NEVER overwrite
+// a Worker URL the user has explicitly saved in this browser. This allows a
+// replacement Worker (for example super-wave-0504) to survive page reloads.
 const defaultEndpoint=workerEndpoint;
 let savedEndpoint=workerEndpoint;
 try {
   const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
-  // Ignore stale experimental endpoints; this repository deploys orange-firefly.
-  if(storedEndpoint!==workerEndpoint) localStorage.setItem('lunaAiEndpoint',workerEndpoint);
+  if (storedEndpoint && /^https:\/\/[a-z0-9-]+\.madahisaeid200\.workers\.dev$/i.test(storedEndpoint)) {
+    savedEndpoint=storedEndpoint;
+  } else if (!storedEndpoint) {
+    localStorage.setItem('lunaAiEndpoint',workerEndpoint);
+  }
 } catch(storageError) {
-  // The endpoint remains available in the page even when storage is blocked.
+  // The page still has a usable default when browser storage is unavailable.
 }
-endpointInput.value=workerEndpoint;
+endpointInput.value=savedEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
 el('saveAiEndpoint').onclick=()=>{
