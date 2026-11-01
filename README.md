@@ -15,14 +15,17 @@ The GitHub Pages site is the primary working deployment. Cloudflare Pages deploy
 
 After generating a script and then a production pack in the Producer, use **Export standard JSON for video engine** to download `LUNA-production-pack.json`.
 
-Schema version: `luna-production-pack@1.0.0`
+Schema version: `luna-production-pack@1.1.0`
 
 Top-level fields:
 
 - `episode`: title, premise, duration, tone and language.
 - `characters`: the saved Luna/Leo character bible.
 - `episodeScript`: the finished episode script.
-- `productionPackMarkdown`: the complete AI production pack, including shot list, image prompts, motion prompts, voice/sound, captions and editing plan.
+- `productionPackMarkdown`: the complete, unmodified AI production pack, retained as the source of truth.
+- `productionSections`: best-effort section extraction keyed as `episodeSummary`, `characterContinuity`, `shotList`, `imagePrompts`, `motionPrompts`, `voiceAndSound`, `captions`, `editingPlan` and `qualityCheck`.
+- `shotListRaw`: the complete raw shot-list section, retained even if scene parsing cannot recognize its format.
+- `shots`: conservatively parsed scene records. Each recognized record includes `id` and `raw`; clear labels such as duration, camera/framing, action, emotion and dialogue are added only when explicitly present.
 - `firstImagePrompt`: convenience field for the first scene image prompt.
 - `targetFormats`: intended aspect-ratio targets (9:16 and 16:9).
 
@@ -31,7 +34,7 @@ This is an interchange/export format; it does not itself render a finished video
 ## Video rendering roadmap
 
 1. Keep the current browser preview as a lightweight fallback.
-2. Convert the shot list and prompts into validated scene records.
+2. Refine the current best-effort scene parser against real production-pack examples, then validate scene records.
 3. Add a separately hosted render service for MP4 output; do not attempt to run a full Node/FFmpeg renderer inside GitHub Pages.
 4. Add voice generation, captions and music only as independent optional stages, so one failed stage does not block the rest.
 
