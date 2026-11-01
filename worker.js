@@ -107,6 +107,68 @@ export default {
       return result + "\n\nCUSTOM CHARACTER CANON — OVERRIDES ANY CONFLICTING DEFAULT CHARACTER DESCRIPTION ABOVE:\n- Main character 1 name must be exactly: " + profile.lunaName + ". Appearance: " + profile.lunaLook + " Personality: " + profile.lunaPersonality + "\n- Main character 2 name must be exactly: " + profile.leoName + ". Appearance: " + profile.leoLook + " Personality: " + profile.leoPersonality + "\n- Shared visual style: " + profile.style + "\n- Use only these two names for the couple. Keep their appearance and personalities consistent in every scene. Do not use the old default names if the user changed them.";
     };
 
+    // Structured director plan: provider-neutral shot manifest for real generative-video engines.
+    if (mode === "director") {
+      if (typeof script !== "string" || !script.trim()) return json({ error: "Generate or paste an episode script first." }, 400);
+      if (script.length > 14000) return json({ error: "The episode script is too long for one director-plan request." }, 400);
+      const directorPrompt = `Convert this finished screenplay into a production-ready multi-shot generative-video plan.
+Return ONLY valid JSON, no markdown, with this shape:
+{"schemaVersion":"luna-video-plan@1.0.0","episode":{"title":"...","logline":"...","targetAspectRatio":"9:16","targetDurationSeconds":60},"continuityBible":{"luna":"...","leo":"...","visualStyle":"...","continuityRules":["..."]},"shots":[{"id":"S01","durationSeconds":6,"location":"...","shotType":"wide|medium|close-up|over-shoulder|insert","characters":["LUNA","LEO"],"action":"one visible action only","emotion":"...","dialogue":[{"speaker":"LUNA","text":"..."}],"videoPrompt":"self-contained live-action video prompt focused on motion and camera choreography","referenceFramePrompt":"self-contained still-image prompt for this shot","audio":{"ambience":"...","sfx":"...","musicMood":"..."},"transition":"cut|match-cut|dissolve"}],"captions":[{"shotId":"S01","text":"..."}],"qualityGates":["..."]}
+Rules:
+- 6-10 shots for a short, 10-16 for a longer episode. Each shot is ONE coherent action, suitable for a separate 4-10 second video generation.
+- Preserve exact story, chronology, punchline and ending. Invent no events, people, props or locations.
+- Main couple only: ${profile.lunaName} and ${profile.leoName}.
+- Fixed character bible: ${profile.lunaName}: ${profile.lunaLook} Personality: ${profile.lunaPersonality}. ${profile.leoName}: ${profile.leoLook} Personality: ${profile.leoPersonality}. Style: ${profile.style}.
+- Keep wardrobe and accessories identical throughout unless the screenplay explicitly requires a change. Never swap character gender presentation or clothing.
+- Dialogue must be exact screenplay dialogue, never invented or paraphrased. Use [] when no dialogue.
+- Video prompts describe realistic body motion, facial micro-expression, eye-line, camera movement and lighting continuity. No rendered captions or logos.
+- Avoid slideshow/montage language. Every shot is a continuous cinematic moment.
+- JSON must parse. Total duration is the sum of shot durations.
+SCREENPLAY:
+${script.trim()}`;
+      const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
+      const models = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+      const failures = [];
+      for (const model of models) {
+        try {
+          const result = await env.AI.run(model, {
+            messages: [
+              { role: "system", content: "You are a film director and generative-video pipeline planner. Return strict JSON only. Never fabricate video-generation success." },
+              { role: "user", content: directorPrompt }
+            ],
+            max_tokens: 3500,
+            temperature: 0.25
+          });
+          let raw = result?.response || result?.result?.response || "";
+          if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
+          raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+          const plan = JSON.parse(raw);
+          if (plan.schemaVersion !== "luna-video-plan@1.0.0" || !Array.isArray(plan.shots) || plan.shots.length < 4) throw new Error("response does not match LUNA video-plan schema");
+          const allowed = new Set([${JSON.stringify(profile.lunaName)}, ${JSON.stringify(profile.leoName)}, "LUNA", "LEO"]);
+          for (let index = 0; index < plan.shots.length; index++) {
+            const shot = plan.shots[index];
+            shot.id = "S" + String(index + 1).padStart(2, "0");
+            shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
+            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.filter(line => line && allowed.has(line.speaker) && typeof line.text === "string") : [];
+            shot.characters = Array.isArray(shot.characters) ? shot.characters.filter(name => allowed.has(name)) : [];
+          }
+          plan.episode = plan.episode || {};
+          plan.episode.targetDurationSeconds = plan.shots.reduce((sum, shot) => sum + shot.durationSeconds, 0);
+          plan.episode.targetAspectRatio = "9:16";
+          plan.continuityBible = plan.continuityBible || {};
+          plan.continuityBible.luna = profile.lunaLook;
+          plan.continuityBible.leo = profile.leoLook;
+          plan.continuityBible.visualStyle = profile.style;
+          plan.qualityGates = Array.isArray(plan.qualityGates) ? plan.qualityGates : [];
+          plan.qualityGates.push("Reject altered identity, wardrobe swaps, extra characters, frozen still frames or broken chronology.");
+          return json({ ok: true, mode: "director", plan, model, providerReady: false, note: "Shot plan generated. Real video rendering still requires a connected generative-video provider; no video has been rendered." });
+        } catch (error) {
+          failures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 180));
+        }
+      }
+      return json({ error: "LUNA director-plan generation failed.", details: failures }, 502);
+    }
+
     // A second AI workflow turns a finished episode into a practical video-production pack.
     if (mode === "production") {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Generate or paste an episode script first." }, 400);
