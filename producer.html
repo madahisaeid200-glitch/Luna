@@ -360,24 +360,14 @@ el('generateSceneImage').onclick=async()=>{
        const instruction='EDIT IMAGE 0, DO NOT CREATE A NEW SCENE. Treat the supplied image as the source photograph and preserve its exact composition, camera angle, crop, location, lighting mood, furniture, props, clothing colors, jewelry, and the same two people. Preserve LUNA and LEO facial identity, age, hair, expressions and body proportions as closely as possible. Make only careful photorealistic refinements: (1) improve the woman’s visible hands so fingers, knuckles, joints, wrists, nails and subtle skin creases look anatomically natural and relaxed; understated clear or nude nail polish only. Do not add fingers or change the gesture. (2) improve the man’s face in the background so it is naturally sharp and detailed, with clear eyes, brows, hair and realistic skin texture, while keeping the original depth and perspective; do not blur his face. (3) add subtle realistic fabric weave, fine folds, stitching and restrained texture to the existing clothing and accessories without changing their design. Keep the same scene and people; do not add or remove objects or people. Natural unretouched high-end photograph, no beauty filter, no CGI, no text, no logos.';
        stage='ارسال تصویر مرجع به Worker';
        logLunaDiagnostic('image-edit-request','Sending reference image for streamed edit',{endpoint,imageChars:reference.length,width,height,online:navigator.onLine});
+       stage='ارسال تصویر برای ویرایش (پاسخ JSON)';
+       el('visualStatus').textContent='تصویر مرجع ارسال شد؛ منتظر نتیجه مدل ویرایش هستیم…';
        const response=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:reference,prompt:instruction,width,height})},180000);
-       httpStatus=response.status;stage='دریافت جریان تشخیصی Worker';
-       const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',data=null;
-       const processLine=line=>{
-         if(!line.trim())return;
-         const event=JSON.parse(line);
-         if(event.type==='progress'){
-           stage=event.stage||stage;
-           el('visualStatus').textContent=event.stage==='worker_received'?'تصویر به Worker رسید؛ اکنون اجرای مدل آغاز می‌شود…':event.stage==='model_started'?'مدل ویرایش در حال اجراست (تلاش '+event.attempt+')…':event.stage==='model_attempt_failed'?'تلاش مدل ناموفق شد؛ Worker در حال بررسی تلاش بعدی است…':'در حال پردازش تصویر…';
-           logLunaDiagnostic('image-edit-progress',event.stage||'worker-progress',{attempt:event.attempt,imageChars:event.imageChars,elapsedMs:event.elapsedMs,details:event.details||''});
-         }else if(event.type==='complete'){data=event;}
-         else if(event.type==='error'||event.error){throw new Error((event.error||'ویرایش تصویر ناموفق بود')+(event.details?' — '+event.details:''));}
-         else if(event.image){data=event;}
-       };
-       while(true){const part=await reader.read();buffer+=decoder.decode(part.value||new Uint8Array(),{stream:!part.done});const rows=buffer.split('\n');buffer=rows.pop();for(const row of rows)processLine(row);if(part.done)break;}
-       if(buffer.trim())processLine(buffer);
-       if(!response.ok)throw new Error('پاسخ Worker ناموفق بود (HTTP '+response.status+').');
-       if(!data||!data.image)throw new Error('جریان Worker بدون تصویر نهایی تمام شد؛ مرحله آخر: '+stage);
+       httpStatus=response.status;
+       let data={};
+       try{data=await response.json();}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').');}
+       if(!response.ok||data.error)throw new Error((data.error||'ویرایش تصویر ناموفق بود')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
+       if(!data.image)throw new Error('Worker پاسخ داد اما تصویر نهایی برنگرداند.');
        generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
        el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';
        el('makePreviewVideo').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;
