@@ -112,3 +112,5 @@ jobs:
           print("Model:", result.get("model"), "generationMs:", result.get("generationMs"))
           print("Output image base64 characters:", len(result["image"]))
           PY
+
+# 2026-11-01: run full independent FLUX generation and reference-edit diagnostics.
