@@ -241,10 +241,12 @@ el('generate').onclick=async()=>{
      const requestTimeout=setTimeout(()=>controller.abort(),75000);
      let response;
      try{
-       response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});
+       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});
      }finally{clearTimeout(requestTimeout);}
-     const data=await response.json();
+     const rawResponse=await response.text();
+     let data;try{data=JSON.parse(rawResponse);}catch(parseError){throw new Error('پاسخ Worker قابل‌خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+rawResponse.length+' کاراکتر.');}
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
+     if(typeof data.script!=='string'||!data.script.trim())throw new Error('مدل پاسخ داد، اما متن سناریو در پاسخ وجود ندارد.');
      lastDraft=data.script;
      updateAiStatus(data.translationWarning ? 'سناریوی انگلیسی با هوش مصنوعی تولید شد، اما ترجمه فارسی ناموفق بود. جزئیات: '+(Array.isArray(data.details)?data.details.slice(-4).join(' | '):'ترجمه در دسترس نبود') : 'اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
    }else{
