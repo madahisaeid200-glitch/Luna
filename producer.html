@@ -552,4 +552,46 @@ el('generateSceneImage').onclick=async()=>{
     }finally{button.disabled=false;}
   },{capture:true});
 })();
-</script></body></html>
+</script>
+
+<script>
+// Independent voice button handler; does not rely on the main producer initializer.
+(function(){
+  const button=document.getElementById('generateVoice');
+  const status=document.getElementById('voiceStatus');
+  const input=document.getElementById('voiceTestText');
+  const player=document.getElementById('voicePreview');
+  const endpointField=document.getElementById('aiEndpoint');
+  if(!button||!status||!input||!player||!endpointField)return;
+  button.onclick=null;
+  button.addEventListener('click',async function(){
+    const endpoint=(endpointField.value||'https://orange-firefly-6434.madahisaeid200.workers.dev').trim().replace(/\/$/,'');
+    const speech=input.value.trim();
+    if(!speech){status.textContent='متن انگلیسی برای صداگذاری وارد کن.';return;}
+    button.disabled=true;
+    button.textContent='در حال ساخت صدا…';
+    status.textContent='درخواست صدا به Worker ارسال شد…';
+    try{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),90000);
+      let response,raw,data;
+      try{
+        response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',signal:controller.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})});
+        raw=await response.text();
+      }finally{clearTimeout(timer);}
+      try{data=JSON.parse(raw);}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست؛ HTTP '+response.status+'، '+raw.length+' کاراکتر.');}
+      if(!response.ok||data.error)throw new Error((data.error||'Voice generation failed')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
+      if(!data.audio)throw new Error('مدل پاسخ داد اما داده صوتی برنگرداند.');
+      player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;
+      player.style.display='block';
+      status.textContent='فایل صوتی ساخته شد؛ برای شنیدن روی پخش بزن.';
+      player.load();
+    }catch(error){
+      status.textContent='ساخت صدا ناموفق بود: '+(error.name==='AbortError'?'زمان پاسخ مدل بیش از ۹۰ ثانیه شد.':(error.message||String(error)));
+    }finally{
+      button.disabled=false;
+      button.textContent='۳. ساخت صدای واقعی انگلیسی';
+    }
+  },{capture:true});
+})();
+</script>
