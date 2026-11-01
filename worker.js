@@ -179,9 +179,32 @@ ${script.trim()}`;
             form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
             form.append("width", String(width));
             form.append("height", String(height));
-            const formResponse = new Response(form);
-            const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
-              multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
+            // Match Cloudflare's documented Workers AI multipart pattern exactly:
+            // serialize FormData through a Request so the runtime supplies the boundary.
+            const formRequest = new Request("https://luna.invalid/image-edit", {
+              method: "POST",
+              body: form
+            });
+            const modelStartedAt = Date.now();
+            const modelPromise = env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
+              multipart: {
+                body: formRequest.body,
+                contentType: formRequest.headers.get("content-type")
+              }
+            });
+            let timeoutId;
+            const result = await Promise.race([
+              modelPromise,
+              new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error("FLUX.2 Klein inference exceeded 90000 ms")), 90000);
+              })
+            ]).finally(() => clearTimeout(timeoutId));
+            console.log("LUNA image_edit model completed", {
+              model: "@cf/black-forest-labs/flux-2-klein-4b",
+              elapsedMs: Date.now() - modelStartedAt,
+              width,
+              height,
+              inputImageBytes: bytes.length
             });
             const image = result?.image || result?.result?.image;
             if (typeof image === "string" && image) {
