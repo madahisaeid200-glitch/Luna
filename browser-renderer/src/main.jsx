@@ -74,6 +74,7 @@ function App() {
         inputProps: {episode: pack.episode || {}, shots},
         videoCodec: 'h264',
         videoBitrate: 'low',
+        muted: true,
         pageResponsiveness: 'medium',
         onProgress: ({progress: p}) => setProgress(Math.round(p * 100))
       });
