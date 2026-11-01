@@ -1,6 +1,6 @@
 {
   "app": "LUNA Cloudflare diagnostics",
-  "createdAt": "2026-11-01T08:47:52.009Z",
+  "createdAt": "2026-11-01T08:48:13.959Z",
   "accountIdConfigured": true,
   "tokenConfigured": true,
   "worker": "orange-firefly-6434",
@@ -57,7 +57,7 @@
           },
           {
             "id": "orange-firefly-6434",
-            "modified_on": "2026-11-01T07:51:34.63321Z",
+            "modified_on": "2026-11-01T08:48:10.007308Z",
             "created_on": "2026-10-26T07:11:05.502081Z",
             "compatibility_date": "2026-10-26",
             "usage_model": "standard"
@@ -93,25 +93,23 @@
       "resultSummary": {}
     },
     "workerHealth": {
-      "httpStatus": 400,
-      "elapsedMs": 60,
-      "responseBytes": 47,
-      "ok": false,
-      "model": null,
-      "generationMs": null,
-      "audioBase64Chars": null,
-      "error": "Please provide a title and premise.",
-      "details": null,
-      "resultType": null
+      "httpStatus": 200,
+      "elapsedMs": 85,
+      "ok": true,
+      "service": "LUNA AI Worker",
+      "aiBinding": true,
+      "model": "@cf/meta/llama-3.1-8b-instruct-fast",
+      "fallbackModel": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "message": "Worker is reachable and the AI binding exists."
     },
     "meloTtsTest": {
       "httpStatus": 200,
-      "elapsedMs": 672,
-      "responseBytes": 336484,
+      "elapsedMs": 646,
+      "responseBytes": 341944,
       "ok": false,
       "model": "@cf/myshell-ai/melotts",
-      "generationMs": 566,
-      "audioBase64Chars": 336352,
+      "generationMs": 593,
+      "audioBase64Chars": 341812,
       "error": null,
       "details": null,
       "resultType": "[object Object]"
