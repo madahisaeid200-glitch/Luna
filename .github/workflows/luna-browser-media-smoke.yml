@@ -1,0 +1,79 @@
+name: LUNA real browser media pipeline smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "producer.html"
+      - "worker.js"
+      - ".github/workflows/luna-browser-media-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  media-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Exercise production pack, image, vision, TTS and browser video
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const page = await browser.newPage({viewport:{width:430,height:932}, locale:'en-US'});
+            const errors = [];
+            const results = [];
+            page.on('pageerror', e => errors.push('PAGE_ERROR: '+e.message));
+            page.on('requestfailed', r => errors.push('REQUEST_FAILED: '+r.url()+' '+(r.failure()?.errorText||'')));
+            page.on('response', r => { if(r.url().includes('workers.dev')) console.log('WORKER_RESPONSE:',r.status(),r.url()); });
+            page.on('dialog', async d => { console.log('DIALOG:',d.message()); await d.accept(); });
+            const waitFor = async (fn, ms, label) => {
+              try { await page.waitForFunction(fn, null, {timeout:ms}); }
+              catch(e) { console.log('FAILED_STAGE:',label); console.log('PAGE_STATUS:',await page.locator('#aiStatus').innerText().catch(()=>'')); console.log('VISUAL_STATUS:',await page.locator('#visualStatus').innerText().catch(()=>'')); console.log('VOICE_STATUS:',await page.locator('#voiceStatus').innerText().catch(()=>'')); throw e; }
+            };
+            try {
+              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html',{waitUntil:'domcontentloaded',timeout:30000});
+              if(!pageResponse?.ok()) throw new Error('Producer HTTP failure');
+              await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
+              await page.locator('#premise').fill('Leo secretly books a romantic hotel suite surprise for Luna. Luna sees two champagne glasses and thinks the booking is for someone else. Only Luna and Leo are present, inside the suite.');
+              await page.locator('#scriptLang').selectOption('en');
+              await page.locator('#generate').click();
+              await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return t.length>250&&/LUNA|LEO/i.test(t)&&!/Generating|در حال تولید/i.test(document.querySelector('#aiStatus')?.textContent||'');},115000,'script');
+              results.push('SCRIPT: PASS');
+              await page.locator('#makeProductionPack').click();
+              await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return /IMAGE PROMPTS/i.test(t)&&/SHOT LIST/i.test(t)&&!/در حال تبدیل|Building video pack/i.test(document.querySelector('#aiStatus')?.textContent||'');},90000,'production-pack');
+              const pack=await page.locator('#output').innerText();
+              if(pack.length<1000) throw new Error('Production pack too short: '+pack.length);
+              results.push('PRODUCTION_PACK: PASS ('+pack.length+' chars)');
+              await page.locator('#generateSceneImage').click();
+              await waitFor(()=>{const img=document.querySelector('#sceneImage');return !!img?.src?.startsWith('data:image/')&&img.complete&&img.naturalWidth>0;},120000,'image-generation');
+              const imgSize=await page.locator('#sceneImage').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
+              results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
+              await page.locator('#analyzeSceneImage').click();
+              await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال ارسال|در حال آماده‌سازی/.test(document.querySelector('#imageAnalysisStatus')?.textContent||'');},75000,'vision-analysis');
+              results.push('VISION: PASS ('+(await page.locator('#imageAnalysisReport').innerText()).length+' chars)');
+              await page.locator('#generateVoice').click();
+              await waitFor(()=>{const a=document.querySelector('#voicePreview');return a?.src?.startsWith('data:audio/')&&a.src.length>1000&&!/درخواست صدا|در حال ساخت/.test(document.querySelector('#voiceStatus')?.textContent||'');},100000,'tts');
+              results.push('TTS: PASS');
+              await page.locator('#makePreviewVideo').click();
+              await waitFor(()=>{const a=document.querySelector('#downloadVideoLink');return a?.href?.startsWith('blob:')&&a.style.display!=='none'&&!/در حال رندر/.test(document.querySelector('#visualStatus')?.textContent||'');},20000,'browser-video');
+              const videoBytes=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return (await r.blob()).size;});
+              if(videoBytes<10000) throw new Error('Preview video unexpectedly small: '+videoBytes);
+              results.push('BROWSER_VIDEO: PASS ('+videoBytes+' bytes)');
+              console.log(results.join('\n'));
+              console.log('MEDIA PIPELINE: PASS');
+              if(errors.length) console.log('BROWSER_WARNINGS:',errors.slice(0,15).join('\n'));
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1);});
+          NODE
