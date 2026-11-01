@@ -118,3 +118,5 @@ jobs:
           PY
 
 # 2026-11-01: run full independent FLUX generation and reference-edit diagnostics.
+
+# Verify deployed Worker retry path against a fresh FLUX-generated reference image.
