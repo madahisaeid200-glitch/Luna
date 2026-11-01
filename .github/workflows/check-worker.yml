@@ -102,10 +102,11 @@ jobs:
           print("Using actual FLUX-generated image:", original_size, "->", image.size, "image chars:", len(data), "JPEG quality:", quality, "request bytes:", os.path.getsize("/tmp/flux-edit.json"))
           assert 35000 <= len(data) <= 45000, "Reference payload is not close enough to the user's reported size"
           PY
-          curl --fail-with-body --silent --show-error --max-time 150 \
+          curl --silent --show-error --max-time 150 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
             --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.json \
             -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
+          cat /tmp/flux-edit-response.json
           python3 - <<'PY'
           import json
           result = json.load(open("/tmp/flux-edit-response.json"))
