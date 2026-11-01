@@ -735,7 +735,18 @@ el('autoProduce').onclick=async()=>{
      lastDraft='';lastProductionPack='';
      master.textContent='مرحله ۱/۴ · سناریو…';
      await runButton('generate',()=>!!lastDraft,'ساخت سناریو',90000);
-     if(!lastDraftIsAi||(el('aiStatus')?.textContent||'').includes('خطای واقعی تولید'))throw new Error('تولید سناریوی هوش مصنوعی شکست خورد؛ متن قالبی به‌عنوان موفقیت پذیرفته نشد.');
+     const aiMessage=el('aiStatus')?.textContent||'';
+     if(!lastDraftIsAi||aiMessage.includes('خطای واقعی تولید')){
+       const quotaBlocked=/4006|daily free allocation|free allocation of 10,000 neurons/i.test(aiMessage);
+       if(!quotaBlocked)throw new Error('تولید سناریوی هوش مصنوعی ناموفق بود؛ متن قالبی بدون تأیید پذیرفته نشد. '+aiMessage);
+       const title=el('epTitle').value.trim()||'LUNA & LEO — The Five-Star Mix-Up';
+       const premise=el('premise').value.trim()||'Leo plans a romantic surprise in a luxury hotel, but a booking mix-up makes Luna believe the suite was reserved for someone else. Only Luna and Leo appear.';
+       lastDraft=draft(el('scriptLang').value,title,premise,el('duration').value,el('tone').value);
+       lastDraftIsAi=false;
+       el('output').textContent=lastDraft;
+       updateAiStatus('سهمیه رایگان Cloudflare تمام شده است؛ سناریوی جایگزین به‌صورت محلی ساخته شد، نه با هوش مصنوعی.');
+       lastProductionPack='LUNA LOCAL PRODUCTION PACK\\n\\nEPISODE SUMMARY\\n'+title+'\\n\\nCHARACTER CONTINUITY\\nUse the saved LUNA and LEO character profiles exactly. Keep faces, gender presentation, wardrobe and luxury visual style consistent. Only these two characters appear.\\n\\nSHOT LIST\\n1. Establishing shot: luxury European hotel suite.\\n2. Luna waits, elegant and expectant.\\n3. Leo reveals the surprise with playful confidence.\\n4. A booking detail exposes the misunderstanding.\\n5. Luna reacts with a witty look to camera.\\n6. Leo delivers the final comic line.\\n\\nIMAGE PROMPTS\\n'+(el('imagePrompt').value||'Use the saved LUNA and LEO reference image. Preserve both identities exactly; photorealistic luxury European hotel, cinematic natural lighting.')+'\\n\\nVIDEO / MOTION PROMPTS\\nCreate a continuous natural cinematic moment from the saved reference image. Subtle facial expressions, realistic eye contact, gentle camera push-in, natural body movement; preserve both faces, outfits and identities.\\n\\nVOICE AND SOUND\\nWarm romantic-comedy delivery, soft luxury-hotel ambience, subtle comedic music sting.\\n\\nON-SCREEN CAPTIONS\\nShort English captions, safe margins, high contrast.\\n\\nEDITING PLAN\\nVertical 9:16, concise cuts, maintain continuity.\\n\\nFINAL QUALITY CHECK\\nOnly Luna and Leo; no face swaps, no wardrobe changes, no frozen slideshow.');
+     }
    }
    if(!lastProductionPack){
      master.textContent='مرحله ۲/۴ · بسته تولید…';
