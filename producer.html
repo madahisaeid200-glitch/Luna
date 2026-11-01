@@ -19,7 +19,7 @@
 <div class="field"><label id="toneLabel" for="tone">حال‌وهوای داستان</label><select id="tone"><option value="romcom">عاشقانه و بامزه</option><option value="chaos">سوءتفاهم و آشوب</option><option value="luxury">لوکس و سفر</option></select></div>
 <div class="field"><label id="langLabel" for="scriptLang">زبان متن خروجی</label><select id="scriptLang"><option value="en">English</option><option value="fa">فارسی</option><option value="both">هر دو زبان / Both</option></select></div>
 <div class="actions"><button class="primary" id="generate">ساخت پیش‌نویس قسمت</button><button id="save">ذخیره در داشبورد</button></div><p class="hint" id="saveHint">ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.</p></section>
-<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
+<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button id="exportProductionJson" disabled>خروجی استاندارد برای موتور ویدئو (JSON)</button><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
 </div>
 
 <section class="panel" id="characterManager">
@@ -214,6 +214,7 @@ el('diagnoseBrowser').onclick=async()=>{
 };
 el('generate').onclick=async()=>{
  lastProductionPack='';
+ el('exportProductionJson').disabled=true;
  let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
    title=title||'LUNA و LEO: سورپرایز لوکس خراب می‌شود';
@@ -265,6 +266,7 @@ el('makeProductionPack').onclick=async()=>{
    const data=await response.json();
    if(!response.ok)throw new Error((data.error||'Production-pack request failed')+(Array.isArray(data.details)?' — '+data.details.join(' | '):''));
    lastProductionPack=data.script;
+    el('exportProductionJson').disabled=false;
     const firstPrompt=extractFirstImagePrompt(lastProductionPack);if(firstPrompt)el('imagePrompt').value=firstPrompt;
    el('output').textContent=lastProductionPack;
    updateAiStatus('بسته تولید ویدئو با هوش مصنوعی آماده شد ('+(data.model||'AI')+'). از «کپی متن» یا «دانلود فایل متنی» برای استفاده در ابزارهای تصویر و ویدئو استفاده کن.');
@@ -276,6 +278,7 @@ el('makeProductionPack').onclick=async()=>{
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;const parts=lastDraft.split(/══════════ نسخه فارسی ══════════/);const englishDraft=(parts[0]||lastDraft).trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const persianDraft=parts[1]?parts[1].trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean):['نسخه فارسی این قسمت هنوز آماده نشده است.'];arr.push({id,en:title,fa:title,storyEn:englishDraft.length?englishDraft:[lastDraft],storyFa:persianDraft.length?persianDraft:['نسخه فارسی این قسمت هنوز آماده نشده است.']});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
 el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!textToCopy)return;try{await navigator.clipboard.writeText(textToCopy);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
 el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
+  el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const payload={schema:'luna-production-pack',schemaVersion:'1.0.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
  function extractFirstImagePrompt(pack){
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
