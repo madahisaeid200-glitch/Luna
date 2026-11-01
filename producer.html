@@ -64,7 +64,7 @@
 <section class="panel" id="aiConnection">
 <h2>اتصال به هوش مصنوعی / AI Connection</h2>
 <p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
-<div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" placeholder="https://orange-firefly-6434.madahisaeid200.workers.dev"></div>
+<div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" value="https://orange-firefly-6434.madahisaeid200.workers.dev" placeholder="https://orange-firefly-6434.madahisaeid200.workers.dev" autocomplete="url"></div>
 <div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><button id="testAiEndpoint" type="button">آزمایش اتصال / Test connection</button><button id="diagnoseBrowser" type="button">آزمایش شبکه گوشی (بدون مدل)</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
 <p class="hint" id="aiStatus" role="status">وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.</p>
 </section>
@@ -136,19 +136,19 @@ if (!el('epTitle').value.trim()) el('epTitle').value='LUNA و LEO: سورپرا�
 if (!el('premise').value.trim()) el('premise').value='لئو برای لونا یک سورپرایز عاشقانه در سوئیت هتل پنج‌ستاره آماده کرده، اما یک سوءتفاهم بامزه باعث می‌شود لونا فکر کند رزرو برای شخص دیگری است؛ فقط لونا و لئو حضور دارند.';
 const endpointInput=el('aiEndpoint'),aiStatus=el('aiStatus');
 const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
-// On Cloudflare Pages, use its same-origin /api proxy so visitors do not need
-// to connect directly to workers.dev (which may be blocked on some networks).
-const isCloudflarePages=location.protocol==='https:' && location.hostname.endsWith('.pages.dev');
-const defaultEndpoint=isCloudflarePages ? (location.origin+'/api') : workerEndpoint;
-const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
-// Keep the published GitHub Pages app pinned to the Worker that is actually
-// deployed by this repository. Older test Workers (for example super-wave)
-// must not silently override the production endpoint after a refresh.
-const savedEndpoint=isCloudflarePages
-  ? (storedEndpoint && storedEndpoint.endsWith('/api') ? storedEndpoint : defaultEndpoint)
-  : defaultEndpoint;
-if(storedEndpoint!==savedEndpoint) localStorage.setItem('lunaAiEndpoint',savedEndpoint);
-endpointInput.value=savedEndpoint;
+// Use the repository's deployed Worker as the single canonical endpoint on
+// both GitHub Pages and Cloudflare Pages. Do not depend on browser storage
+// being present or writable for the first connection.
+const defaultEndpoint=workerEndpoint;
+let savedEndpoint=workerEndpoint;
+try {
+  const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
+  // Ignore stale experimental endpoints; this repository deploys orange-firefly.
+  if(storedEndpoint!==workerEndpoint) localStorage.setItem('lunaAiEndpoint',workerEndpoint);
+} catch(storageError) {
+  // The endpoint remains available in the page even when storage is blocked.
+}
+endpointInput.value=workerEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
 el('saveAiEndpoint').onclick=()=>{
