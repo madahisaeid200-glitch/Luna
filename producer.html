@@ -660,8 +660,11 @@ el('generateSceneImage').onclick=async()=>{
       if(!data.audio)throw new Error('مدل پاسخ داد اما داده صوتی برنگرداند.');
       player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;
       player.style.display='block';
-      status.textContent='فایل صوتی ساخته شد؛ برای شنیدن روی پخش بزن.';
       player.load();
+      const voicedButton=document.getElementById('makeVoicedVideo');
+      const scene=document.getElementById('sceneImage');
+      if(voicedButton&&scene&&scene.src&&scene.complete&&scene.naturalWidth>0)voicedButton.disabled=false;
+      status.textContent='فایل صوتی ساخته شد؛ برای شنیدن روی پخش بزن.'+(voicedButton&&!voicedButton.disabled?' دکمه ساخت ویدئوی صداگذاری‌شده فعال شد.':'');
     }catch(error){
       status.textContent='ساخت صدا ناموفق بود: '+(error.name==='AbortError'?'زمان پاسخ مدل بیش از ۹۰ ثانیه شد.':(error.message||String(error)));
       try{
