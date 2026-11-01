@@ -66,7 +66,7 @@ jobs:
               results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
               await fs.writeFile('luna-test-output/scene-image.png',Buffer.from((await page.locator('#sceneImage').getAttribute('src')).split(',')[1],'base64'));
               await page.locator('#generateMoreScenes').click();
-              await waitFor(()=>/3\\s*از\\s*3/.test(document.querySelector('#sceneImagesStatus')?.textContent||''),240000,'independent-scene-images');
+              await waitFor(()=>/3\s*از\s*3/.test(document.querySelector('#sceneImagesStatus')?.textContent||''),240000,'independent-scene-images');
               results.push('INDEPENDENT_SCENE_IMAGES: PASS (3 distinct generated images)');
               await page.locator('#analyzeSceneImage').click();
               await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال ارسال|در حال آماده‌سازی/.test(document.querySelector('#imageAnalysisStatus')?.textContent||'');},75000,'vision-analysis');
