@@ -49,8 +49,8 @@
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
 <p class="hint">پس از ساخت بستهٔ تولید، LUNA یک تصویر واقعی می‌سازد و از آن پیش‌نمایش ویدئویی کوتاه تولید می‌کند. این نمونه هنوز صداگذاری و انیمیشن کامل شخصیت‌ها ندارد.</p>
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
-<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت ویدئوی صداگذاری‌شده</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
-<p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="generateMoreScenes" type="button" disabled>۲. ساخت تصاویر مستقل صحنه‌های بعدی</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت ویدئوی صداگذاری‌شده</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<p class="hint" id="sceneImagesStatus" role="status">تصاویر مستقل داستان: ۰ از ۳</p><p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
  <div class="field"><label for="voiceTestText">متن آزمایشی صدای انگلیسی / English voice test</label><textarea id="voiceTestText" maxlength="1200">LUNA: Wait… Mr. and Mrs. Thompson? LEO: I booked this suite for our special night! LUNA: Darling, we are Luna and Leo, not the Thompsons. LEO: Next time, I’ll book under our real names… unless the hotel has a Mr. and Mrs. Genius suite!</textarea></div>
  <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
  <p class="hint" id="voiceStatus" role="status">صدای آزمایشی پس از اتصال Worker ساخته می‌شود.</p>
@@ -355,12 +355,12 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
    return (section.split(/SHOT\s*2|SCENE\s*2|\n\s*2[.):]/i)[0]||section).replace(/^\s*[:\n-]+/,'').replace(/^(?:SHOT\s*1|SCENE\s*1|1[.):])\s*/i,'').trim().slice(0,1800);
  }
- let generatedImageData='',generatedImageObjectUrl='';
+ let generatedImageData='',generatedImageObjectUrl='';let generatedSceneImages=[];
  const lunaDiagnostics=[];
  function logLunaDiagnostic(kind,message,extra={}){const item={time:new Date().toISOString(),kind,message:String(message||'').slice(0,1200),extra};lunaDiagnostics.push(item);try{localStorage.setItem('lunaDiagnostics',JSON.stringify(lunaDiagnostics.slice(-30)))}catch(e){}}
  function openLunaImageDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('luna-image-library',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images',{keyPath:'id',autoIncrement:true})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
  async function saveLunaImage(dataUrl,meta={}){try{const db=await openLunaImageDb();await new Promise((resolve,reject)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').add({dataUrl,meta,createdAt:new Date().toISOString()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){logLunaDiagnostic('image-storage-error',e.message||e);return false}}
- async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;rows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=rows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
+ async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;rows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=rows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
 function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{profile:readCharacterProfile(),title:el('epTitle').value,worker:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,'')});}
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
  async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
@@ -422,7 +422,7 @@ el('generateSceneImage').onclick=async()=>{
      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
      try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
      const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
-     if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
+     if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX',prompt:prompt,title:el('epTitle').value,profile:readCharacterProfile()});
      el('visualStatus').textContent='تصویر ساخته شد ('+(data.model||'FLUX')+').' +(stored?' در کتابخانه خصوصی همین مرورگر ذخیره شد.':' ذخیره دائمی مرورگر ناموفق بود؛ تصویر را دانلود کن.')+' می‌توانی کیفیت را ارزیابی کنی.';
@@ -430,7 +430,43 @@ el('generateSceneImage').onclick=async()=>{
    }catch(error){const msg=error.name==='AbortError'?'زمان درخواست تمام شد (۹۰ ثانیه).':(error.message||'خطای نامشخص');el('visualStatus').textContent='ساخت تصویر ناموفق بود: '+msg;logLunaDiagnostic('image-generation-error',msg,{prompt:prompt.slice(0,1200),endpoint:(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).replace(/\?.*$/,'')});}
    finally{button.disabled=false;button.textContent='۱. ساخت تصویر واقعی صحنه';}
  };
- el('testImageUpload').onclick=async()=>{
+ 
+  el('generateMoreScenes').onclick=async()=>{
+    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه اول را بساز.';return;}
+    if(!lastProductionPack){el('visualStatus').textContent='بسته تولید در دسترس نیست؛ ابتدا سناریو و بسته تولید را بساز.';return;}
+    const parsed=parseProductionPack(lastProductionPack);
+    const remaining=(parsed.shots||[]).filter(x=>x.id>1).slice(0,2);
+    if(remaining.length<2){el('visualStatus').textContent='در بسته تولید حداقل سه صحنه مستقل پیدا نشد. بسته تولید را دوباره بساز تا برای هر صحنه دستور تصویر داشته باشیم.';return;}
+    const button=el('generateMoreScenes'),profile=saveCharacterProfile(false)||readCharacterProfile();
+    const endpoint=(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).trim();
+    const identity='CONTINUITY LOCK: Use exactly the same two adult lead characters as the reference episode image. LUNA: '+profile.lunaLook.slice(0,240)+' LEO: '+profile.leoLook.slice(0,240)+' Keep their exact faces, hair, age, body proportions, wardrobe palette and accessories consistent with scene 1. '+profile.style.slice(0,300);
+    button.disabled=true;button.textContent='در حال ساخت صحنه‌ها…';
+    try{
+      for(const shot of remaining){
+        const scene=(shot.imagePrompt||shot.action||shot.raw||'A new story beat in the same luxury hotel').replace(/^\s*[-*#\d.)]+/,'').slice(0,650);
+        const action=shot.action?(' Visible action: '+shot.action.slice(0,300)):'';
+        const prompt=(identity+' NEW DISTINCT STORY SCENE '+shot.id+': '+scene+action+' Create a genuinely different camera composition and moment, not a crop or variation of the first frame. Preserve the same location continuity, time of day and outfits. Both LUNA and LEO should remain recognizable; natural candid expressions, realistic skin texture, believable hands, cinematic natural light, vertical 9:16 photorealistic live-action frame. No text, logos, collage, split-screen, extra people or identity changes.').slice(0,2000);
+        el('visualStatus').textContent='در حال ساخت تصویر مستقل صحنه '+shot.id+' از ۳؛ ممکن است هر تصویر کمی زمان ببرد…';
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),110000);let response;
+        try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:profile}),signal:controller.signal});}finally{clearTimeout(timer);}
+        const data=await response.json();
+        if(!response.ok||data.error||!data.image)throw new Error((data.error||'تصویر صحنه '+shot.id+' تولید نشد')+(data.details?' — '+data.details:''));
+        const dataUrl='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
+        generatedSceneImages.push({dataUrl,shot:shot.id,prompt});
+        await saveLunaImage(dataUrl,{model:data.model||'FLUX',mode:'story-scene',shot:shot.id,prompt,title:el('epTitle').value,profile});
+        el('sceneImagesStatus').textContent='تصاویر مستقل داستان: '+generatedSceneImages.length+' از ۳';
+        logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',imageChars:data.image.length});
+      }
+      el('visualStatus').textContent='هر سه تصویر مستقل داستان آماده‌اند. حالا صدای دیالوگ را بساز و ویدئوی صداگذاری‌شده را تدوین کن.';
+      button.textContent='تصاویر سه صحنه آماده شد';
+    }catch(error){
+      const msg=error.name==='AbortError'?'تولید تصویر بیش از ۱۱۰ ثانیه طول کشید.':(error.message||'خطای نامشخص');
+      el('visualStatus').textContent='تولید تصاویر مستقل متوقف شد: '+msg+'؛ تصاویر موفق قبلی حفظ شده‌اند.';
+      logLunaDiagnostic('scene-image-error',msg,{completed:generatedSceneImages.length});
+      button.textContent='تلاش دوباره برای تصاویر صحنه‌ها';
+    }finally{button.disabled=generatedSceneImages.length>=3;}
+  };
+el('testImageUpload').onclick=async()=>{
    if(!generatedImageData) await restoreLatestLunaImage();
    if(!generatedImageData){el('visualStatus').textContent='تصویر مرجعی برای آزمایش پیدا نشد.';return;}
    const button=el('testImageUpload');button.disabled=true;button.textContent='در حال ارسال آزمایشی تصویر…';
@@ -513,6 +549,8 @@ el('generateSceneImage').onclick=async()=>{
    try{
      const img=el('sceneImage');
      if(!img.complete||!img.naturalWidth)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+     if(generatedSceneImages.length<3)throw new Error('برای تدوین چندصحنه‌ای واقعی، ابتدا دو تصویر مستقل صحنه‌های بعدی را هم بساز.');
+     const sceneImageElements=await Promise.all(generatedSceneImages.slice(0,3).map(item=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('یکی از تصاویر مستقل صحنه بارگذاری نشد.'));image.src=item.dataUrl;})));
      if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
      audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
      if(!audioStream.getAudioTracks().length)throw new Error('مسیر صدای ضبط‌شده خالی است.');
@@ -524,7 +562,7 @@ el('generateSceneImage').onclick=async()=>{
      recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئوی صداگذاری‌شده ناموفق بود.'));});
      const rawLines=(el('voiceTestText').value||'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
-     const captions=rawLines.length?rawLines:[ 'LUNA & LEO — A luxury surprise gone wrong.' ];
+     const captions=rawLines.length>1?rawLines:(rawLines[0]||'').split(/(?=(?:LUNA|LEO)\\s*:)/i).map(x=>x.trim()).filter(Boolean);
      const shots=[
        {name:'THE GRAND ARRIVAL',x:.50,y:.48,z:1.02},
        {name:'LUNA · THE REACTION',x:.34,y:.42,z:1.22},
@@ -540,14 +578,15 @@ el('generateSceneImage').onclick=async()=>{
      const draw=now=>{
        const elapsed=Math.max(0,now-startTime),t=Math.min(1,elapsed/durationMs);
        const shotPos=t*shots.length,shotIndex=Math.min(shots.length-1,Math.floor(shotPos));
-       const local=shotPos-shotIndex,shot=shots[shotIndex],prev=shots[Math.max(0,shotIndex-1)];
+       const local=shotPos-shotIndex,shot=shots[shotIndex];
+       const frameImage=sceneImageElements[Math.min(sceneImageElements.length-1,Math.floor(shotIndex*sceneImageElements.length/shots.length))];
        const zoom=shot.z+Math.sin(local*Math.PI)*.045;
-       const cover=Math.max(720/img.naturalWidth,1280/img.naturalHeight);
-       const dw=img.naturalWidth*cover*zoom,dh=img.naturalHeight*cover*zoom;
+       const cover=Math.max(720/frameImage.naturalWidth,1280/frameImage.naturalHeight);
+       const dw=frameImage.naturalWidth*cover*zoom,dh=frameImage.naturalHeight*cover*zoom;
        const panX=(shot.x-.5)*Math.max(0,dw-720),panY=(shot.y-.5)*Math.max(0,dh-1280);
        ctx.fillStyle='#17121b';ctx.fillRect(0,0,720,1280);
        ctx.save();ctx.beginPath();ctx.rect(0,0,720,1280);ctx.clip();
-       ctx.drawImage(img,(720-dw)/2-panX,(1280-dh)/2-panY,dw,dh);
+       ctx.drawImage(frameImage,(720-dw)/2-panX,(1280-dh)/2-panY,dw,dh);
        const cutFade=local<.10?local/.10:1;
        if(cutFade<1){ctx.fillStyle='rgba(12,8,15,'+(1-cutFade)+')';ctx.fillRect(0,0,720,1280);}
        ctx.restore();
@@ -578,8 +617,8 @@ el('generateSceneImage').onclick=async()=>{
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
      const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-multishot-voiced-episode.webm';link.textContent='دانلود ویدئوی چندبرداشتی صداگذاری‌شده';
-     el('visualStatus').textContent='نسخه چندبرداشتی ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج قاب‌بندی و حرکت دوربین، برش‌های تصویری، زیرنویس دیالوگ و صدای واقعی داخل فایل. فعلاً همه نماها از همان تصویر مرجع ساخته می‌شوند؛ برای صحنه‌های مستقل باید تصاویر جداگانه تولید شوند.';
-     logLunaDiagnostic('voiced-video-success','Rendered five-shot edit with generated voice audio track',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,captionCount:captions.length});
+     el('visualStatus').textContent='ویدئوی داستانی چندصحنه‌ای ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج برداشت از سه تصویر مستقل تولیدشده، حرکت دوربین، زیرنویس دیالوگ و صدای واقعی در یک فایل.';
+     logLunaDiagnostic('voiced-video-success','Rendered five-shot voiced edit from three independently generated scene images',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:sceneImageElements.length,captionCount:captions.length});
    }catch(error){
      const msg=error.message||'خطای نامشخص';el('visualStatus').textContent='ساخت ویدئوی صداگذاری‌شده ناموفق بود: '+msg;
      logLunaDiagnostic('voiced-video-error',msg,{audioDuration:audio.duration,audioReadyState:audio.readyState});
