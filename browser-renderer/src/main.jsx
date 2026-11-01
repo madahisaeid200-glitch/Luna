@@ -67,8 +67,8 @@ function App() {
   const render = async () => {
     setBusy(true); setProgress(0); setVideoUrl('');
     try {
-      const supported = await canRenderMediaOnWeb();
-      if (!supported) throw new Error('This browser does not currently support the WebCodecs video renderer. Try an updated Chrome browser.');
+      const support = await canRenderMediaOnWeb({width: 720, height: 1280, container: 'mp4', videoCodec: 'h264', videoBitrate: 'low', muted: true});
+      if (!support.canRender) throw new Error(support.issues.map(issue => issue.message).join(' '));
       const result = await renderMediaOnWeb({
         composition: {id: 'LUNA-Browser-Render', component: LUNAComposition, durationInFrames: frames, fps: 24, width: 720, height: 1280},
         inputProps: {episode: pack.episode || {}, shots},
