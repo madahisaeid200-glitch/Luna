@@ -161,29 +161,40 @@ ${script.trim()}`;
       }
       const prompt = String(body.prompt || "").trim().slice(0, 1800);
       if (!prompt) return json({ error: "An image-edit instruction is required." }, 400);
+      const startedAt = Date.now();
       try {
-        const startedAt = Date.now();
         const match = body.image.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([\s\S]+)$/i);
         const mimeType = match[1].toLowerCase().replace("image/jpg", "image/jpeg");
         const binary = atob(match[2]);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const form = new FormData();
-        form.append("prompt", prompt);
-        form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
         const width = Math.min(1920, Math.max(256, Math.round(Number(body.width) || 1024)));
         const height = Math.min(1920, Math.max(256, Math.round(Number(body.height) || 1024)));
-        form.append("width", String(width));
-        form.append("height", String(height));
-        const formResponse = new Response(form);
-        const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
-          multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
-        });
-        const image = result?.image || result?.result?.image;
-        if (typeof image !== "string" || !image) return json({ error: "Image editing model returned no image data." }, 502);
-        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-2-klein-4b", mode: "image_edit", generationMs: Date.now() - startedAt });
+        const failures = [];
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const form = new FormData();
+            form.append("prompt", prompt);
+            form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
+            form.append("width", String(width));
+            form.append("height", String(height));
+            const formResponse = new Response(form);
+            const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
+              multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
+            });
+            const image = result?.image || result?.result?.image;
+            if (typeof image === "string" && image) {
+              return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-2-klein-4b", mode: "image_edit", generationMs: Date.now() - startedAt, attempts: attempt, retryUsed: attempt > 1 });
+            }
+            failures.push("attempt " + attempt + ": model returned no image data");
+          } catch (error) {
+            failures.push("attempt " + attempt + ": " + String(error?.message || error || "unknown error").slice(0, 220));
+          }
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700));
+        }
+        return json({ error: "AI reference-image editing failed after 2 attempts.", details: failures.join(" | "), generationMs: Date.now() - startedAt, attempts: 2 }, 502);
       } catch (error) {
-        return json({ error: "AI reference-image editing failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+        return json({ error: "AI reference-image editing request could not be prepared.", details: String(error?.message || error || "unknown error").slice(0, 300), generationMs: Date.now() - startedAt }, 502);
       }
     }
 
