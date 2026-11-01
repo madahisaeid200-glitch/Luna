@@ -154,48 +154,53 @@ ${script.trim()}`;
       }
     }
 
-    // Edit an existing LUNA image with FLUX.2 Klein reference-image support.
+    // Stream milestones for mobile diagnostics: receipt, model start, and final result.
     if (mode === "image_edit") {
-      if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image) || body.image.length > 4_500_000) {
-        return json({ error: "Reference image is missing, unsupported, or too large. Please use a compressed PNG, JPEG, or WebP image." }, 400);
-      }
-      const prompt = String(body.prompt || "").trim().slice(0, 1800);
-      if (!prompt) return json({ error: "An image-edit instruction is required." }, 400);
-      const startedAt = Date.now();
-      try {
-        const match = body.image.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([\s\S]+)$/i);
-        const mimeType = match[1].toLowerCase().replace("image/jpg", "image/jpeg");
-        const binary = atob(match[2]);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const width = Math.min(1920, Math.max(256, Math.round(Number(body.width) || 1024)));
-        const height = Math.min(1920, Math.max(256, Math.round(Number(body.height) || 1024)));
-        const failures = [];
-        for (let attempt = 1; attempt <= 2; attempt++) {
+      const headers = { ...cors, "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" };
+      const stream = new ReadableStream({ start(controller) {
+        const send = value => controller.enqueue(new TextEncoder().encode(JSON.stringify(value) + "\n"));
+        (async () => {
+          const startedAt = Date.now();
           try {
-            const form = new FormData();
-            form.append("prompt", prompt);
-            form.append("input_image_0", new Blob([bytes], { type: mimeType }), "luna-reference." + (mimeType.split("/")[1] || "jpg"));
-            form.append("width", String(width));
-            form.append("height", String(height));
-            const formResponse = new Response(form);
-            const result = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
-              multipart: { body: formResponse.body, contentType: formResponse.headers.get("content-type") }
-            });
-            const image = result?.image || result?.result?.image;
-            if (typeof image === "string" && image) {
-              return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-2-klein-4b", mode: "image_edit", generationMs: Date.now() - startedAt, attempts: attempt, retryUsed: attempt > 1 });
+            if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image) || body.image.length > 4500000) {
+              send({type:"error",error:"Reference image is missing, unsupported, or too large."}); return;
             }
-            failures.push("attempt " + attempt + ": model returned no image data");
-          } catch (error) {
-            failures.push("attempt " + attempt + ": " + String(error?.message || error || "unknown error").slice(0, 220));
-          }
-          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700));
-        }
-        return json({ error: "AI reference-image editing failed after 2 attempts.", details: failures.join(" | "), generationMs: Date.now() - startedAt, attempts: 2 }, 502);
-      } catch (error) {
-        return json({ error: "AI reference-image editing request could not be prepared.", details: String(error?.message || error || "unknown error").slice(0, 300), generationMs: Date.now() - startedAt }, 502);
-      }
+            const prompt=String(body.prompt||"").trim().slice(0,1800);
+            if(!prompt){send({type:"error",error:"An image-edit instruction is required."});return;}
+            send({type:"progress",stage:"worker_received",imageChars:body.image.length,elapsedMs:Date.now()-startedAt});
+            const match=body.image.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([\s\S]+)$/i);
+            const mimeType=match[1].toLowerCase().replace("image/jpg","image/jpeg");
+            const binary=atob(match[2]),bytes=new Uint8Array(binary.length);
+            for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+            const width=Math.min(1920,Math.max(256,Math.round(Number(body.width)||1024)));
+            const height=Math.min(1920,Math.max(256,Math.round(Number(body.height)||1024)));
+            const failures=[];
+            for(let attempt=1;attempt<=2;attempt++){
+              try{
+                send({type:"progress",stage:"model_started",attempt,elapsedMs:Date.now()-startedAt});
+                const form=new FormData();
+                form.append("prompt",prompt);
+                form.append("input_image_0",new Blob([bytes],{type:mimeType}),"luna-reference."+(mimeType.split("/")[1]||"jpg"));
+                form.append("width",String(width));form.append("height",String(height));
+                const formResponse=new Response(form);
+                const result=await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b",{multipart:{body:formResponse.body,contentType:formResponse.headers.get("content-type")}});
+                const image=result?.image||result?.result?.image;
+                if(typeof image==="string"&&image){
+                  send({type:"complete",image,mimeType:"image/jpeg",model:"@cf/black-forest-labs/flux-2-klein-4b",mode:"image_edit",generationMs:Date.now()-startedAt,attempts:attempt,retryUsed:attempt>1});return;
+                }
+                failures.push("attempt "+attempt+": model returned no image data");
+              }catch(error){
+                failures.push("attempt "+attempt+": "+String(error?.message||error||"unknown error").slice(0,220));
+                send({type:"progress",stage:"model_attempt_failed",attempt,details:failures[failures.length-1]});
+              }
+              if(attempt<2)await new Promise(resolve=>setTimeout(resolve,700));
+            }
+            send({type:"error",error:"AI reference-image editing failed after 2 attempts.",details:failures.join(" | "),generationMs:Date.now()-startedAt,attempts:2});
+          }catch(error){send({type:"error",error:"AI reference-image editing request could not be prepared.",details:String(error?.message||error||"unknown error").slice(0,300),generationMs:Date.now()-startedAt});}
+          finally{controller.close();}
+        })().catch(error=>{try{send({type:"error",error:String(error?.message||error||"stream failure").slice(0,300)});controller.close();}catch{}});
+      }});
+      return new Response(stream,{status:200,headers});
     }
 
     // Generate one real scene image with Cloudflare-hosted FLUX.1 schnell.
