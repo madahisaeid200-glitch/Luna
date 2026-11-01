@@ -1,6 +1,6 @@
 {
   "app": "LUNA Cloudflare diagnostics",
-  "createdAt": "2026-11-01T08:48:13.959Z",
+  "createdAt": "2026-11-01T08:49:14.680Z",
   "accountIdConfigured": true,
   "tokenConfigured": true,
   "worker": "orange-firefly-6434",
@@ -42,7 +42,7 @@
     },
     "workerHealth": {
       "httpStatus": 200,
-      "elapsedMs": 85,
+      "elapsedMs": 105,
       "ok": true,
       "service": "LUNA AI Worker",
       "aiBinding": true,
@@ -52,12 +52,12 @@
     },
     "meloTtsTest": {
       "httpStatus": 200,
-      "elapsedMs": 646,
-      "responseBytes": 341944,
+      "elapsedMs": 1020,
+      "responseBytes": 576780,
       "ok": false,
       "model": "@cf/myshell-ai/melotts",
-      "generationMs": 593,
-      "audioBase64Chars": 341812,
+      "generationMs": 944,
+      "audioBase64Chars": 576648,
       "error": null,
       "details": null,
       "resultType": "[object Object]"
