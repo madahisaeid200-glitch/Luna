@@ -19,7 +19,7 @@
 <div class="field"><label id="toneLabel" for="tone">حال‌وهوای داستان</label><select id="tone"><option value="romcom">عاشقانه و بامزه</option><option value="chaos">سوءتفاهم و آشوب</option><option value="luxury">لوکس و سفر</option></select></div>
 <div class="field"><label id="langLabel" for="scriptLang">زبان متن خروجی</label><select id="scriptLang"><option value="en">English</option><option value="fa">فارسی</option><option value="both">هر دو زبان / Both</option></select></div>
 <div class="actions"><button class="primary" id="generate">ساخت پیش‌نویس قسمت</button><button id="save">ذخیره در داشبورد</button></div><p class="hint" id="saveHint">ذخیره در همین مرورگر انجام می‌شود؛ برای انتقال به دستگاه دیگر باید خروجی را کپی کنی.</p></section>
-<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button id="exportProductionJson" disabled>خروجی استاندارد برای موتور ویدئو (JSON)</button><a href="./render/" target="_blank" rel="noopener" style="display:inline-block;padding:12px 16px;border:1px solid #b98b68;border-radius:10px;color:inherit;text-decoration:none">رندر MP4 روی همین دستگاه</a><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button></div></section>
+<section class="panel"><div class="eyebrow" id="outputEyebrow">SCRIPT DRAFT</div><h2 id="outputTitle">پیش‌نویس داستان</h2><div class="output" id="output">برای شروع، عنوان و اتفاق اصلی را وارد کن و روی «ساخت پیش‌نویس قسمت» بزن.</div><div class="actions"><button id="copy">کپی متن</button><button id="download">دانلود فایل متنی</button><button id="exportProductionJson" disabled>خروجی استاندارد برای موتور ویدئو (JSON)</button><a href="./render/" target="_blank" rel="noopener" style="display:inline-block;padding:12px 16px;border:1px solid #b98b68;border-radius:10px;color:inherit;text-decoration:none">رندر MP4 روی همین دستگاه</a><button class="primary" id="makeProductionPack">ساخت بسته تولید ویدئو / Video pack</button><button id="makeDirectorPlan" disabled>ساخت نقشه کارگردانی سینمایی (مرحلهٔ جدید)</button><button id="downloadDirectorPlan" disabled>دانلود نقشهٔ فیلم‌سازی JSON</button></div></section>
 </div>
 
 <section class="panel" id="characterManager">
@@ -77,7 +77,7 @@
 </section>
 </main><footer>LUNA Studio · Episode Producer Beta</footer>
 <script>
-const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastProductionPack='';
+const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastProductionPack='';let lastDirectorPlan=null;
 const characterDefaults={lunaName:'LUNA',lunaLook:'Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.',lunaPersonality:'Confident, warm, witty, romantic, playful, stylish, affectionate.',leoName:'LEO',leoLook:'Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.',leoPersonality:'Charming, affectionate, confident, slightly overconfident, adorably chaotic, romantic.',style:'Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.'};
 function readCharacterProfile(){return {lunaName:(el('charLunaName')?.value||characterDefaults.lunaName).trim().slice(0,40),lunaLook:(el('charLunaLook')?.value||characterDefaults.lunaLook).trim().slice(0,700),lunaPersonality:(el('charLunaPersonality')?.value||characterDefaults.lunaPersonality).trim().slice(0,400),leoName:(el('charLeoName')?.value||characterDefaults.leoName).trim().slice(0,40),leoLook:(el('charLeoLook')?.value||characterDefaults.leoLook).trim().slice(0,700),leoPersonality:(el('charLeoPersonality')?.value||characterDefaults.leoPersonality).trim().slice(0,400),style:(el('charStyle')?.value||characterDefaults.style).trim().slice(0,500)}}
 function fillCharacterProfile(profile){const p={...characterDefaults,...(profile||{})};for(const [key,id] of [['lunaName','charLunaName'],['lunaLook','charLunaLook'],['lunaPersonality','charLunaPersonality'],['leoName','charLeoName'],['leoLook','charLeoLook'],['leoPersonality','charLeoPersonality'],['style','charStyle']])if(el(id))el(id).value=p[key]}
@@ -286,6 +286,28 @@ el('makeProductionPack').onclick=async()=>{
    updateAiStatus('ساخت بسته تولید ناموفق بود: '+(error.name==='AbortError'?'زمان درخواست تمام شد.':(error.message||'خطای نامشخص')));
    alert('ساخت بسته تولید ناموفق بود: '+(error.message||'خطای نامشخص'));
  }finally{button.disabled=false;button.textContent='ساخت بسته تولید ویدئو / Video pack';}
+};
+el('makeDirectorPlan').onclick=async()=>{
+ if(!lastDraft){alert('ابتدا سناریوی قسمت را تولید کن.');return;}
+ const endpoint=(localStorage.getItem('lunaAiEndpoint')||defaultEndpoint||'').replace(/\\/$/,'');
+ if(!endpoint){updateAiStatus('اتصال هوش مصنوعی تنظیم نشده است.');return;}
+ const button=el('makeDirectorPlan');button.disabled=true;button.textContent='در حال کارگردانی و شکستن داستان به نماها…';
+ updateAiStatus('در حال ساخت نقشهٔ ساختاریافتهٔ فیلم؛ این مرحله هنوز ویدئو تولید نمی‌کند.');
+ try{
+  const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'director',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()})},90000);
+  if(!response.ok||data.error)throw new Error(data.error||'Director plan failed');
+  if(!data.plan||!Array.isArray(data.plan.shots))throw new Error('پاسخ مدل فاقد فهرست نماهای معتبر است.');
+  lastDirectorPlan=data.plan;
+  el('downloadDirectorPlan').disabled=false;
+  el('output').textContent=JSON.stringify(data.plan,null,2);
+  updateAiStatus('نقشهٔ کارگردانی آماده شد: '+data.plan.shots.length+' نما، مدت هدف '+data.plan.episode.targetDurationSeconds+' ثانیه. این هنوز رندر ویدئو نیست؛ مرحلهٔ بعد اتصال موتور ویدئوی واقعی است.');
+ }catch(error){updateAiStatus('ساخت نقشهٔ کارگردانی ناموفق بود: '+(error.message||'خطای نامشخص'));}
+ finally{button.disabled=false;button.textContent='ساخت نقشه کارگردانی سینمایی (مرحلهٔ جدید)';}
+};
+el('downloadDirectorPlan').onclick=()=>{
+ if(!lastDirectorPlan)return;
+ const blob=new Blob([JSON.stringify(lastDirectorPlan,null,2)],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-director-video-plan.json';a.click();URL.revokeObjectURL(url);
 };
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;const parts=lastDraft.split(/══════════ نسخه فارسی ══════════/);const englishDraft=(parts[0]||lastDraft).trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const persianDraft=parts[1]?parts[1].trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean):['نسخه فارسی این قسمت هنوز آماده نشده است.'];arr.push({id,en:title,fa:title,storyEn:englishDraft.length?englishDraft:[lastDraft],storyFa:persianDraft.length?persianDraft:['نسخه فارسی این قسمت هنوز آماده نشده است.']});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
 el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!textToCopy)return;try{await navigator.clipboard.writeText(textToCopy);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
