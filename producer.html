@@ -51,6 +51,10 @@
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
 <div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
 <p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
+ <div class="field"><label for="voiceTestText">متن آزمایشی صدای انگلیسی / English voice test</label><textarea id="voiceTestText" maxlength="1200">Luna, I booked us a romantic dinner. Why are we standing in the hotel laundry room?</textarea></div>
+ <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
+ <p class="hint" id="voiceStatus" role="status">صدای آزمایشی پس از اتصال Worker ساخته می‌شود.</p>
+ <audio id="voicePreview" controls style="display:none;width:100%;margin-top:10px"></audio>
 <div class="actions"><button id="analyzeSceneImage" type="button" disabled>ارزیابی خودکار کیفیت تصویر</button><button id="downloadDiagnostic" type="button">دانلود گزارش خطا و آزمایش</button></div>
 <p class="hint" id="imageAnalysisStatus" role="status">ارزیابی تصویر با هوش مصنوعی پس از تولید تصویر در دسترس می‌شود.</p>
 <div class="output" id="imageAnalysisReport" style="min-height:80px">هنوز گزارشی ثبت نشده است.</div>
@@ -488,6 +492,24 @@ el('generateSceneImage').onclick=async()=>{
      recorder.stop();await stopped;stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mime});if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);generatedImageObjectUrl=URL.createObjectURL(blob);const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.textContent='دانلود ویدئوی آزمایشی (WebM)';el('visualStatus').textContent='ویدئوی آزمایشی ۶ ثانیه‌ای ساخته شد. این خروجی تصویر متحرک و عنوان دارد؛ هنوز دیالوگ و صدای شخصیت‌ها ندارد.';
    }catch(error){el('visualStatus').textContent='ساخت ویدئو ناموفق بود: '+(error.message||'خطای نامشخص');}
    finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی آزمایشی ۶ ثانیه‌ای';}
+ };
+
+
+ el('generateVoice').onclick=async()=>{
+   const button=el('generateVoice'),endpoint=(endpointInput.value.trim()||defaultEndpoint).replace(/\\/$/,'');
+   const speech=el('voiceTestText').value.trim();
+   if(!endpoint){el('voiceStatus').textContent='ابتدا آدرس Worker را در بخش اتصال وارد و ذخیره کن.';return;}
+   if(!speech){el('voiceStatus').textContent='متن انگلیسی برای صداگذاری وارد کن.';return;}
+   button.disabled=true;button.textContent='در حال ساخت صدا…';el('voiceStatus').textContent='درخواست به MeloTTS ارسال شد؛ منتظر فایل MP3 هستیم…';
+   try{
+     const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})},90000);
+     if(!response.ok||data.error)throw new Error((data.error||'Voice generation failed')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
+     if(!data.audio)throw new Error('Worker response did not contain audio data.');
+     const player=el('voicePreview');player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;player.style.display='block';
+     el('voiceStatus').textContent='صدای MP3 ساخته شد ('+(data.model||'MeloTTS')+')؛ مدت تولید: '+Math.round((data.generationMs||0)/1000)+' ثانیه. دکمه پخش را بزن.';
+     logLunaDiagnostic('tts-success','English voice generated',{model:data.model,audioChars:data.audio.length,generationMs:data.generationMs});
+   }catch(error){el('voiceStatus').textContent='ساخت صدا ناموفق بود: '+(error.message||'خطای نامشخص');logLunaDiagnostic('tts-error',error.message||error);}
+   finally{button.disabled=false;button.textContent='۳. ساخت صدای واقعی انگلیسی';}
  };
 
  el('language').onclick=()=>{fa=!fa;setUi()};setUi();
