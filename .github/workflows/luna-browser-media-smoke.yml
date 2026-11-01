@@ -82,10 +82,11 @@ jobs:
               await fs.writeFile('luna-test-output/luna-preview.webm',Buffer.from(videoData));
               await page.locator('#makeVoicedVideo').click();
               await waitFor(()=>/ویدئوی صداگذاری‌شده ساخته شد/.test(document.querySelector('#visualStatus')?.textContent||''),45000,'voiced-video');
-              const voicedVideo=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return await r.blob();});
-              if(voicedVideo.size<12000) throw new Error('Voiced video unexpectedly small: '+voicedVideo.size);
-              await fs.writeFile('luna-test-output/luna-voiced-episode.webm',Buffer.from(await voicedVideo.arrayBuffer()));
-              results.push('VOICED_VIDEO: PASS ('+voicedVideo.size+' bytes)');
+              const voicedVideo=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return Array.from(new Uint8Array(await (await r.blob()).arrayBuffer()));});
+              const voicedVideoBytes=Buffer.from(voicedVideo);
+              if(voicedVideoBytes.length<12000) throw new Error('Voiced video unexpectedly small: '+voicedVideoBytes.length);
+              await fs.writeFile('luna-test-output/luna-voiced-episode.webm',voicedVideoBytes);
+              results.push('VOICED_VIDEO: PASS ('+voicedVideoBytes.length+' bytes)');
               await page.screenshot({path:'luna-test-output/producer-final.png',fullPage:true});
               console.log(results.join('\n'));
               console.log('MEDIA PIPELINE: PASS');
