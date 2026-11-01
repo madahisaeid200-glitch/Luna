@@ -588,6 +588,11 @@ el('generateSceneImage').onclick=async()=>{
       player.load();
     }catch(error){
       status.textContent='ساخت صدا ناموفق بود: '+(error.name==='AbortError'?'زمان پاسخ مدل بیش از ۹۰ ثانیه شد.':(error.message||String(error)));
+      try{
+        const old=JSON.parse(localStorage.getItem('lunaVoiceDiagnostics')||'[]');
+        old.push({time:new Date().toISOString(),kind:'tts-error',message:error.name==='AbortError'?'زمان پاسخ مدل بیش از ۹۰ ثانیه شد.':(error.message||String(error)),errorName:error.name||'Error',endpoint:endpoint,online:navigator.onLine,textLength:speech.length});
+        localStorage.setItem('lunaVoiceDiagnostics',JSON.stringify(old.slice(-20)));
+      }catch(storageError){}
     }finally{
       button.disabled=false;
       button.textContent='۳. ساخت صدای واقعی انگلیسی';
@@ -595,3 +600,40 @@ el('generateSceneImage').onclick=async()=>{
   },{capture:true});
 })();
 </script>
+
+<script>
+// Independent diagnostic export: works even if the main producer script fails.
+(function(){
+  const button=document.getElementById('downloadDiagnostic');
+  if(!button)return;
+  button.onclick=null;
+  button.addEventListener('click',function(){
+    try{
+      const read=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}};
+      const report={
+        app:'LUNA Studio',createdAt:new Date().toISOString(),
+        page:location.href.split('?')[0],userAgent:navigator.userAgent,online:navigator.onLine,
+        endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\\?.*$/,''),
+        voiceDiagnostics:read('lunaVoiceDiagnostics').slice(-20),
+        diagnostics:read('lunaDiagnostics').slice(-40),
+        visibleStatus:{
+          voice:document.getElementById('voiceStatus')?.textContent||'',
+          visual:document.getElementById('visualStatus')?.textContent||'',
+          analysis:document.getElementById('imageAnalysisStatus')?.textContent||''
+        }
+      };
+      const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json;charset=utf-8'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='LUNA-diagnostic-report.json';a.style.display='none';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url)},60000);
+      const status=document.getElementById('imageAnalysisStatus');
+      if(status)status.textContent='گزارش تشخیصی آماده شد؛ اگر دانلود خودکار انجام نشد، پوشه Downloads گوشی را بررسی کن.';
+    }catch(error){
+      const status=document.getElementById('imageAnalysisStatus');
+      if(status)status.textContent='ساخت گزارش ناموفق بود: '+(error.message||String(error));
+    }
+  },{capture:true});
+})();
+</script>
+\n</body>\n</html>\n
