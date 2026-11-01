@@ -74,16 +74,14 @@ jobs:
           echo "5/5 Real FLUX.2 Klein reference-image edit test"
           python3 -m pip install --quiet pillow
           python3 - <<'PY'
-          import base64, io, json, random
+          import base64, io, json, os
           from PIL import Image
-          random.seed(20261031)
-          image = Image.new("RGB", (480, 480))
-          pixels = image.load()
-          for y in range(480):
-              for x in range(480):
-                  base = int(115 + 65 * x / 479 + 25 * y / 479)
-                  grain = random.randint(-28, 28)
-                  pixels[x, y] = (max(0,min(255,base+grain)), max(0,min(255,base-12+grain)), max(0,min(255,base-28+grain)))
+          generated = json.load(open("/tmp/flux-response.json"))
+          raw = base64.b64decode(generated["image"])
+          image = Image.open(io.BytesIO(raw)).convert("RGB")
+          original_size = image.size
+          scale = min(1.0, 480 / max(image.size))
+          image = image.resize((max(1, round(image.width*scale)), max(1, round(image.height*scale))), Image.Resampling.LANCZOS)
           best = None
           for quality in range(5, 96):
               buffer = io.BytesIO()
@@ -93,11 +91,16 @@ jobs:
               if best is None or candidate[0] < best[0]:
                   best = candidate
           data, quality = best[1], best[2]
-          body = {"mode":"image_edit","image":data,"prompt":"Refine this reference into a polished photorealistic editorial photograph of an elegant luxury European hotel lobby, warm natural light, realistic materials, sophisticated composition. Preserve the main composition and square framing.","width":768,"height":768}
+          ratio = image.width / image.height
+          if ratio >= 1:
+              width, height = 768, max(256, round((768/ratio)/64)*64)
+          else:
+              height, width = 768, max(256, round((768*ratio)/64)*64)
+          body = {"mode":"image_edit","image":data,"prompt":"EDIT IMAGE 0. Keep the exact same adult couple, their facial identity, hair, outfits, expressions, camera angle, crop, furniture, props and luxury European hotel suite. Make only subtle photorealistic refinements to skin texture, hands and fabric. Do not create a new scene, add people, or change the composition.","width":width,"height":height}
           with open("/tmp/flux-edit.json", "w") as f:
               json.dump(body, f, separators=(",", ":"))
-          print("Reference image dimensions: 480x480; image chars:", len(data), "JPEG quality:", quality, "request bytes:", __import__("os").path.getsize("/tmp/flux-edit.json"))
-          assert 35000 <= len(data) <= 45000, "Synthetic reference image is not close enough to the user's reported payload size"
+          print("Using actual FLUX-generated image:", original_size, "->", image.size, "image chars:", len(data), "JPEG quality:", quality, "request bytes:", os.path.getsize("/tmp/flux-edit.json"))
+          assert 35000 <= len(data) <= 45000, "Reference payload is not close enough to the user's reported size"
           PY
           curl --fail-with-body --silent --show-error --max-time 150 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
