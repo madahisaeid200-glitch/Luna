@@ -504,7 +504,7 @@ el('generateSceneImage').onclick=async()=>{
 
 
  el('generateVoice').onclick=async()=>{
-   const button=el('generateVoice'),endpoint=(endpointInput.value.trim()||defaultEndpoint).replace(/\\/$/,'');
+   const button=el('generateVoice'),endpoint=(endpointInput.value.trim()||defaultEndpoint).replace(/\/$/,'');
    const speech=el('voiceTestText').value.trim();
    if(!endpoint){el('voiceStatus').textContent='ابتدا آدرس Worker را در بخش اتصال وارد و ذخیره کن.';return;}
    if(!speech){el('voiceStatus').textContent='متن انگلیسی برای صداگذاری وارد کن.';return;}
@@ -621,7 +621,7 @@ el('generateSceneImage').onclick=async()=>{
       const report={
         app:'LUNA Studio',createdAt:new Date().toISOString(),
         page:location.href.split('?')[0],userAgent:navigator.userAgent,online:navigator.onLine,
-        endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\\?.*$/,''),
+        endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),
         voiceDiagnostics:read('lunaVoiceDiagnostics').slice(-20),
         diagnostics:read('lunaDiagnostics').slice(-40),
         visibleStatus:{
