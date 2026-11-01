@@ -507,42 +507,62 @@ el('generateSceneImage').onclick=async()=>{
    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
    const audio=el('voicePreview');
    if(!audio.src||!audio.src.startsWith('data:audio/')){el('visualStatus').textContent='ابتدا صدای دیالوگ را بساز.';return;}
-   const button=el('makeVoicedVideo');button.disabled=true;button.textContent='در حال تدوین و صداگذاری…';
-   el('visualStatus').textContent='در حال ترکیب تصویر متحرک و صدای واقعی تولیدشده…';
-   let audioStream=null,stream=null;
+   const button=el('makeVoicedVideo');button.disabled=true;button.textContent='در حال تدوین چندبرداشتی…';
+   el('visualStatus').textContent='در حال تدوین نماهای متنوع، زیرنویس دیالوگ و صدای واقعی…';
+   let audioStream=null,stream=null,frameId=null;
    try{
      const img=el('sceneImage');
-     if(!img.complete)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+     if(!img.complete||!img.naturalWidth)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
      if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
      audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
      if(!audioStream.getAudioTracks().length)throw new Error('مسیر صدای ضبط‌شده خالی است.');
      const canvas=el('videoCanvas'),ctx=canvas.getContext('2d');
-     stream=canvas.captureStream(24);
-     audioStream.getAudioTracks().forEach(track=>stream.addTrack(track));
+     stream=canvas.captureStream(24);audioStream.getAudioTracks().forEach(track=>stream.addTrack(track));
      const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
      if(!mime)throw new Error('مرورگر ضبط ویدئوی WebM همراه صدا را پشتیبانی نمی‌کند.');
-     const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000}),chunks=[];
+     const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3000000}),chunks=[];
      recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئوی صداگذاری‌شده ناموفق بود.'));});
+     const rawLines=(el('voiceTestText').value||'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
+     const captions=rawLines.length?rawLines:[ 'LUNA & LEO — A luxury surprise gone wrong.' ];
+     const shots=[
+       {name:'THE GRAND ARRIVAL',x:.50,y:.48,z:1.02},
+       {name:'LUNA · THE REACTION',x:.34,y:.42,z:1.22},
+       {name:'LEO · THE EXPLANATION',x:.68,y:.48,z:1.25},
+       {name:'THE MIX-UP',x:.50,y:.62,z:1.12},
+       {name:'HAPPY ENDING',x:.50,y:.48,z:1.04}
+     ];
      audio.pause();audio.currentTime=0;
      const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:30;
-     recorder.start();
-     await audio.play();
-     const start=performance.now(),durationMs=Math.max(1000,duration*1000);
-     let frameId;
+     const durationMs=Math.max(1000,duration*1000);
+     recorder.start();await audio.play();
+     const startTime=performance.now();
      const draw=now=>{
-       const t=Math.min(1,(now-start)/durationMs);
-       const scale=Math.max(720/img.naturalWidth,1280/img.naturalHeight)*(1+0.09*t);
-       const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
-       const drift=Math.sin(t*Math.PI*2)*12;
+       const elapsed=Math.max(0,now-startTime),t=Math.min(1,elapsed/durationMs);
+       const shotPos=t*shots.length,shotIndex=Math.min(shots.length-1,Math.floor(shotPos));
+       const local=shotPos-shotIndex,shot=shots[shotIndex],prev=shots[Math.max(0,shotIndex-1)];
+       const zoom=shot.z+Math.sin(local*Math.PI)*.045;
+       const cover=Math.max(720/img.naturalWidth,1280/img.naturalHeight);
+       const dw=img.naturalWidth*cover*zoom,dh=img.naturalHeight*cover*zoom;
+       const panX=(shot.x-.5)*Math.max(0,dw-720),panY=(shot.y-.5)*Math.max(0,dh-1280);
        ctx.fillStyle='#17121b';ctx.fillRect(0,0,720,1280);
-       ctx.drawImage(img,(720-dw)/2+drift,(1280-dh)/2,dw,dh);
-       const fade=Math.max(0,Math.min(1,(t-0.72)/0.08));
-       ctx.fillStyle='rgba(12,8,15,0.55)';ctx.fillRect(0,1030,720,250);
-       ctx.textAlign='center';ctx.direction='ltr';ctx.fillStyle='#fff';
-       ctx.font='bold 42px system-ui';ctx.fillText('LUNA & LEO',360,1125);
-       ctx.font='28px system-ui';ctx.fillText('A luxury surprise… gone wrong.',360,1175);
-       ctx.font='20px system-ui';ctx.fillStyle='rgba(255,255,255,'+(0.72+0.28*fade)+')';ctx.fillText('A romantic comedy series',360,1220);
+       ctx.save();ctx.beginPath();ctx.rect(0,0,720,1280);ctx.clip();
+       ctx.drawImage(img,(720-dw)/2-panX,(1280-dh)/2-panY,dw,dh);
+       const cutFade=local<.10?local/.10:1;
+       if(cutFade<1){ctx.fillStyle='rgba(12,8,15,'+(1-cutFade)+')';ctx.fillRect(0,0,720,1280);}
+       ctx.restore();
+       const captionIndex=Math.min(captions.length-1,Math.floor(t*captions.length));
+       const caption=captions[captionIndex]||'';
+       ctx.fillStyle='rgba(12,8,15,.70)';ctx.fillRect(0,1010,720,270);
+       ctx.textAlign='center';ctx.direction='ltr';
+       ctx.fillStyle='#e9c7df';ctx.font='bold 22px system-ui';ctx.fillText(shot.name,360,1065);
+       ctx.fillStyle='#fff';ctx.font='bold 34px system-ui';
+       const words=caption.replace(/^(LUNA|LEO|LUNA & LEO)\\s*:\\s*/i,'').split(/\\s+/);
+       let lines=[],line='';
+       for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>620&&line){lines.push(line);line=word;}else line=test;}
+       if(line)lines.push(line);
+       lines.slice(0,3).forEach((value,i)=>ctx.fillText(value,360,1130+i*43));
+       ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='20px system-ui';ctx.fillText('LUNA  ✦  LEO',360,1250);
        if(!audio.ended&&!audio.paused)frameId=requestAnimationFrame(draw);
      };
      frameId=requestAnimationFrame(draw);
@@ -551,15 +571,15 @@ el('generateSceneImage').onclick=async()=>{
        audio.onended=()=>{clearTimeout(timer);resolve();};
        audio.onerror=()=>{clearTimeout(timer);reject(new Error('پخش صدای تولیدشده با خطا روبه‌رو شد.'));};
      });
-     cancelAnimationFrame(frameId);
+     if(frameId)cancelAnimationFrame(frameId);
      recorder.stop();await stopped;
      const blob=new Blob(chunks,{type:mime});
      if(blob.size<12000)throw new Error('فایل ویدئوی نهایی غیرعادی کوچک است.');
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
-     const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-voiced-episode.webm';link.textContent='دانلود ویدئوی صداگذاری‌شده';
-     el('visualStatus').textContent='ویدئوی صداگذاری‌شده ساخته شد ('+Math.round(blob.size/1024)+' KB). تصویر دارای حرکت دوربین نرم است و صدای واقعی تولیدشده داخل فایل قرار گرفته است؛ هنوز چند صحنهٔ تصویری مستقل و انیمیشن لب‌خوانی ندارد.';
-     logLunaDiagnostic('voiced-video-success','Rendered video with generated voice audio track',{bytes:blob.size,durationSeconds:duration,mime});
+     const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-multishot-voiced-episode.webm';link.textContent='دانلود ویدئوی چندبرداشتی صداگذاری‌شده';
+     el('visualStatus').textContent='نسخه چندبرداشتی ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج قاب‌بندی و حرکت دوربین، برش‌های تصویری، زیرنویس دیالوگ و صدای واقعی داخل فایل. فعلاً همه نماها از همان تصویر مرجع ساخته می‌شوند؛ برای صحنه‌های مستقل باید تصاویر جداگانه تولید شوند.';
+     logLunaDiagnostic('voiced-video-success','Rendered five-shot edit with generated voice audio track',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,captionCount:captions.length});
    }catch(error){
      const msg=error.message||'خطای نامشخص';el('visualStatus').textContent='ساخت ویدئوی صداگذاری‌شده ناموفق بود: '+msg;
      logLunaDiagnostic('voiced-video-error',msg,{audioDuration:audio.duration,audioReadyState:audio.readyState});
