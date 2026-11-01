@@ -280,16 +280,17 @@ el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!
 el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
   function parseProductionPack(pack){
     const headingMap=[
-      ['episodeSummary',/^(?:1[.)]\\s*)?EPISODE SUMMARY\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['characterContinuity',/^(?:2[.)]\\s*)?CHARACTER CONTINUITY\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['shotList',/^(?:3[.)]\\s*)?SHOT LIST\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['imagePrompts',/^(?:4[.)]\\s*)?IMAGE PROMPTS\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['motionPrompts',/^(?:5[.)]\\s*)?VIDEO\\s*[/–-]\\s*MOTION PROMPTS\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['voiceAndSound',/^(?:6[.)]\\s*)?VOICE AND SOUND\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['captions',/^(?:7[.)]\\s*)?ON-SCREEN CAPTIONS\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['editingPlan',/^(?:8[.)]\\s*)?EDITING PLAN\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i],
-      ['qualityCheck',/^(?:9[.)]\\s*)?FINAL QUALITY CHECK\\s*(?:\\([^)]*\\))?\\s*:?\\s*$/i]
-    ];    const sections={}, lines=String(pack||'').replace(/\r\n?/g,'\n').split('\n');
+      ['episodeSummary',/^(?:1[.)]\s*)?EPISODE SUMMARY\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['characterContinuity',/^(?:2[.)]\s*)?CHARACTER CONTINUITY\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['shotList',/^(?:3[.)]\s*)?SHOT LIST\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['imagePrompts',/^(?:4[.)]\s*)?IMAGE PROMPTS\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['motionPrompts',/^(?:5[.)]\s*)?VIDEO\s*[/–-]\s*MOTION PROMPTS\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['voiceAndSound',/^(?:6[.)]\s*)?VOICE AND SOUND\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['captions',/^(?:7[.)]\s*)?ON-SCREEN CAPTIONS\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['editingPlan',/^(?:8[.)]\s*)?EDITING PLAN\s*(?:\([^)]*\))?\s*:?\s*$/i],
+      ['qualityCheck',/^(?:9[.)]\s*)?FINAL QUALITY CHECK\s*(?:\([^)]*\))?\s*:?\s*$/i]
+    ];
+    const sections={}, lines=String(pack||'').replace(/\r\n?/g,'\n').split('\n');
     let active=null, buffer=[];
     const save=()=>{if(active)sections[active]=buffer.join('\n').trim();};
     for(const line of lines){
