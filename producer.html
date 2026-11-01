@@ -549,8 +549,11 @@ el('testImageUpload').onclick=async()=>{
    try{
      const img=el('sceneImage');
      if(!img.complete||!img.naturalWidth)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-     if(generatedSceneImages.length<3)throw new Error('برای تدوین چندصحنه‌ای واقعی، ابتدا دو تصویر مستقل صحنه‌های بعدی را هم بساز.');
-     const sceneImageElements=await Promise.all(generatedSceneImages.slice(0,3).map(item=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('یکی از تصاویر مستقل صحنه بارگذاری نشد.'));image.src=item.dataUrl;})));
+     const selectedSceneData=generatedSceneImages.slice(0,3).map(item=>item.dataUrl);
+     if(!selectedSceneData.length)selectedSceneData.push(generatedImageData);
+     while(selectedSceneData.length<3)selectedSceneData.push(selectedSceneData[selectedSceneData.length-1]);
+     const independentSceneCount=Math.min(3,generatedSceneImages.length);
+     const sceneImageElements=await Promise.all(selectedSceneData.map(dataUrl=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('یکی از تصاویر صحنه بارگذاری نشد.'));image.src=dataUrl;})));
      if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
      audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
      if(!audioStream.getAudioTracks().length)throw new Error('مسیر صدای ضبط‌شده خالی است.');
@@ -617,8 +620,8 @@ el('testImageUpload').onclick=async()=>{
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
      const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-multishot-voiced-episode.webm';link.textContent='دانلود ویدئوی چندبرداشتی صداگذاری‌شده';
-     el('visualStatus').textContent='ویدئوی داستانی چندصحنه‌ای ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج برداشت از سه تصویر مستقل تولیدشده، حرکت دوربین، زیرنویس دیالوگ و صدای واقعی در یک فایل.';
-     logLunaDiagnostic('voiced-video-success','Rendered five-shot voiced edit from three independently generated scene images',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:sceneImageElements.length,captionCount:captions.length});
+     el('visualStatus').textContent='ویدئوی داستانی ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج برداشت تصویری، حرکت دوربین، زیرنویس دیالوگ و صدای واقعی در یک فایل؛ تصاویر مستقل: '+independentSceneCount+' از ۳.';
+     logLunaDiagnostic('voiced-video-success','Rendered five-shot voiced edit',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:independentSceneCount,captionCount:captions.length});
    }catch(error){
      const msg=error.message||'خطای نامشخص';el('visualStatus').textContent='ساخت ویدئوی صداگذاری‌شده ناموفق بود: '+msg;
      logLunaDiagnostic('voiced-video-error',msg,{audioDuration:audio.duration,audioReadyState:audio.readyState});
