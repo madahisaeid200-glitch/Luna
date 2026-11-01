@@ -561,7 +561,7 @@ el('testImageUpload').onclick=async()=>{
      const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3000000}),chunks=[];
      recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئوی صداگذاری‌شده ناموفق بود.'));});
-     const rawLines=(el('voiceTestText').value||'').split(/(?=(?:LUNA|LEO)\\s*:)|\\n+/i).map(x=>x.trim()).filter(Boolean);
+     const rawLines=(el('voiceTestText').value||'').split(/(?=(?:LUNA|LEO)\s*:)|\n+/i).map(x=>x.trim()).filter(Boolean);
      const captions=rawLines.length>1?rawLines:(rawLines[0]||'').split(/(?=(?:LUNA|LEO)\\s*:)/i).map(x=>x.trim()).filter(Boolean);
      const shots=[
        {name:'THE GRAND ARRIVAL',x:.50,y:.48,z:1.02},
