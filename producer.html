@@ -278,7 +278,48 @@ el('makeProductionPack').onclick=async()=>{
 el('save').onclick=()=>{if(!lastDraft){alert(fa?'اول پیش‌نویس را بساز.':'Generate a draft first.');return}const title=el('epTitle').value.trim();let arr;try{arr=JSON.parse(localStorage.getItem('lunaEpisodes')||'null')||[]}catch(e){arr=[]}const id=arr.reduce((m,x)=>Math.max(m,Number(x.id)||0),0)+1;const parts=lastDraft.split(/══════════ نسخه فارسی ══════════/);const englishDraft=(parts[0]||lastDraft).trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const persianDraft=parts[1]?parts[1].trim().split(/\n{2,}/).map(x=>x.trim()).filter(Boolean):['نسخه فارسی این قسمت هنوز آماده نشده است.'];arr.push({id,en:title,fa:title,storyEn:englishDraft.length?englishDraft:[lastDraft],storyFa:persianDraft.length?persianDraft:['نسخه فارسی این قسمت هنوز آماده نشده است.']});localStorage.setItem('lunaEpisodes',JSON.stringify(arr));alert(ui[fa?'fa':'en'].saved)};
 el('copy').onclick=async()=>{const textToCopy=lastProductionPack||lastDraft;if(!textToCopy)return;try{await navigator.clipboard.writeText(textToCopy);alert(ui[fa?'fa':'en'].copied)}catch(e){const ta=document.createElement('textarea');ta.value=textToCopy;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(ui[fa?'fa':'en'].copied)}};
 el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;if(!textToDownload)return;const blob=new Blob([textToDownload],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=lastProductionPack?'LUNA-video-production-pack.txt':'LUNA-episode-draft.txt';a.click();URL.revokeObjectURL(url)};
-  el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const payload={schema:'luna-production-pack',schemaVersion:'1.0.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
+  function parseProductionPack(pack){
+    const headingMap=[
+      ['episodeSummary',/^(?:1[.)]\\s*)?EPISODE SUMMARY\\s*:?\\s*$/i],
+      ['characterContinuity',/^(?:2[.)]\\s*)?CHARACTER CONTINUITY\\s*:?\\s*$/i],
+      ['shotList',/^(?:3[.)]\\s*)?SHOT LIST\\s*:?\\s*$/i],
+      ['imagePrompts',/^(?:4[.)]\\s*)?IMAGE PROMPTS\\s*:?\\s*$/i],
+      ['motionPrompts',/^(?:5[.)]\\s*)?VIDEO\\s*[/–-]\\s*MOTION PROMPTS\\s*:?\\s*$/i],
+      ['voiceAndSound',/^(?:6[.)]\\s*)?VOICE AND SOUND\\s*:?\\s*$/i],
+      ['captions',/^(?:7[.)]\\s*)?ON-SCREEN CAPTIONS\\s*:?\\s*$/i],
+      ['editingPlan',/^(?:8[.)]\\s*)?EDITING PLAN\\s*:?\\s*$/i],
+      ['qualityCheck',/^(?:9[.)]\\s*)?FINAL QUALITY CHECK\\s*:?\\s*$/i]
+    ];
+    const sections={}, lines=String(pack||'').replace(/\\r\\n?/g,'\\n').split('\\n');
+    let active=null, buffer=[];
+    const save=()=>{if(active)sections[active]=buffer.join('\\n').trim();};
+    for(const line of lines){
+      const clean=line.trim().replace(/^#{1,6}\\s*/,'').replace(/^\\*\\*(.*?)\\*\\*$/,'$1').trim();
+      const found=headingMap.find(([,rx])=>rx.test(clean));
+      if(found){save();active=found[0];buffer=[];}
+      else if(active)buffer.push(line);
+    }
+    save();
+    const shotListRaw=sections.shotList||'';
+    const starts=[...shotListRaw.matchAll(/^\\s*(?:[-*]\\s*)?(?:SHOT|SCENE)\\s*0*(\\d+)\\b[^\\n]*|^\\s*(?:[-*]\\s*)?0*(\\d+)[.)]\\s+[^\\n]+/gim)];
+    const shots=[];
+    if(starts.length){
+      for(let i=0;i<starts.length;i++){
+        const m=starts[i],start=m.index,end=i+1<starts.length?starts[i+1].index:shotListRaw.length;
+        const raw=shotListRaw.slice(start,end).trim();
+        if(!raw)continue;
+        const id=Number(m[1]||m[2]||shots.length+1);
+        const durationMatch=raw.match(/(?:duration|length|time)\\s*[:=—-]?\\s*(\\d+(?:\\s*[-–]\\s*\\d+)?\\s*(?:seconds?|secs?|s|min(?:utes?)?))\\b/i);
+        const cameraMatch=raw.match(/(?:camera(?:\\s*[/&-]\\s*framing)?|framing)\\s*[:=—-]\\s*([^\\n]+)/i);
+        const actionMatch=raw.match(/(?:visible\\s*action|action)\\s*[:=—-]\\s*([^\\n]+)/i);
+        const emotionMatch=raw.match(/(?:emotion|mood)\\s*[:=—-]\\s*([^\\n]+)/i);
+        const dialogueMatch=raw.match(/(?:dialogue|voiceover|voice\\s*over)\\s*[:=—-]\\s*([^\\n]+)/i);
+        shots.push({id,raw,...(durationMatch?{duration:durationMatch[1].trim()}:{}),...(cameraMatch?{camera:cameraMatch[1].trim()}:{}),...(actionMatch?{action:actionMatch[1].trim()}:{}),...(emotionMatch?{emotion:emotionMatch[1].trim()}:{}),...(dialogueMatch?{dialogue:dialogueMatch[1].trim()}:{})});
+      }
+    }
+    return {productionSections:sections,shotListRaw,shots};
+  }
+  el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const parsed=parseProductionPack(lastProductionPack);const payload={schema:'luna-production-pack',schemaVersion:'1.1.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,...parsed,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model. Raw productionPackMarkdown and shotListRaw are preserved even when parsing is incomplete.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
  function extractFirstImagePrompt(pack){
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
