@@ -1,0 +1,75 @@
+name: LUNA low-cost Worker diagnostics
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/diagnose-worker-light.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe both Worker endpoints without running AI models
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGIN="https://madahisaeid200-glitch.github.io"
+          ENDPOINTS=(
+            "orange-firefly-6434|https://orange-firefly-6434.madahisaeid200.workers.dev/"
+            "super-wave-0504|https://super-wave-0504.madahisaeid200.workers.dev/"
+          )
+
+          for item in "${ENDPOINTS[@]}"; do
+            NAME="${item%%|*}"
+            URL="${item#*|}"
+            echo "::group::${NAME}: OPTIONS preflight"
+            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/options.body -D /tmp/options.headers -w '%{http_code}' -X OPTIONS -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" "$URL")
+            echo "HTTP $CODE"
+            cat /tmp/options.headers
+            test "$CODE" = "204"
+            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/options.headers
+            echo "::endgroup::"
+
+            echo "::group::${NAME}: GET health"
+            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/get.json -D /tmp/get.headers -w '%{http_code}' -H "Origin: $ORIGIN" "$URL")
+            echo "HTTP $CODE"
+            cat /tmp/get.json
+            test "$CODE" = "200"
+            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/get.headers
+            python3 -c "import json; d=json.load(open('/tmp/get.json')); assert d.get('ok') is True and d.get('aiBinding') is True, d"
+            echo "::endgroup::"
+
+            echo "::group::${NAME}: small POST ping"
+            printf '%s' '{"mode":"ping"}' >/tmp/ping.json
+            CODE=$(curl --silent --show-error --max-time 12 -o /tmp/ping-response.json -D /tmp/ping.headers -w '%{http_code}' -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/ping.json "$URL")
+            echo "HTTP $CODE"
+            cat /tmp/ping-response.json
+            test "$CODE" = "200"
+            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/ping.headers
+            python3 -c "import json; d=json.load(open('/tmp/ping-response.json')); assert d.get('ok') is True, d"
+            echo "::endgroup::"
+
+            echo "::group::${NAME}: image-shaped POST (no image model call)"
+            python3 - <<'PY'
+          import base64, json
+          fake = "data:image/jpeg;base64," + base64.b64encode(b"x" * 44000).decode("ascii")
+          with open("/tmp/image-ping.json", "w") as f:
+              json.dump({"mode":"image_ping","image":fake}, f, separators=(",",":"))
+          print("Payload bytes:", __import__("os").path.getsize("/tmp/image-ping.json"))
+          PY
+            CODE=$(curl --silent --show-error --max-time 15 -o /tmp/image-response.json -D /tmp/image.headers -w '%{http_code}' -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/image-ping.json "$URL")
+            echo "HTTP $CODE"
+            cat /tmp/image-response.json
+            test "$CODE" = "200"
+            grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
+            python3 -c "import json; d=json.load(open('/tmp/image-response.json')); assert d.get('ok') is True and d.get('receivedImageChars',0)>50000, d"
+            echo "::endgroup::"
+          done
+
+          echo "PASS: both Workers passed CORS, GET, POST and image-payload parsing checks. No AI model was invoked."
