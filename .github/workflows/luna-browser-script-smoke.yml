@@ -45,6 +45,13 @@ jobs:
               if (errors.length) throw new Error('Browser JavaScript errors: '+errors.join(' | '));
               console.log('PRODUCER UI: PASS');
               console.log('WORKER GET + POST PING: PASS');
+              const videoHealthResponse = await page.evaluate(async endpoint => {
+                const response = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video_health'})});
+                return {status:response.status,data:await response.json()};
+              },endpoint);
+              if (!videoHealthResponse.data?.ok || !videoHealthResponse.data?.endpointAvailable) throw new Error('Wan API health check failed: '+JSON.stringify(videoHealthResponse.data));
+              console.log('WAN SPACE API: PASS');
+              console.log('WAN ENDPOINTS:',JSON.stringify(videoHealthResponse.data.endpoints));
               console.log('AI MODEL GENERATION: NOT RUN (preserves free daily AI quota)');
               console.log('PAGE HTTP:',response.status());
               console.log('WORKER:',endpoint);
