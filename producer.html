@@ -55,7 +55,7 @@
  <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
  <p class="hint" id="voiceStatus" role="status">صدای آزمایشی پس از اتصال Worker ساخته می‌شود.</p>
  <audio id="voicePreview" controls style="display:none;width:100%;margin-top:10px"></audio>
-<div class="actions"><button id="analyzeSceneImage" type="button" disabled>ارزیابی خودکار کیفیت تصویر</button><button id="downloadDiagnostic" type="button">دانلود گزارش خطا و آزمایش</button></div>
+<div class="actions"><button id="analyzeSceneImage" type="button" disabled>ارزیابی خودکار کیفیت تصویر</button><button id="downloadDiagnostic" type="button">دانلود گزارش خطا و آزمایش</button><button id="copyDiagnostic" type="button">کپی گزارش خطا</button></div>
 <p class="hint" id="imageAnalysisStatus" role="status">ارزیابی تصویر با هوش مصنوعی پس از تولید تصویر در دسترس می‌شود.</p>
 <div class="output" id="imageAnalysisReport" style="min-height:80px">هنوز گزارشی ثبت نشده است.</div>
 <div id="sceneImageWrap" style="display:none;margin-top:14px"><img id="sceneImage" alt="LUNA scene image" style="display:block;width:100%;max-width:560px;max-height:720px;object-fit:contain;margin:auto;border-radius:14px;background:#eee"><video id="generatedVideoPreview" controls playsinline webkit-playsinline preload="metadata" style="display:none;width:100%;max-width:720px;max-height:720px;margin:14px auto 0;border-radius:14px;background:#000"></video><button id="viewGeneratedVideo" type="button" style="display:none;margin:10px auto;padding:12px 18px">مشاهده ویدئو</button><a id="downloadVideoLink" class="link" style="display:none;margin-top:12px" download="LUNA-scene-preview.webm">دانلود ویدئوی آزمایشی</a></div>
@@ -77,7 +77,7 @@
 </section>
 </main><footer>LUNA Studio · Episode Producer Beta</footer>
 <script>
-const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastProductionPack='';let lastDirectorPlan=null;
+const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastDraftIsAi=false;let lastProductionPack='';let lastDirectorPlan=null;
 const characterDefaults={lunaName:'LUNA',lunaLook:'Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.',lunaPersonality:'Confident, warm, witty, romantic, playful, stylish, affectionate.',leoName:'LEO',leoLook:'Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.',leoPersonality:'Charming, affectionate, confident, slightly overconfident, adorably chaotic, romantic.',style:'Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.'};
 function readCharacterProfile(){return {lunaName:(el('charLunaName')?.value||characterDefaults.lunaName).trim().slice(0,40),lunaLook:(el('charLunaLook')?.value||characterDefaults.lunaLook).trim().slice(0,700),lunaPersonality:(el('charLunaPersonality')?.value||characterDefaults.lunaPersonality).trim().slice(0,400),leoName:(el('charLeoName')?.value||characterDefaults.leoName).trim().slice(0,40),leoLook:(el('charLeoLook')?.value||characterDefaults.leoLook).trim().slice(0,700),leoPersonality:(el('charLeoPersonality')?.value||characterDefaults.leoPersonality).trim().slice(0,400),style:(el('charStyle')?.value||characterDefaults.style).trim().slice(0,500)}}
 function fillCharacterProfile(profile){const p={...characterDefaults,...(profile||{})};for(const [key,id] of [['lunaName','charLunaName'],['lunaLook','charLunaLook'],['lunaPersonality','charLunaPersonality'],['leoName','charLeoName'],['leoLook','charLeoLook'],['leoPersonality','charLeoPersonality'],['style','charStyle']])if(el(id))el(id).value=p[key]}
@@ -247,17 +247,17 @@ el('generate').onclick=async()=>{
      let data;try{data=JSON.parse(rawResponse);}catch(parseError){throw new Error('پاسخ Worker قابل‌خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+rawResponse.length+' کاراکتر.');}
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      if(typeof data.script!=='string'||!data.script.trim())throw new Error('مدل پاسخ داد، اما متن سناریو در پاسخ وجود ندارد.');
-     lastDraft=data.script;
+     lastDraft=data.script;lastDraftIsAi=true;
      updateAiStatus(data.translationWarning ? 'سناریوی انگلیسی با هوش مصنوعی تولید شد، اما ترجمه فارسی ناموفق بود. جزئیات: '+(Array.isArray(data.details)?data.details.slice(-4).join(' | '):'ترجمه در دسترس نبود') : 'اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
    }else{
-     lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
+     lastDraftIsAi=false;lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
      updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
    }
    el('output').textContent=lastDraft;
    el('makeDirectorPlan').disabled=false;
  }catch(error){
    const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
-   updateAiStatus('خطای واقعی تولید: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
+   lastDraftIsAi=false;updateAiStatus('خطای واقعی تولید: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
    alert('تولید هوش مصنوعی ناموفق بود. علت: '+errorMessage);
    lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
    el('output').textContent=lastDraft;
@@ -275,9 +275,9 @@ el('makeProductionPack').onclick=async()=>{
  try{
    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),75000);
    let response;
-   try{response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'production',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}
+   try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'production',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}
    finally{clearTimeout(timeout);}
-   const data=await response.json();
+   const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(parseError){throw new Error('پاسخ بسته تولید قابل خواندن نیست؛ HTTP '+response.status+'، '+raw.length+' کاراکتر.')}
    if(!response.ok)throw new Error((data.error||'Production-pack request failed')+(Array.isArray(data.details)?' — '+data.details.join(' | '):''));
    lastProductionPack=data.script;
     el('exportProductionJson').disabled=false;
@@ -731,10 +731,11 @@ el('autoProduce').onclick=async()=>{
    const endpoint=(el('aiEndpoint').value||localStorage.getItem('lunaAiEndpoint')||'').trim();
    if(!endpoint)throw new Error('آدرس Worker تنظیم نشده است؛ ابتدا اتصال را ذخیره کن.');
    localStorage.setItem('lunaAiEndpoint',endpoint);
-   if(!lastDraft){
+   if(!lastDraft||!lastDraftIsAi){
+     lastDraft='';lastProductionPack='';
      master.textContent='مرحله ۱/۴ · سناریو…';
      await runButton('generate',()=>!!lastDraft,'ساخت سناریو',90000);
-     if((el('aiStatus')?.textContent||'').includes('خطای واقعی تولید'))throw new Error('تولید سناریوی هوش مصنوعی شکست خورد؛ از ساخت قالبی عبور نکردم.');
+     if(!lastDraftIsAi||(el('aiStatus')?.textContent||'').includes('خطای واقعی تولید'))throw new Error('تولید سناریوی هوش مصنوعی شکست خورد؛ متن قالبی به‌عنوان موفقیت پذیرفته نشد.');
    }
    if(!lastProductionPack){
      master.textContent='مرحله ۲/۴ · بسته تولید…';
@@ -892,4 +893,16 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
   },{capture:true});
 })();
 </script>
-\n</body>\n</html>\n
+\n<script>
+(function(){
+ const b=document.getElementById('copyDiagnostic');if(!b)return;
+ b.addEventListener('click',async()=>{
+  const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return []}};
+  const report={time:new Date().toISOString(),page:location.href.split('?')[0],online:navigator.onLine,statuses:{ai:document.getElementById('aiStatus')?.textContent||'',visual:document.getElementById('visualStatus')?.textContent||'',image:document.getElementById('imageAnalysisStatus')?.textContent||'',voice:document.getElementById('voiceStatus')?.textContent||''},diagnostics:read('lunaDiagnostics').slice(-12),voiceDiagnostics:read('lunaVoiceDiagnostics').slice(-8)};
+  const value=JSON.stringify(report,null,2);
+  try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(value);else{const t=document.createElement('textarea');t.value=value;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.focus();t.select();const ok=document.execCommand('copy');t.remove();if(!ok)throw new Error('copy unavailable');}b.textContent='گزارش کپی شد ✓';}
+  catch(e){const t=document.createElement('textarea');t.value=value;t.readOnly=true;t.style.cssText='position:fixed;inset:10px;width:calc(100% - 20px);height:65vh;z-index:99999;background:white;color:#111;padding:12px;border:2px solid #9b6b8d;border-radius:12px';document.body.appendChild(t);t.focus();t.select();b.textContent='متن گزارش انتخاب شد؛ کپی را بزن';}
+ });
+})();
+</script>
+</body>\n</html>\n
