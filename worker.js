@@ -55,11 +55,39 @@ export default {
       try {
         const startedAt = Date.now();
         const result = await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: "en" });
-        const audio = typeof result === "string" ? result : result?.audio;
+        // Workers AI documents both JSON/base64 and raw audio/mpeg output variants.
+        // Normalize supported binding return shapes to base64 for the browser player.
+        let audio = typeof result === "string" ? result : result?.audio;
+        const toBase64 = (bytes) => {
+          let binary = "";
+          const chunkSize = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+          }
+          return btoa(binary);
+        };
+        if (audio instanceof ArrayBuffer) audio = toBase64(new Uint8Array(audio));
+        else if (ArrayBuffer.isView(audio)) audio = toBase64(new Uint8Array(audio.buffer, audio.byteOffset, audio.byteLength));
+        else if (audio instanceof Blob) audio = toBase64(new Uint8Array(await audio.arrayBuffer()));
+        else if (result instanceof ArrayBuffer) audio = toBase64(new Uint8Array(result));
+        else if (ArrayBuffer.isView(result)) audio = toBase64(new Uint8Array(result.buffer, result.byteOffset, result.byteLength));
+        else if (result instanceof Blob) audio = toBase64(new Uint8Array(await result.arrayBuffer()));
         if (typeof audio !== "string" || !audio.length) {
-          return json({ error: "MeloTTS returned no MP3 audio.", resultType: typeof result }, 502);
+          return json({
+            error: "MeloTTS returned no usable MP3 audio.",
+            resultType: Object.prototype.toString.call(result),
+            audioType: Object.prototype.toString.call(result?.audio),
+            generationMs: Date.now() - startedAt
+          }, 502);
         }
-        return json({ audio, mimeType: "audio/mpeg", model: "@cf/myshell-ai/melotts", mode: "tts", generationMs: Date.now() - startedAt });
+        return json({
+          audio,
+          mimeType: "audio/mpeg",
+          model: "@cf/myshell-ai/melotts",
+          mode: "tts",
+          generationMs: Date.now() - startedAt,
+          resultType: Object.prototype.toString.call(result)
+        });
       } catch (error) {
         return json({ error: "LUNA voice generation failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
       }
