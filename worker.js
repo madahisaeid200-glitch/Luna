@@ -43,6 +43,20 @@ export default {
       if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) return json({ ok: false, error: "Image data URL missing or unsupported." }, 400);
       return json({ ok: true, receivedImageChars: body.image.length, mimeType: body.image.slice(5, body.image.indexOf(";")), message: "The full compressed image reached the Worker and was parsed successfully." });
     }
+    if (mode === "video_health") {
+      try {
+        const space = "https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space";
+        const response = await fetch(space + "/gradio_api/info");
+        if (!response.ok) return json({ ok: false, engine: "Wan2.2-14B-Fast-I2V", httpStatus: response.status, error: "Wan Space API information endpoint is not reachable." }, 502);
+        const info = await response.json();
+        const endpoints = Object.keys(info.named_endpoints || {});
+        const ready = endpoints.some(name => name.replace(/^\/+/, "") === "generate_video");
+        return json({ ok: ready, engine: "Wan2.2-14B-Fast-I2V", spaceStatus: "reachable", endpointAvailable: ready, endpoints, freeGpuQuota: "Hugging Face ZeroGPU quota applies per user; no GPU generation was started." }, ready ? 200 : 503);
+      } catch (error) {
+        return json({ ok: false, engine: "Wan2.2-14B-Fast-I2V", error: String(error?.message || error).slice(0, 500) }, 502);
+      }
+    }
+
     // Real generative image-to-video through the public Hugging Face Wan 2.2 14B Fast Space.
     // This route does not consume Cloudflare Workers AI neurons.
     if (mode === "video") {
