@@ -102,27 +102,21 @@ jobs:
           print("Using actual FLUX-generated image:", original_size, "->", image.size, "image chars:", len(data), "JPEG quality:", quality, "request bytes:", os.path.getsize("/tmp/flux-edit.json"))
           assert 35000 <= len(data) <= 45000, "Reference payload is not close enough to the user's reported size"
           PY
-          curl --silent --show-error --max-time 150 \
+          curl --fail-with-body --silent --show-error --max-time 180 \
             -H "Origin: $ORIGIN" -H "Content-Type: text/plain;charset=UTF-8" \
-            --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.ndjson \
+            --data-binary @/tmp/flux-edit.json "$URL" -o /tmp/flux-edit-response.json \
             -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
-          cat /tmp/flux-edit-response.ndjson
           python3 - <<'PY'
           import json
-          events = [json.loads(line) for line in open("/tmp/flux-edit-response.ndjson") if line.strip()]
-          stages = [e.get("stage") for e in events if e.get("type") == "progress"]
-          print("Worker progress stages:", stages)
-          result = next((e for e in events if e.get("type") == "complete"), None)
-          errors = [e for e in events if e.get("type") == "error"]
-          if result is None or not isinstance(result.get("image"), str) or len(result["image"]) < 10000:
-              raise SystemExit("FAIL: NDJSON edit stream did not return an image: " + json.dumps(errors or events[-3:])[:1800])
-          assert "worker_received" in stages, "Worker did not confirm receipt of the reference image"
-          assert "model_started" in stages, "Worker did not confirm model invocation"
-          print("PASS: streamed FLUX.2 Klein reference-image edit returned an image.")
+          result = json.load(open("/tmp/flux-edit-response.json"))
+          if not isinstance(result.get("image"), str) or len(result["image"]) < 10000:
+              raise SystemExit("FAIL: JSON edit response did not return an image: " + json.dumps(result)[:1800])
+          assert result.get("mode") == "image_edit", result
+          assert result.get("receivedImageChars", 0) > 35000, result
+          print("PASS: JSON FLUX.2 Klein reference-image edit returned an image.")
           print("Model:", result.get("model"), "generationMs:", result.get("generationMs"), "attempts:", result.get("attempts"))
           print("Output image base64 characters:", len(result["image"]))
           PY
-
 # 2026-11-01: run full independent FLUX generation and reference-edit diagnostics.
 
 # Verify deployed Worker retry path against a fresh FLUX-generated reference image.
