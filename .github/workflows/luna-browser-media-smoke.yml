@@ -29,11 +29,13 @@ jobs:
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
+          const fs = require('node:fs/promises');
           (async () => {
             const browser = await chromium.launch({headless:true});
             const page = await browser.newPage({viewport:{width:430,height:932}, locale:'en-US'});
             const errors = [];
             const results = [];
+            await fs.mkdir('luna-test-output',{recursive:true});
             page.on('pageerror', e => errors.push('PAGE_ERROR: '+e.message));
             page.on('requestfailed', r => errors.push('REQUEST_FAILED: '+r.url()+' '+(r.failure()?.errorText||'')));
             page.on('response', r => { if(r.url().includes('workers.dev')) console.log('WORKER_RESPONSE:',r.status(),r.url()); });
@@ -51,29 +53,45 @@ jobs:
               await page.locator('#generate').click();
               await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return t.length>250&&/LUNA|LEO/i.test(t)&&!/Generating|در حال تولید/i.test(document.querySelector('#aiStatus')?.textContent||'');},115000,'script');
               results.push('SCRIPT: PASS');
+              await fs.writeFile('luna-test-output/episode-script.txt',await page.locator('#output').innerText(),'utf8');
               await page.locator('#makeProductionPack').click();
               await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return /IMAGE PROMPTS/i.test(t)&&/SHOT LIST/i.test(t)&&!/در حال تبدیل|Building video pack/i.test(document.querySelector('#aiStatus')?.textContent||'');},90000,'production-pack');
               const pack=await page.locator('#output').innerText();
               if(pack.length<1000) throw new Error('Production pack too short: '+pack.length);
               results.push('PRODUCTION_PACK: PASS ('+pack.length+' chars)');
+              await fs.writeFile('luna-test-output/production-pack.txt',pack,'utf8');
               await page.locator('#generateSceneImage').click();
               await waitFor(()=>{const img=document.querySelector('#sceneImage');return !!img?.src?.startsWith('data:image/')&&img.complete&&img.naturalWidth>0;},120000,'image-generation');
               const imgSize=await page.locator('#sceneImage').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
               results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
+              await fs.writeFile('luna-test-output/scene-image.png',Buffer.from((await page.locator('#sceneImage').getAttribute('src')).split(',')[1],'base64'));
               await page.locator('#analyzeSceneImage').click();
               await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال ارسال|در حال آماده‌سازی/.test(document.querySelector('#imageAnalysisStatus')?.textContent||'');},75000,'vision-analysis');
               results.push('VISION: PASS ('+(await page.locator('#imageAnalysisReport').innerText()).length+' chars)');
+              await fs.writeFile('luna-test-output/vision-report.txt',await page.locator('#imageAnalysisReport').innerText(),'utf8');
               await page.locator('#generateVoice').click();
               await waitFor(()=>{const a=document.querySelector('#voicePreview');return a?.src?.startsWith('data:audio/')&&a.src.length>1000&&!/درخواست صدا|در حال ساخت/.test(document.querySelector('#voiceStatus')?.textContent||'');},100000,'tts');
               results.push('TTS: PASS');
+              await fs.writeFile('luna-test-output/voice.mp3',Buffer.from((await page.locator('#voicePreview').getAttribute('src')).split(',')[1],'base64'));
               await page.locator('#makePreviewVideo').click();
               await waitFor(()=>{const a=document.querySelector('#downloadVideoLink');return a?.href?.startsWith('blob:')&&a.style.display!=='none'&&!/در حال رندر/.test(document.querySelector('#visualStatus')?.textContent||'');},20000,'browser-video');
               const videoBytes=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return (await r.blob()).size;});
               if(videoBytes<10000) throw new Error('Preview video unexpectedly small: '+videoBytes);
               results.push('BROWSER_VIDEO: PASS ('+videoBytes+' bytes)');
+              const videoData=await page.evaluate(async()=>Array.from(new Uint8Array(await (await fetch(document.querySelector('#downloadVideoLink').href)).arrayBuffer())));
+              await fs.writeFile('luna-test-output/luna-preview.webm',Buffer.from(videoData));
+              await page.screenshot({path:'luna-test-output/producer-final.png',fullPage:true});
               console.log(results.join('\n'));
               console.log('MEDIA PIPELINE: PASS');
               if(errors.length) console.log('BROWSER_WARNINGS:',errors.slice(0,15).join('\n'));
             } finally { await browser.close(); }
           })().catch(e=>{console.error(e);process.exit(1);});
           NODE
+      - name: Upload generated LUNA test outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-episode-test-output
+          path: luna-test-output/
+          if-no-files-found: warn
+          retention-days: 7
