@@ -41,3 +41,17 @@ This is an interchange/export format; it does not itself render a finished video
 ## Privacy and storage
 
 Episode drafts, character profiles and generated images are currently stored in the browser used to create them. Export important work before clearing browser data or changing devices.
+
+## Remotion renderer prototype
+
+A first renderer scaffold now lives in `renderer/`. It reads the exported `luna-production-pack@1.1.0` JSON and renders a vertical 1080×1920 H.264 MP4 with animated scene cards, episode title, scene actions/emotions and dialogue overlays.
+
+This is intentionally a **motion-graphics proof of concept**, not yet a finished AI video generator: it does not generate character images, lip-sync, voice, music or photorealistic footage. Those will be separate stages. The sample input is `samples/luna-demo-pack.json`.
+
+To render locally in a Node.js environment:
+```bash
+cd renderer
+npm install
+npm run render:sample
+```
+The output is written to `renderer/renders/luna-demo.mp4`. GitHub Pages and an Android browser cannot run this Node/Chromium/FFmpeg render process by themselves; it needs a Node-capable runner or hosted render service.
