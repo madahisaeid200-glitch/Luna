@@ -105,3 +105,49 @@ jobs:
           if not report: raise SystemExit("Vision analysis failed: "+str(d)[:1600])
           print(report[:2500])
           PY
+
+      - name: Test real production pack, English voice and reference-image edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          python3 - <<'PY'
+          import json
+          script=open("/tmp/luna-script.txt").read()
+          json.dump({"mode":"production","script":script},open("/tmp/production-request.json","w"))
+          json.dump({"mode":"tts","lang":"en","text":"Luna, this surprise is only for you. I promise!"},open("/tmp/tts-request.json","w"))
+          raw=open("/tmp/luna-generated-image.jpg","rb").read()
+          import base64
+          json.dump({"mode":"image_edit","image":"data:image/jpeg;base64,"+base64.b64encode(raw).decode(),"prompt":"Keep the same two adult characters, faces, outfits, and hotel suite. Improve natural hand anatomy and realistic skin texture subtly. Preserve the original composition and expressions.","width":768,"height":1024},open("/tmp/edit-request.json","w"))
+          PY
+          CODE=$(curl --silent --show-error --max-time 100 -o /tmp/production-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/production-request.json "$URL")
+          echo "PRODUCTION HTTP $CODE"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/production-response.json")); pack=d.get("script","")
+          print("model:",d.get("model"),"pack_chars:",len(pack))
+          if not pack: raise SystemExit("Production pack failed: "+str(d)[:1400])
+          print(pack[:1200])
+          PY
+          CODE=$(curl --silent --show-error --max-time 100 -o /tmp/tts-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/tts-request.json "$URL")
+          echo "TTS HTTP $CODE"
+          python3 - <<'PY'
+          import json,base64
+          d=json.load(open("/tmp/tts-response.json")); audio=d.get("audio","")
+          print("model:",d.get("model"),"mime:",d.get("mimeType"),"audio_base64_chars:",len(audio))
+          if not audio: raise SystemExit("Voice generation failed: "+str(d)[:1400])
+          raw=base64.b64decode(audio)
+          if len(raw)<1000: raise SystemExit("Audio payload unexpectedly small.")
+          print("decoded_audio_bytes:",len(raw))
+          PY
+          CODE=$(curl --silent --show-error --max-time 200 -o /tmp/edit-response.json -w '%{http_code}' -H "Origin: https://madahisaeid200-glitch.github.io" -H "Content-Type: text/plain;charset=UTF-8" --data-binary @/tmp/edit-request.json "$URL")
+          echo "IMAGE_EDIT HTTP $CODE"
+          python3 - <<'PY'
+          import json,base64
+          d=json.load(open("/tmp/edit-response.json")); image=d.get("image","")
+          print("model:",d.get("model"),"generation_ms:",d.get("generationMs"),"attempts:",d.get("attempts"),"base64_chars:",len(image))
+          if not image: raise SystemExit("Reference-image editing failed: "+str(d)[:1800])
+          raw=base64.b64decode(image)
+          if len(raw)<10000: raise SystemExit("Edited image unexpectedly small.")
+          print("decoded_edited_image_bytes:",len(raw))
+          PY
