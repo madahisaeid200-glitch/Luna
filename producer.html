@@ -254,12 +254,14 @@ el('generate').onclick=async()=>{
      updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
    }
    el('output').textContent=lastDraft;
+   el('makeDirectorPlan').disabled=false;
  }catch(error){
    const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
    updateAiStatus('خطای واقعی تولید: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
    alert('تولید هوش مصنوعی ناموفق بود. علت: '+errorMessage);
    lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
    el('output').textContent=lastDraft;
+   el('makeDirectorPlan').disabled=false;
  }finally{
    button.disabled=false;button.textContent=ui[fa?'fa':'en'].generate;
  }
