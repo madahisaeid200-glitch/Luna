@@ -58,7 +58,7 @@
 <div class="actions"><button id="analyzeSceneImage" type="button" disabled>ارزیابی خودکار کیفیت تصویر</button><button id="downloadDiagnostic" type="button">دانلود گزارش خطا و آزمایش</button></div>
 <p class="hint" id="imageAnalysisStatus" role="status">ارزیابی تصویر با هوش مصنوعی پس از تولید تصویر در دسترس می‌شود.</p>
 <div class="output" id="imageAnalysisReport" style="min-height:80px">هنوز گزارشی ثبت نشده است.</div>
-<div id="sceneImageWrap" style="display:none;margin-top:14px"><img id="sceneImage" alt="LUNA scene image" style="display:block;width:100%;max-width:560px;max-height:720px;object-fit:contain;margin:auto;border-radius:14px;background:#eee"><video id="generatedVideoPreview" controls playsinline preload="metadata" style="display:none;width:100%;max-width:720px;max-height:720px;margin:14px auto 0;border-radius:14px;background:#000"></video><a id="downloadVideoLink" class="link" style="display:none;margin-top:12px" download="LUNA-scene-preview.webm">دانلود ویدئوی آزمایشی</a></div>
+<div id="sceneImageWrap" style="display:none;margin-top:14px"><img id="sceneImage" alt="LUNA scene image" style="display:block;width:100%;max-width:560px;max-height:720px;object-fit:contain;margin:auto;border-radius:14px;background:#eee"><video id="generatedVideoPreview" controls playsinline webkit-playsinline preload="metadata" style="display:none;width:100%;max-width:720px;max-height:720px;margin:14px auto 0;border-radius:14px;background:#000"></video><button id="viewGeneratedVideo" type="button" style="display:none;margin:10px auto;padding:12px 18px">مشاهده ویدئو</button><a id="downloadVideoLink" class="link" style="display:none;margin-top:12px" download="LUNA-scene-preview.webm">دانلود ویدئوی آزمایشی</a></div>
 <canvas id="videoCanvas" width="720" height="1280" style="display:none"></canvas></section>
 
 <section class="panel" id="aiConnection">
@@ -549,6 +549,7 @@ el('testImageUpload').onclick=async()=>{
    };
   el('downloadSceneImage').onclick=async()=>{if(!generatedImageData)await restoreLatestLunaImage();if(!generatedImageData){el('visualStatus').textContent='تصویری در کتابخانه این مرورگر پیدا نشد؛ ابتدا تصویر را دوباره بساز.';return;}const a=document.createElement('a');a.href=generatedImageData;a.download='LUNA-scene-01.jpg';document.body.appendChild(a);a.click();a.remove();};
   restoreLatestLunaImage();
+ el('viewGeneratedVideo').onclick=async()=>{const video=el('generatedVideoPreview');if(!video.src){el('visualStatus').textContent='هنوز ویدئویی برای پخش آماده نیست.';return;}el('sceneImageWrap').scrollIntoView({behavior:'smooth',block:'center'});try{await video.play();}catch(e){el('visualStatus').textContent='ویدئو آماده است؛ برای شروع، دکمه ▶ داخل خود ویدئو را لمس کن. مرورگر پخش خودکار را محدود کرده است.';video.focus();}};
  el('makePreviewVideo').onclick=async()=>{
    if(!generatedImageData){alert('اول تصویر مرجع صحنه را بساز.');return;}
    const button=el('makePreviewVideo');
@@ -583,7 +584,7 @@ el('testImageUpload').onclick=async()=>{
      if(blob.size<50000)throw new Error('فایل ویدئویی دریافتی غیرعادی و بسیار کوچک است ('+blob.size+' bytes).');
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
-     const preview=el('generatedVideoPreview');preview.src=generatedImageObjectUrl;preview.style.display='block';preview.load();const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.download='LUNA-Wan2.2-I2V.mp4';link.style.display='inline-block';link.textContent='دانلود ویدئوی واقعی Wan 2.2 (MP4)';
+     const preview=el('generatedVideoPreview');preview.src=generatedImageObjectUrl;preview.style.display='block';preview.load();el('viewGeneratedVideo').style.display='block';const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.download='LUNA-Wan2.2-I2V.mp4';link.style.display='inline-block';link.textContent='دانلود ویدئوی واقعی Wan 2.2 (MP4)';
      el('visualStatus').textContent='ویدئوی واقعی با Wan 2.2 ساخته شد. حجم فایل: '+(blob.size/1024/1024).toFixed(2)+' MB. این خروجی از مدل مولد ویدئو است، نه حرکت‌دادن یک عکس در مرورگر.';
      logLunaDiagnostic('wan-video-success','Wan 2.2 returned a video file',{bytes:blob.size,type:contentType});
    }catch(error){
@@ -673,7 +674,7 @@ el('testImageUpload').onclick=async()=>{
      if(blob.size<12000)throw new Error('فایل ویدئوی نهایی غیرعادی کوچک است.');
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
-     const preview=el('generatedVideoPreview');preview.src=generatedImageObjectUrl;preview.style.display='block';preview.load();const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-multishot-voiced-episode.webm';link.textContent='دانلود ویدئوی چندبرداشتی صداگذاری‌شده';
+     const preview=el('generatedVideoPreview');preview.src=generatedImageObjectUrl;preview.style.display='block';preview.load();el('viewGeneratedVideo').style.display='block';const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-multishot-voiced-episode.webm';link.textContent='دانلود ویدئوی چندبرداشتی صداگذاری‌شده';
      el('visualStatus').textContent='ویدئوی داستانی ساخته شد ('+Math.round(blob.size/1024)+' KB): پنج برداشت تصویری، حرکت دوربین، زیرنویس دیالوگ و صدای واقعی در یک فایل؛ تصاویر مستقل: '+independentSceneCount+' از ۳.';
      logLunaDiagnostic('voiced-video-success','Rendered five-shot voiced edit',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:independentSceneCount,captionCount:captions.length});
    }catch(error){
