@@ -20,6 +20,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Build on-device browser MP4 renderer
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser-renderer/package.json
+      - name: Install browser renderer dependencies
+        working-directory: browser-renderer
+        run: npm install --no-audit --no-fund
+      - name: Build browser renderer for GitHub Pages
+        working-directory: browser-renderer
+        run: npm run build
       - name: Test production-pack scene parser
         run: node tests/production-pack-parser.test.cjs
       - name: Configure Pages
