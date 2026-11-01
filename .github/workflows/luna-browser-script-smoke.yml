@@ -1,12 +1,10 @@
 name: LUNA real browser script-generation smoke test
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Deploy LUNA Studio to GitHub Pages"]
+    types: [completed]
     branches: ["main"]
-    paths:
-      - "producer.html"
-      - "worker.js"
-      - ".github/workflows/luna-browser-script-smoke.yml"
   workflow_dispatch:
 
 permissions:
@@ -14,6 +12,7 @@ permissions:
 
 jobs:
   browser-smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
