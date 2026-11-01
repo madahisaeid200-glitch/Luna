@@ -325,7 +325,7 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
       'حجم تصویر ارسالی: '+(compactImage?compactImage.length+' کاراکتر':'آماده نشده')
     ].filter(Boolean).join(' | ');
     el('imageAnalysisStatus').textContent='تحلیل انجام نشد: '+msg+' '+details+' | برای بررسی، گزارش تشخیصی LUNA را دریافت کن.';
-    logLunaDiagnostic('image-analysis-error',msg,{stage,errorType,endpoint:endpoint.replace(/\\?.*$/,''),httpStatus,online:navigator.onLine,imageChars:compactImage.length});
+    logLunaDiagnostic('image-analysis-error',msg,{stage,errorType,endpoint:endpoint.replace(/\?.*$/,''),httpStatus,online:navigator.onLine,imageChars:compactImage.length});
   }finally{button.disabled=false}
 };
 
