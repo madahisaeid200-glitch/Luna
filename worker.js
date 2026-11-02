@@ -736,6 +736,7 @@ Keep the story physically continuous and the ending complete. Return only the sc
         if (model.startsWith("__")) {
           provider = model === "__QWEN3VL__" ? "qwen3vl" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, provider === "qwen3vl" ? 0.4 : 0.7);
+          actualModel = result?.model || model;
 
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
@@ -743,6 +744,17 @@ Keep the story physically continuous and the ending complete. Return only the sc
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
+          if (provider === "qwen3vl") {
+            const seenDialogue = new Set();
+            finalScript = finalScript.split("\n").filter(line => {
+              const match = line.match(/^\s*(LUNA|LEO):\s*(.+)$/i);
+              if (!match) return true;
+              const normalized = match[1].toUpperCase() + ":" + match[2].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+              if (normalized.length > 24 && seenDialogue.has(normalized)) return false;
+              seenDialogue.add(normalized);
+              return true;
+            }).join("\n");
+          }
           let translationModelUsed = null;
           if (language === "both") {
             const translationPrompt = `Translate and adapt the complete screenplay into fluent, idiomatic Iranian Persian as a native comedy screenwriter would write it. Preserve all story events faithfully, but do not translate English sentence structure or idioms word-for-word. Natural spoken Persian is more important than mirroring English grammar.
