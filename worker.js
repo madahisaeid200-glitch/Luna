@@ -23,8 +23,29 @@ export default {
     }
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
-    // Provider-neutral chat fallback for episode writing. API keys are Cloudflare Worker Secrets only.
+    // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
+      if (provider === "gemini") {
+        const apiKey = env.GEMINI_API_KEY;
+        const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+        if (!apiKey) throw new Error("GEMINI_API_KEY is not configured as a Worker Secret");
+        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+          method: "POST",
+          headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: messages.map(message => ({ role: message.role === "assistant" ? "model" : "user", parts: [{ text: String(message.content || "") }] })),
+            systemInstruction: { parts: [{ text: messages.filter(message => message.role === "system").map(message => message.content).join("\\n") }] },
+            generationConfig: { maxOutputTokens: maxTokens, temperature }
+          })
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("gemini HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("gemini HTTP " + response.status + ": " + String(data?.error?.message || raw).slice(0, 220));
+        const content = (data?.candidates?.[0]?.content?.parts || []).map(part => part.text || "").join("").trim();
+        if (!content) throw new Error("gemini returned an empty or blocked completion");
+        return { response: content, model };
+      }
       const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions";
       const apiKey = provider === "groq" ? env.GROQ_API_KEY : env.OPENROUTER_API_KEY;
       const model = provider === "groq" ? (env.GROQ_MODEL || "openai/gpt-oss-20b") : (env.OPENROUTER_MODEL || "openrouter/free");
@@ -54,6 +75,7 @@ export default {
         providers: {
           cloudflare: Boolean(env.AI),
           groq: Boolean(env.GROQ_API_KEY),
+          gemini: Boolean(env.GEMINI_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
         message: "Worker is reachable. Provider flags show configuration presence only; they do not consume model quota."
@@ -552,6 +574,7 @@ If language is BOTH, output the English version only. The Worker will translate 
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+      ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
     const failures = [];
@@ -571,8 +594,8 @@ If language is BOTH, output the English version only. The Worker will translate 
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
-        if (model === "__GROQ__" || model === "__OPENROUTER__") {
-          provider = model === "__GROQ__" ? "groq" : "openrouter";
+        if (model.startsWith("__")) {
+          provider = model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
           actualModel = result.model;
         } else {
@@ -602,6 +625,7 @@ Rules:
             const translationModels = [
               ...(env.AI ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
               ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+              ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
               ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
             ];
             for (const translationModel of translationModels) {
@@ -610,8 +634,8 @@ Rules:
                   { role: "system", content: "You are a professional Persian screenplay translator. Produce fluent Persian only and preserve all source events exactly." },
                   { role: "user", content: translationPrompt }
                 ];
-                const translated = translationModel === "__GROQ__" || translationModel === "__OPENROUTER__"
-                  ? await externalChat(translationModel === "__GROQ__" ? "groq" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                const translated = translationModel.startsWith("__")
+                  ? await externalChat(translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
@@ -642,8 +666,8 @@ ${finalScript}`;
                         { role: "system", content: "You are a meticulous native Iranian Persian screenplay editor. Fix mistranslations and unnatural dialogue while preserving the story." },
                         { role: "user", content: repairPrompt }
                       ];
-                      const repaired = translationModel === "__GROQ__" || translationModel === "__OPENROUTER__"
-                        ? await externalChat(translationModel === "__GROQ__" ? "groq" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
+                      const repaired = translationModel.startsWith("__")
+                        ? await externalChat(translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
                         : await env.AI.run(translationModel, { messages: repairMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.1 });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
