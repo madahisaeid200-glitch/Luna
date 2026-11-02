@@ -365,6 +365,7 @@ ${script.trim()}`;
       let cloudflareQuotaExhausted = false;
       for (const model of models) {
         if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
+      if (model === "__QWEN3VL__" && qwenRepairAttempted) continue;
         try {
           const messages = [
             { role: "system", content: "You are a film director and generative-video pipeline planner. Return strict JSON only. Never fabricate video-generation success." },
@@ -761,6 +762,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
+    let qwenRepairAttempted = false;
     if (!modelsToTry.length) {
       return json({
         error: "No text AI provider is configured.",
@@ -867,6 +869,7 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
               
               ];
               try {
+                qwenRepairAttempted = true;
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
                 structured = parseStructured(repaired.response || "");
               } catch (repairError) {
