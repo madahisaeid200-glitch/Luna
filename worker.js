@@ -546,10 +546,10 @@ ${script.trim()}`;
       }
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
+        // Director plans are compact; use the verified OVH no-key route first.
+        // Skip the two Murakumo chat selectors that failed live probes (422 / timeout).
         "__OVH__",
-        "__MURAKUMO_FREE__",
-        "__MURAKUMO__",
-        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel, FALLBACK_MODEL] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
@@ -571,10 +571,10 @@ ${script.trim()}`;
           let actualModel = model;
           if (model.startsWith("__")) {
             provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, 3500, 0.2);
+            result = await externalChat(provider, messages, 1600, 0.15, 65_000);
             actualModel = result.model;
           } else {
-            result = await env.AI.run(model, { messages, max_tokens: 3500, temperature: 0.2 });
+            result = await env.AI.run(model, { messages, max_tokens: 1600, temperature: 0.15 });
           }
           let raw = result?.response || result?.result?.response || "";
           if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
