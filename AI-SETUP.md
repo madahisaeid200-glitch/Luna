@@ -34,8 +34,9 @@ The Worker uses this order for text generation:
 
 1. Murakumo's public `murakumo/free` route first. It tries currently available free hosted models and has a documented direct Mishima fallback.
 2. Direct public `mishima` if the free router is busy or unavailable.
-3. Cloudflare Workers AI if both Murakumo routes are unavailable.
-4. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if all no-key routes fail.
+3. Qwen3-VL as a bounded, 30-second text fallback if both Murakumo text routes fail.
+4. Cloudflare Workers AI if no-key Murakumo routes fail and its daily neuron allowance remains.
+5. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if all no-key routes fail.
 
 This keeps routine scripts off Cloudflare so its daily neuron allowance can be reserved for images, reference edits, and voice. If Cloudflare itself reports quota exhaustion, the Worker skips its remaining models rather than retrying the exhausted allowance. Both Murakumo routes are keyless and have a 2,048-token public response cap. The Worker reports the actual provider/model and never treats template text as successful AI output.
 
@@ -110,7 +111,7 @@ The Worker uses `murakumo/free` first, then direct `mishima`, then Cloudflare Wo
 
 ### Image quality analysis
 
-The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. Qwen3-VL is not used for screenplay text generation because its text-only route timed out in the live test. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. Qwen3-VL is also retained as a bounded third-line text fallback after both Murakumo routes; it returned a usable short screenplay in one live test but has degraded capacity and timed out in another, so the Worker caps that attempt at 30 seconds and continues to Cloudflare if quota remains. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
 
 ### Privacy and free limits
 
