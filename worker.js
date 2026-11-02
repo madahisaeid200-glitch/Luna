@@ -882,7 +882,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__LLM7__", "__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__LLM7__", "__LLMFAUCET__", "__OVH__"]),
+      ...(duration === "long" ? ["__LLM7__", "__LLMFAUCET__", "__MURAKUMO_FREE__", "__MURAKUMO__", "__OVH__"] : ["__LLM7__", "__LLMFAUCET__", "__MURAKUMO_FREE__", "__MURAKUMO__", "__OVH__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
