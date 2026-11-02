@@ -31,7 +31,7 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature, top_p: 0.85, frequency_penalty: 0.8, presence_penalty: 0.2 }),
-          signal: AbortSignal.timeout(45000)
+          signal: AbortSignal.timeout(30_000)
         });
         const raw = await response.text();
         let data;
@@ -714,6 +714,7 @@ Premise (must remain unchanged): ${premise.trim()}
     const modelsToTry = [
       "__MURAKUMO_FREE__",
       "__MURAKUMO__",
+      "__QWEN3VL__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
@@ -736,15 +737,15 @@ Premise (must remain unchanged): ${premise.trim()}
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__") ? "Write concise, faithful LUNA and LEO screenplays. Use exactly the names LUNA and LEO. Never invent characters, wardrobe changes, props, or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__") ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? "Write concise, faithful LUNA and LEO screenplays. Use exactly the names LUNA and LEO. Never invent characters, wardrobe changes, props, or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, 1600, 0.45);
+          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 1600, provider === "qwen3vl" ? 0.35 : 0.45);
           actualModel = result?.model || model;
 
         } else {
