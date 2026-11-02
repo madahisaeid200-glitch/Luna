@@ -33,7 +33,7 @@ export default {
           method: "POST",
           headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: messages.map(message => ({ role: message.role === "assistant" ? "model" : "user", parts: [{ text: String(message.content || "") }] })),
+            contents: messages.filter(message => message.role !== "system").map(message => ({ role: message.role === "assistant" ? "model" : "user", parts: [{ text: String(message.content || "") }] })),
             systemInstruction: { parts: [{ text: messages.filter(message => message.role === "system").map(message => message.content).join("\\n") }] },
             generationConfig: { maxOutputTokens: maxTokens, temperature }
           })
