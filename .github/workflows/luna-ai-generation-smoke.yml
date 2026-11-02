@@ -55,6 +55,9 @@ jobs:
           with open("/tmp/response.json", encoding="utf-8") as f:
               result = json.load(f)
           script = result.get("script")
+          print("Provider:", result.get("provider"))
+          print("Model:", result.get("model"))
+          print("Fallback used:", result.get("fallbackUsed"))
           if isinstance(script, str) and len(script.strip()) >= 300:
               text = script.lower()
               word_count = len(text.split())
