@@ -830,19 +830,54 @@ ${script.trim()}`;
       }
     }
 
-    // Generate one real scene image with Cloudflare-hosted FLUX.1 schnell.
+    // Generate one real scene image. Cloudflare FLUX is primary; Murakumo Hokusai
+    // is a no-key portrait fallback so the daily Cloudflare neuron cap is not a hard stop.
     if (mode === "image") {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
       const prompt = script.trim().slice(0, 2000);
+      const generationStartedAt = Date.now();
+      let cloudflareError = "";
       try {
-        const generationStartedAt = Date.now();
-        // Use FLUX schnell default (4 steps) to keep generation responsive on the free tier.
+        if (!env.AI) throw new Error("Cloudflare Workers AI binding is not configured");
         const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 4 });
         const image = result?.image || result?.result?.image;
-        if (typeof image !== "string" || !image) return json({ error: "Image model returned no image data." }, 502);
-        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", mode: "image", generationMs: Date.now() - generationStartedAt, steps: 4 });
+        if (typeof image !== "string" || !image) throw new Error("Image model returned no image data.");
+        return json({ image, mimeType: "image/jpeg", model: "@cf/black-forest-labs/flux-1-schnell", provider: "cloudflare-workers-ai", fallbackUsed: false, mode: "image", generationMs: Date.now() - generationStartedAt, steps: 4 });
       } catch (error) {
-        return json({ error: "AI image generation failed.", details: String(error?.message || error || "unknown error").slice(0, 240) }, 502);
+        cloudflareError = String(error?.message || error || "unknown Cloudflare image error").slice(0, 240);
+      }
+      try {
+        // Public no-key image endpoint. The live model catalogue advertises 512x768 portrait.
+        // Only fictional LUNA character/story prompts are sent; the free lane may use community nodes.
+        const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768", response_format: "b64_json" }),
+          signal: AbortSignal.timeout(65_000)
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("Hokusai HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("Hokusai HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const image = data?.data?.[0]?.b64_json;
+        if (typeof image !== "string" || !image) throw new Error("Hokusai returned no base64 image data.");
+        return json({
+          image,
+          mimeType: "image/png",
+          model: "awai-network/hokusai",
+          provider: "murakumo",
+          fallbackUsed: true,
+          fallbackReason: cloudflareError,
+          mode: "image",
+          generationMs: Date.now() - generationStartedAt,
+          size: "512x768"
+        });
+      } catch (fallbackError) {
+        return json({
+          error: "Image generation failed on both Cloudflare FLUX and the free Hokusai fallback.",
+          details: "Cloudflare: " + cloudflareError + " | Hokusai: " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 260),
+          generationMs: Date.now() - generationStartedAt
+        }, 502);
       }
     }
 
