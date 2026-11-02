@@ -975,6 +975,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
       "__OVH__",
+      "__LLM7__",
       "__MURAKUMO_FREE__",
       "__MURAKUMO__",
       "__LLMFAUCET__",
