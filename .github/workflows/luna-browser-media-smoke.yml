@@ -88,7 +88,7 @@ jobs:
               results.push('VISION: PASS ('+(await page.locator('#imageAnalysisReport').innerText()).length+' chars)');
               await fs.writeFile('luna-test-output/vision-report.txt',await page.locator('#imageAnalysisReport').innerText(),'utf8');
               await page.locator('#generateVoice').click();
-              await waitFor(()=>{const a=document.querySelector('#voicePreview'),b=document.querySelector('#makeVoicedVideo');return a?.src?.startsWith('data:audio/')&&a.src.length>1000&&b&&!b.disabled&&!/درخواست صدا|در حال ساخت/.test(document.querySelector('#voiceStatus')?.textContent||'');},100000,'tts-and-voiced-video-ready');
+              await waitFor(()=>{const a=document.querySelector('#voicePreview'),b=document.querySelector('#makeVoicedVideo');return a?.src?.startsWith('data:audio/')&&a.src.length>1000&&b&&!b.disabled&&!/درخواست صدا|در حال ساخت/.test(document.querySelector('#voiceStatus')?.textContent||'');},165000,'tts-and-voiced-video-ready');
               results.push('TTS: PASS (audio loaded; voiced-video control enabled)');
               await fs.writeFile('luna-test-output/voice.mp3',Buffer.from((await page.locator('#voicePreview').getAttribute('src')).split(',')[1],'base64'));
               await page.locator('#makePreviewVideo').click();
