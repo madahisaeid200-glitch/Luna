@@ -37,6 +37,26 @@ jobs:
           print("Keyless Qwen3-VL fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
           print("Health GET does not consume model quota.")
           PY
+      - name: Probe Mishima with low reasoning for a coherent LUNA draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+            -d '{"model":"mishima","messages":[{"role":"system","content":"Write coherent, concise romantic-comedy screenplays. Preserve premise and speaker roles."},{"role":"user","content":"Write a 100-word scene with only LUNA and LEO in their hotel suite. LEO booked their anniversary under the wrong surname. LUNA sees the unfamiliar surname on the welcome card and thinks he booked for another couple. LEO admits he mistyped it. Resolve warmly. Use distinct dialogue and no repeated lines."}],"max_tokens":2048,"temperature":0.3,"reasoning_effort":"low"}' \
+            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/mishima-low.json -w '%{http_code}' || true)
+          echo "Mishima low-effort HTTP: $CODE"
+          export CODE
+          python3 - <<'PY'
+          import json, os, sys
+          data=json.load(open("/tmp/mishima-low.json", encoding="utf-8"))
+          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
+          print("Mishima model:", data.get("model"))
+          print("Draft preview:", content[:500])
+          if os.environ.get("CODE") != "200" or len(content.strip()) < 250:
+              print("Mishima low-effort did not return a usable draft.")
+              sys.exit(1)
+          print("Mishima low-effort screenplay: PASS")
+          PY
       - name: Probe keyless Qwen3-VL for short LUNA text drafting
         shell: bash
         run: |
