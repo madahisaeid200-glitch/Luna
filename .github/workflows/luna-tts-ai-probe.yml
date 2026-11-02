@@ -1,0 +1,74 @@
+name: LUNA keyless TTS provider probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/luna-tts-ai-probe.yml
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe anonymous Kokoro TTS and verify MP3
+        env:
+          API: https://api.tts.ai
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          (async () => {
+            const health = await fetch(process.env.API + '/v1/health/');
+            console.log('HEALTH_HTTP:', health.status);
+            console.log('HEALTH_BODY:', (await health.text()).slice(0, 1500));
+            const voicesRes = await fetch(process.env.API + '/v1/voices/?model=kokoro&language=en&gender=female');
+            const voicesText = await voicesRes.text();
+            console.log('VOICES_HTTP:', voicesRes.status);
+            if (!voicesRes.ok) throw new Error('Voice catalogue failed: ' + voicesText.slice(0, 500));
+            const voices = JSON.parse(voicesText).voices || [];
+            const voice = voices.find(v => v.id === 'af_bella') || voices[0];
+            if (!voice?.id) throw new Error('No English female Kokoro voice returned');
+            console.log('SELECTED_VOICE:', voice.id, voice.name);
+            const submit = await fetch(process.env.API + '/v1/tts/', {
+              method: 'POST',
+              headers: {'content-type':'application/json'},
+              body: JSON.stringify({model:'kokoro', text:'Hello. Welcome to LUNA and LEO. Our little luxury adventure is just beginning.', voice:voice.id, format:'mp3', language:'en'})
+            });
+            const submitText = await submit.text();
+            console.log('SUBMIT_HTTP:', submit.status);
+            console.log('SUBMIT_BODY:', submitText.slice(0, 1500));
+            if (!submit.ok) throw new Error('Anonymous TTS submit failed: ' + submitText.slice(0, 600));
+            const job = JSON.parse(submitText);
+            if (!job.uuid) throw new Error('TTS response did not contain uuid');
+            let result;
+            for (let i=0;i<45;i++) {
+              await sleep(2000);
+              const poll = await fetch(process.env.API + '/v1/speech/results/?uuid=' + encodeURIComponent(job.uuid));
+              const body = await poll.text();
+              if (!poll.ok) throw new Error('TTS poll HTTP '+poll.status+': '+body.slice(0,500));
+              result = JSON.parse(body);
+              console.log('POLL', i+1, 'STATUS:', result.status);
+              if (result.status === 'completed') break;
+              if (result.status === 'failed') throw new Error('TTS job failed: '+JSON.stringify(result).slice(0,800));
+            }
+            if (result?.status !== 'completed' || !result.result_url) throw new Error('TTS job timed out: '+JSON.stringify(result));
+            const audio = await fetch(result.result_url);
+            const bytes = Buffer.from(await audio.arrayBuffer());
+            console.log('AUDIO_HTTP:', audio.status, 'CONTENT_TYPE:', audio.headers.get('content-type'), 'BYTES:', bytes.length);
+            if (!audio.ok || bytes.length < 1000) throw new Error('Downloaded audio invalid');
+            if (!(bytes.subarray(0,3).toString() === 'ID3' || (bytes[0]===0xff && (bytes[1]&0xe0)===0xe0))) throw new Error('Audio payload does not look like MP3');
+            fs.writeFileSync('luna-tts-probe.mp3', bytes);
+            fs.writeFileSync('luna-tts-probe.json', JSON.stringify({provider:'tts.ai',model:'kokoro',voice:voice.id,status:result.status,bytes:bytes.length,contentType:audio.headers.get('content-type')},null,2));
+            console.log('KEYLESS_TTS_PROBE: PASS');
+          })().catch(e=>{console.error('KEYLESS_TTS_PROBE: FAIL',e);process.exit(1);});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: luna-keyless-tts-probe
+          path: luna-tts-probe.*
+          if-no-files-found: ignore
+          retention-days: 7
