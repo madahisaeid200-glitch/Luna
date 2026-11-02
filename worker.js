@@ -371,7 +371,7 @@ SCREENPLAY:
 ${script.trim()}`;
       // Deterministic, no-key fallback for short scripts when free inference providers time out.
       // This creates a real shot manifest from the accepted screenplay; it does not claim video rendering.
-      if (duration !== "long") {
+      if (duration !== "long" && body.allowDeterministicFallback === true) {
         let structured = null;
         try { structured = JSON.parse(script.trim()); } catch {}
         if (!structured) {
