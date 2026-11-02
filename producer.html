@@ -610,7 +610,7 @@ el('testImageUpload').onclick=async()=>{
  el('generateWanClips').onclick=async()=>{
    const button=el('generateWanClips');
    if(generatedSceneImages.length<3){el('visualStatus').textContent='برای ساخت سه کلیپ واقعی، ابتدا سه تصویر مستقل صحنه را کامل کن.';return;}
-   const endpoint=(localStorage.getItem('lunaAiEndpoint')||el('aiEndpoint').value||'').trim().replace(/\\/$/,'');
+   const endpoint=(localStorage.getItem('lunaAiEndpoint')||el('aiEndpoint').value||'').trim().replace(/\/$/,'');
    if(!endpoint){el('visualStatus').textContent='آدرس Worker تنظیم نشده است.';return;}
    const profile=saveCharacterProfile(false)||readCharacterProfile();
    const parsed=lastProductionPack?parseProductionPack(lastProductionPack):{shots:[]};
