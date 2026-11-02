@@ -1,0 +1,45 @@
+name: LUNA keyless image-provider probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/luna-hokusai-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe documented keyless Hokusai image route with a tiny neutral prompt
+        shell: bash
+        run: |
+          set -uo pipefail
+          URL="https://api.murakumo.cloud/v1/images/generations"
+          START=$(date +%s)
+          CODE=$(curl -sS --max-time 50 -H "Content-Type: application/json" \
+            --data-binary '{"model":"awai-network/hokusai","prompt":"A simple red apple on a plain white studio background, realistic photograph","size":"512x512"}' \
+            "$URL" -o /tmp/hokusai.json -w '%{http_code}' || true)
+          ELAPSED=$(($(date +%s)-START))
+          echo "HTTP: $CODE"
+          echo "Elapsed seconds: $ELAPSED"
+          python3 - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open("/tmp/hokusai.json"))
+          except Exception as e:
+              print("Response was not JSON:", str(e))
+              print(open("/tmp/hokusai.json", errors="replace").read(1000) if os.path.exists("/tmp/hokusai.json") else "No response body")
+              sys.exit(1)
+          image=(data.get("data") or [{}])[0].get("b64_json")
+          if isinstance(image,str) and len(image)>1000:
+              print("PASS: Hokusai returned base64 image data.")
+              print("Image payload characters:",len(image))
+              sys.exit(0)
+          print("FAIL: No usable image payload.")
+          print(json.dumps(data,ensure_ascii=False)[:2000])
+          sys.exit(1)
+          PY
