@@ -707,7 +707,7 @@ Rules:
                   { role: "user", content: translationPrompt }
                 ];
                 const translated = translationModel.startsWith("__")
-                  ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
@@ -739,7 +739,7 @@ ${finalScript}`;
                         { role: "user", content: repairPrompt }
                       ];
                       const repaired = translationModel.startsWith("__")
-                        ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
+                        ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
                         : await env.AI.run(translationModel, { messages: repairMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.1 });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
