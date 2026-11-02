@@ -888,7 +888,9 @@ ${script.trim()}`;
       ? "3–5 minutes. Use 6–8 clearly staged scenes and enough dialogue for the full runtime."
       : "30–60 seconds. Keep it tight enough to fit the runtime, but complete: hook, setup, escalation, payoff, and cliffhanger.";
     const languageText = language === "fa"
-      ? "Write the complete script only in idiomatic, conversational Persian as a native Persian comedy screenwriter would write it. Do NOT translate English idioms word-for-word. Dialogue must sound natural when spoken aloud. Do not mix English into Persian except the character names LUNA and LEO. Use these exact Persian headings: عنوان، قلاب، صحنه ۱، صحنه ۲، پایان بامزه، پیش‌نمایش قسمت بعد. Never use headings such as پرداخت or پایان‌بندی به‌عنوان ترجمهٔ لفظی PAYOFF. Never output Japanese, Chinese, or other non-Persian scripts. Avoid unnatural phrases like «من را با خوشی جذب کنید»; use natural romantic teasing such as «به‌جای این‌همه برنامه‌ریزی، فقط کافیه دلم رو به دست بیاری» when appropriate."
+      ? (duration === "long"
+        ? "Write the complete 3–5 minute script only in idiomatic, conversational Persian. Use six to eight clearly labelled scenes: عنوان، قلاب، صحنه ۱ تا صحنه ۶، پایان بامزه، پیش‌نمایش قسمت بعد. Do not mix English except LUNA and LEO. Never use «پرداخت» as a heading. Keep all dialogue natural when spoken aloud."
+        : "Write the complete script only in idiomatic, conversational Persian as a native Persian comedy screenwriter would write it. Do NOT translate English idioms word-for-word. Dialogue must sound natural when spoken aloud. Do not mix English into Persian except the character names LUNA and LEO. Use these exact Persian headings: عنوان، قلاب، صحنه ۱، صحنه ۲، پایان بامزه، پیش‌نمایش قسمت بعد. Never use headings such as پرداخت or پایان‌بندی به‌عنوان ترجمهٔ لفظی PAYOFF. Never output Japanese, Chinese, or other non-Persian scripts. Avoid unnatural phrases like «من را با خوشی جذب کنید»; use natural romantic teasing such as «به‌جای این‌همه برنامه‌ریزی، فقط کافیه دلم رو به دست بیاری» when appropriate.")
       : "Write the complete script only in natural English.";
     const toneText = ({
       romcom: "warm romantic comedy, cute chemistry, playful teasing, and an affectionate misunderstanding",
@@ -904,7 +906,7 @@ ${script.trim()}`;
         ? "TITLE\nHOOK\nSCENE 1\nSCENE 2\nSCENE 3\nSCENE 4\nSCENE 5\nSCENE 6\nPAYOFF\nNEXT-EPISODE TEASE"
         : "TITLE\nHOOK\nSCENE 1\nSCENE 2\nPAYOFF\nNEXT-EPISODE TEASE");
 
-    const prompt = `You are the lead writer for the fictional AI influencer couple LUNA and LEO. Create ONE original, production-ready short-form episode.
+    const prompt = `You are the lead writer for the fictional AI influencer couple LUNA and LEO. Create ONE original, production-ready ${duration === "long" ? "long-form 3–5 minute" : "short-form 30–60 second"} episode.
 
 NON-NEGOTIABLE CHARACTER RULES:
 - The two main characters are ONLY LUNA and LEO. Never rename either character. Never use Alex, Luna & Alex, or any other substitute name.
@@ -930,6 +932,7 @@ STORY RULES:
 - In Persian dialogue, use respectful/intimate pronouns consistently for this loving couple; avoid unnatural formal phrasing unless it is intentionally a joke.
 - Keep each scene physically and logically continuous with the previous scene.
 - For a 30–60 second Short/Reel, target 110–150 spoken words, with an absolute maximum of 160 spoken words. Use exactly TWO scenes, then PAYOFF and NEXT-EPISODE TEASE. Never add SCENE 3. Keep each dialogue line short and natural; production directions must be concise.
+- For a 3–5 minute long episode, write a complete 400–700-word screenplay with 6–8 fully developed scenes, clear scene headings, dialogue and concise cinematic action. Include a complete payoff and relevant next-episode tease. Do not compress it into a short outline.
 - Return only the script. Do not add explanations, apologies, analysis, or meta-commentary.
 
 STYLE: ${toneText}
@@ -1183,7 +1186,20 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
               "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
               "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
           }
-          if (provider !== "qwen3vl" && surnameMixupPremise && language !== "fa") {
+          if (duration === "long") {
+            const longWordCount = finalScript.split(/\s+/).filter(Boolean).length;
+            const longSceneCount = (finalScript.match(/^\s*(?:\*\*)?(?:SCENE|صحنه)\s*(?:[0-9۰-۹]+)?/gim) || []).length;
+            if (longWordCount < 300 || longWordCount > 900) {
+              throw new Error("Long-form screenplay length outside 300–900 words (" + longWordCount + ")");
+            }
+            if (!finalScript.includes(profile.lunaName) || !finalScript.includes(profile.leoName)) {
+              throw new Error("Long-form screenplay is missing one or both saved character names");
+            }
+            if (longSceneCount < 6) {
+              throw new Error("Long-form screenplay must contain at least six clearly labelled scenes");
+            }
+          }
+          if (duration !== "long" && provider !== "qwen3vl" && surnameMixupPremise && language !== "fa") {
             const lowerScript = finalScript.toLowerCase();
             const teaseParts = finalScript.split(/(?:next[- ]episode tease|next episode|next time)\s*[:—-]?/i);
             const teaseText = (teaseParts.length > 1 ? teaseParts.slice(1).join(" ") : finalScript.slice(-420)).toLowerCase();
@@ -1228,7 +1244,7 @@ Rules:
 - Use warm, informal, believable dialogue for an affectionate couple. Prefer «امیدوارم غافلگیرت کرده باشم» over stiff formal wording such as «امیدوارم بتوانم شما را شگفت زده کنم».
 - Make stage directions clear and physically logical; explain who is holding or handing over an object, and do not create contradictory object movements.
 - Write all dialogue and production directions in Persian, except the names LUNA and LEO.
-- Use only Persian script for headings: عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد. Never translate PAYOFF as «پرداخت».
+- Use only Persian script for headings: عنوان، قلاب، صحنه ۱ تا صحنه ۶ برای قسمت بلند، پایان بامزه، پیش‌نمایش قسمت بعد. Never translate PAYOFF as «پرداخت».
 - Never output Japanese or Chinese characters, and never leave stray English words such as "joking" in Persian sentences.
 - Before returning, silently proofread the Persian for natural phrasing, grammar, missing words, foreign-language fragments, and continuity.
 - Preserve the complete ending; do not truncate or stop mid-sentence.
