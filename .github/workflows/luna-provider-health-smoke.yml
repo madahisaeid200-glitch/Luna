@@ -64,3 +64,13 @@ jobs:
           else:
               print("Murakumo error:", json.dumps(data, ensure_ascii=False)[:1200])
           PY
+      - name: Probe Murakumo owned-fleet model
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+            -d '{"model":"mishima","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":32,"temperature":0}' \
+            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/mishima.json -w '%{http_code}' || true)
+          echo "Mishima HTTP: $CODE"
+          cat /tmp/mishima.json | head -c 1200 || true
+          echo
