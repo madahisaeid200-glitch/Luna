@@ -704,7 +704,7 @@ If language is BOTH, output the English version only. The Worker will translate 
     const murakumoPrompt = `Return ONLY one valid JSON object, with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
 You are writing a short romantic-comedy episode for the fictional adult couple LUNA and LEO. Only they may appear or speak. Keep the entire story in their luxury hotel suite. Do not describe clothing. Use only the reservation note and welcome card; add no other props, people, places, or side plots.
 The exact premise: LEO booked the suite for their anniversary but typed the wrong surname. LUNA sees the unfamiliar surname on the welcome card and thinks the suite was booked for another couple. LEO explains the typo. Resolve it with affectionate humor and tease the next episode.
-Each JSON key is a separate spoken turn; the speaker is defined by the key, so do not write speaker names inside the value. Keep this order and meaning: hook (LUNA notices the unfamiliar surname on the welcome card); luna1 (asks who the Brauns are); leo1 (must speak in first person and clearly say he typed the wrong surname on their anniversary reservation; never blame LUNA); luna2 (jokes that their anniversary is booked under another couple's name); leo2 (a clever affectionate reply that does not contradict his admission); luna3 (a warm punchline); leo3 (an affectionate reply); tease (one relevant next-episode tease). Make each value a complete, natural line of 12–18 words, except hook and tease may be 10–14 words. Total spoken text must be 100–130 words. Never swap speakers, repeat wording, questions, or jokes. No circular dialogue. Every line adds new information.
+Each JSON key is a separate spoken turn; the speaker is defined by the key, so do not write speaker names inside the value. Keep this order and meaning: hook (LUNA notices the unfamiliar surname on the welcome card); luna1 (asks who the Brauns are); leo1 (must speak in first person and clearly say he typed the wrong surname on their anniversary reservation; never blame LUNA); luna2 (jokes that their anniversary is booked under another couple's name); leo2 (must openly accept that he made the typo; he must NEVER say "not a typo", "not a mistake", or "not a mix-up"; give a clever affectionate reply that confirms the reservation mistake); luna3 (a warm punchline); leo3 (an affectionate reply); tease (one relevant next-episode tease about a new romantic surprise, NOT another wrong booking or wrong suite). Make each value a complete, natural line of 12–18 words, except hook and tease may be 10–14 words. Total spoken text must be 100–130 words. Never swap speakers, contradict an earlier line, repeat wording, questions, or jokes. No circular dialogue. Every line adds new information.
 Tone: ${toneText}
 Language: ${language === "fa" ? "natural spoken Iranian Persian; keep only the names LUNA and LEO in Latin letters" : "natural conversational English"}
 Title: ${title.trim()}
@@ -764,16 +764,23 @@ Premise (must remain unchanged): ${premise.trim()}
               if (!data || !keys.every(key => typeof data[key] === "string" && data[key].trim())) return false;
               const values = keys.map(key => data[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
               if (new Set(values).size !== values.length) return false;
-              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
-              if (totalWords < 75 || totalWords > 150) return false;
+              const wordCounts = Object.fromEntries(keys.map(key => [key, data[key].trim().split(/\s+/).length]));
+              const totalWords = keys.reduce((sum, key) => sum + wordCounts[key], 0);
+              if (totalWords < 100 || totalWords > 130) return false;
+              if (wordCounts.hook < 10 || wordCounts.hook > 14 || wordCounts.tease < 10 || wordCounts.tease > 14) return false;
+              if (keys.slice(1, 7).some(key => wordCounts[key] < 12 || wordCounts[key] > 18)) return false;
               if (/surname|welcome card|anniversary reservation/i.test(premise) && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
                 if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
                 if (!/(another couple|other couple|someone else|someone else's|other people)/.test(luna2)) return false;
                 const leo2 = data.leo2.toLowerCase();
-                if (/(not a mix-up|not a mistake|you typed|you are the one)/.test(leo2)) return false;
-                if (!/(next episode|next time)/.test(data.tease.toLowerCase())) return false;
+                if (/(not a typo|not a mix-up|not a mistake|you typed|you are the one)/.test(leo2)) return false;
+                if (!/(typo|typed|mistyped|my mistake|i made a mistake)/.test(leo2)) return false;
+                const tease = data.tease.toLowerCase();
+                if (!/(next episode|next time)/.test(tease)) return false;
+                if (!/(surprise|romantic|anniversary|date|gift|plan)/.test(tease)) return false;
+                if (/(wrong suite|not supposed to be here|checking out|new name)/.test(tease)) return false;
               }
               return true;
             };
@@ -781,7 +788,7 @@ Premise (must remain unchanged): ${premise.trim()}
             if (!isValid(structured)) {
               const repairMessages = [
                 { role: "system", content: "You are a strict screenplay continuity editor. Return only valid JSON with the exact required keys. Never swap speakers or contradict the premise." },
-                { role: "user", content: "Repair this short LUNA and LEO screenplay JSON. Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. LEO's line leo1 MUST say in first person that he typed the wrong surname on their anniversary reservation; he must not blame LUNA. LUNA's luna2 line MUST say she thinks he booked the suite for another couple or someone else; do not say it is not their anniversary. LEO's leo2 must accept the typo and never deny that it was a mix-up. The tease must hint at a next romantic surprise, not suggest they are in the wrong suite. Each value must be unique and 12–18 words (hook/tease 10–14). Total 100–130 words. Keep only LUNA and LEO, stay in the hotel suite, no extra props or people. Return only JSON. Original: " + JSON.stringify(structured || { draft: finalScript }) }
+                { role: "user", content: "Repair this short LUNA and LEO screenplay JSON. Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. LEO's line leo1 MUST say in first person that he typed the wrong surname on their anniversary reservation; he must not blame LUNA. LUNA's luna2 line MUST say she thinks he booked the suite for another couple or someone else; do not say it is not their anniversary. LEO's leo2 must explicitly accept that he made the typo and say so; he must never say "not a typo", "not a mistake", or "not a mix-up". The tease must mention the next episode and hint at a new romantic surprise; never suggest a wrong suite, checking out, or another booking mistake. Each of the six dialogue lines must be 12–18 words; hook and tease 10–14 words. Total 100–130 words. Keep only LUNA and LEO, stay in the hotel suite, no extra props or people. Return only JSON. Original: " + JSON.stringify(structured || { draft: finalScript }) }
               ];
               try {
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
