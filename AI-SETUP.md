@@ -37,7 +37,7 @@ The Worker now tries providers in this order for episode-script generation:
 3. Groq, when `GROQ_API_KEY` is configured.
 4. OpenRouter's free-model router, when `OPENROUTER_API_KEY` is configured.
 
-A quota/rate-limit/provider error moves to the next configured provider. The Worker returns the actual provider and model used. It does not claim success when no model returns a real script.
+When Cloudflare returns its daily quota error, the Worker now skips only the remaining Cloudflare models and continues to separately configured external providers. Provider errors move to the next configured provider. The Worker returns the actual provider and model used. It does not claim success when no model returns a real script.
 
 ### One-time setup — keys stay private
 
@@ -89,4 +89,24 @@ Official references:
 - Mistral API key quickstart and Free-mode/no-card statement: https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key
 - Mistral usage limits and Free-mode included monthly usage: https://docs.mistral.ai/admin/billing-usage/usage-limits
 - Mistral API pricing: https://mistral.ai/pricing/api/
+
+
+## 9. OpenRouter — easiest alternative when Mistral is blocked
+
+OpenRouter's official developer page says you can create an API key and start without a subscription or payment card. Its free plan currently lists 25+ free models and a limit of 50 requests/day; free model calls are also limited to 20 requests/minute. This is limited free access, not unlimited production capacity.
+
+1. Create an account at https://openrouter.ai/
+2. After signing in, open https://openrouter.ai/settings/keys
+3. Create an API key. Copy it once and keep it private.
+4. In Cloudflare, open the existing Worker `orange-firefly-6434` → Settings → Variables and Secrets.
+5. Add a Secret named exactly `OPENROUTER_API_KEY` and paste the key as its value. Do not add credits, choose a paid model, or enable auto top-up.
+6. Save the Secret. The Worker deployment already supports OpenRouter and uses the free router model `openrouter/free` by default when no `OPENROUTER_MODEL` override is set.
+7. Check the Worker health response: `providers.openrouter` should be `true`. Then run one real LUNA episode generation. Health only confirms the Secret is present; only a successful non-empty script confirms real model generation.
+
+The current Worker source already contains the OpenRouter API integration. No source-code editing or manual code pasting is needed to add this provider; only the private Cloudflare Secret is required.
+
+Official references:
+- OpenRouter free signup and no-card API start: https://openrouter.ai/developers
+- Free plan and rate limits: https://openrouter.ai/pricing
+- Current free model catalogue: https://openrouter.ai/collections/free-models
 
