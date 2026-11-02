@@ -724,14 +724,15 @@ ${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS 
 Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
+    // Free-first screenplay routing: Mishima handles text; Qwen3-VL is vision-only.
     const modelsToTry = [
+      "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-      ...(duration === "long" ? [] : ["__QWEN3VL__"])
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
