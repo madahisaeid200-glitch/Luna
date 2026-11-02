@@ -599,17 +599,20 @@ Rules:
 - Return only the Persian script, with no explanation.
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
-            const translationModels = ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, model, ...modelsToTry.filter(m => m !== model && m !== FALLBACK_MODEL && m !== "@cf/zai-org/glm-4.7-flash")];
+            const translationModels = [
+              ...(env.AI ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
+              ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+              ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+            ];
             for (const translationModel of translationModels) {
               try {
-                const translated = await env.AI.run(translationModel, {
-                  messages: [
-                    { role: "system", content: "You are a professional Persian screenplay translator. Produce fluent Persian only and preserve all source events exactly." },
-                    { role: "user", content: translationPrompt }
-                  ],
-                  max_tokens: duration === "long" ? 2200 : 1200,
-                  temperature: 0.2
-                });
+                const translationMessages = [
+                  { role: "system", content: "You are a professional Persian screenplay translator. Produce fluent Persian only and preserve all source events exactly." },
+                  { role: "user", content: translationPrompt }
+                ];
+                const translated = translationModel === "__GROQ__" || translationModel === "__OPENROUTER__"
+                  ? await externalChat(translationModel === "__GROQ__" ? "groq" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
                   const cleanedCandidate = candidate.trim();
@@ -635,14 +638,13 @@ ${cleanedCandidate}
   
 ENGLISH SOURCE SCRIPT (for meaning and continuity):
 ${finalScript}`;
-                      const repaired = await env.AI.run(translationModel, {
-                        messages: [
-                          { role: "system", content: "You are a meticulous native Iranian Persian screenplay editor. Fix mistranslations and unnatural dialogue while preserving the story." },
-                          { role: "user", content: repairPrompt }
-                        ],
-                        max_tokens: duration === "long" ? 2200 : 1200,
-                        temperature: 0.1
-                      });
+                      const repairMessages = [
+                        { role: "system", content: "You are a meticulous native Iranian Persian screenplay editor. Fix mistranslations and unnatural dialogue while preserving the story." },
+                        { role: "user", content: repairPrompt }
+                      ];
+                      const repaired = translationModel === "__GROQ__" || translationModel === "__OPENROUTER__"
+                        ? await externalChat(translationModel === "__GROQ__" ? "groq" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
+                        : await env.AI.run(translationModel, { messages: repairMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.1 });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
                       const repairedHasForeignScript = /[\u0900-\u097F\u3040-\u30FF\u3400-\u9FFF]/u.test(repairedCandidate);
@@ -661,7 +663,7 @@ ${finalScript}`;
                     }
                   }
                   persian = acceptedCandidate;
-                  translationModelUsed = translationModel;
+                  translationModelUsed = translated?.model || translationModel;
                   break;
                 }
               } catch (translationError) {
