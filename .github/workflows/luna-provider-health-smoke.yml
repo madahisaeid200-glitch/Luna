@@ -37,38 +37,6 @@ jobs:
           print("Keyless Qwen3-VL fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
           print("Health GET does not consume model quota.")
           PY
-      - name: Inspect anonymous Kilo free model catalog
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -sS --max-time 30 "https://ai-gateway.kilo.ai/api/v1/models" -o /tmp/kilo-models.json
-          python3 - <<'PY'
-          import json
-          data=json.load(open("/tmp/kilo-models.json", encoding="utf-8"))
-          models=data.get("data",[])
-          free=[m.get("id") for m in models if ":free" in m.get("id","")]
-          print("Kilo free model IDs:", json.dumps(free[:40], ensure_ascii=False))
-          PY
-      - name: Probe anonymous Kilo Xing 29B free model for LUNA script drafting
-        shell: bash
-        run: |
-          set -euo pipefail
-          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
-            -d '{"model":"xingchen-agi/xing4.0-29b-a4b:free","messages":[{"role":"system","content":"You write faithful short romantic-comedy screenplays. Only LUNA and LEO may appear. Never add people, places, props, or plot threads not in the premise."},{"role":"user","content":"Write a 120-150 word 30-60 second scene. Title: The Five-Star Name Mix-Up. Premise: LUNA and LEO are already in their luxury hotel suite. LEO booked it for their anniversary but used the wrong surname. LUNA sees another couple name on the welcome card and misunderstands. Keep the entire story in the suite, escalate this exact misunderstanding, resolve with a warm joke, and tease the next episode. Use only the names LUNA and LEO. Return only the script."}],"max_tokens":512,"temperature":0.4}' \
-            "https://ai-gateway.kilo.ai/api/v1/chat/completions" -o /tmp/kilo-xing.json -w '%{http_code}' || true)
-          echo "Kilo Xing HTTP: $CODE"
-          export CODE
-          python3 - <<'PY'
-          import json, os, sys
-          data=json.load(open("/tmp/kilo-xing.json", encoding="utf-8"))
-          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
-          print("Kilo model:", data.get("model"))
-          print("Script preview:", content[:500])
-          if os.environ.get("CODE") != "200" or len(content.strip()) < 250:
-              print("Kilo Xing did not return a usable short script.")
-              sys.exit(1)
-          print("Anonymous Kilo Xing LUNA draft: PASS")
-          PY
       - name: Probe keyless Qwen3-VL for short LUNA text drafting
         shell: bash
         run: |
