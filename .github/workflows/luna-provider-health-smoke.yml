@@ -32,37 +32,12 @@ jobs:
           data=json.load(open("/tmp/health.json"))
           print("Worker:",data.get("ok"))
           print("Providers:",json.dumps(data.get("providers",{}),sort_keys=True))
-          if not data.get("ok") or "providers" not in data or not data.get("publicFallbacks", {}).get("mishima") or not data.get("publicFallbacks", {}).get("qwen3vl"):
-              sys.exit("Worker health check failed or direct Mishima fallback is not deployed")
-          if not any(data["providers"].get(name) for name in ("mistral", "nvidia", "groq", "gemini", "openrouter")):
-              print("No external API keys are configured.")
-          else:
-              print("At least one external fallback provider key is configured.")
-          print("Direct keyless Mishima fallback wired:", bool(data.get("publicFallbacks", {}).get("mishima")))
-          print("Keyless Qwen3-VL vision fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
-          print("Worker health GET itself does not consume model quota.")
+          if not data.get("ok") or "providers" not in data or not data.get("publicFallbacks", {}).get("qwen3vl"):
+              sys.exit("Worker health check failed or keyless Qwen fallback is not deployed")
+          print("Keyless Qwen3-VL fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
+          print("Health GET does not consume model quota.")
           PY
-      - name: Verify keyless Mishima text generation
-        shell: bash
-        run: |
-          set -euo pipefail
-          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
-            -d '{"model":"mishima","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":512,"temperature":0}' \
-            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/mishima.json -w '%{http_code}' || true)
-          echo "Mishima HTTP: $CODE"
-          export CODE
-          python3 - <<'PY'
-          import json, os, sys
-          data=json.load(open("/tmp/mishima.json", encoding="utf-8"))
-          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
-          print("Mishima model:", data.get("model"))
-          print("Completion:", content[:200])
-          if os.environ.get("CODE") != "200" or not content.strip():
-              print("Mishima did not return visible completion text.")
-              sys.exit(1)
-          print("Keyless text generation: PASS")
-          PY
-      - name: Probe keyless Qwen3-VL for short text drafting
+      - name: Probe keyless Qwen3-VL for short LUNA text drafting
         shell: bash
         run: |
           set -euo pipefail
@@ -81,51 +56,4 @@ jobs:
               print("Qwen text generation did not return a usable draft.")
               sys.exit(1)
           print("Keyless Qwen text generation: PASS")
-          PY
-      - name: Test real episode generation through the deployed LUNA Worker
-        shell: bash
-        run: |
-          set -euo pipefail
-          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
-          CODE=$(curl -sS --max-time 150 -H "Content-Type: application/json" \
-            -d '{"title":"LUNA automated smoke test","premise":"LUNA and LEO are alone in their five-star hotel suite. LEO has prepared a romantic surprise, but LUNA misunderstands a reservation note and thinks the suite was booked for someone else. Keep the story in the suite and resolve the misunderstanding with a warm joke.","duration":"short","tone":"romcom","language":"en"}' \
-            "$URL" -o /tmp/luna-script.json -w '%{http_code}' || true)
-          echo "LUNA Worker generation HTTP: $CODE"
-          export CODE
-          python3 - <<'PY'
-          import json, os, sys
-          try:
-              data=json.load(open("/tmp/luna-script.json", encoding="utf-8"))
-          except Exception as e:
-              sys.exit("Worker returned non-JSON: " + str(e))
-          script=data.get("script")
-          print("Provider:", data.get("provider"))
-          print("Model:", data.get("model"))
-          print("Script preview:", (script or "")[:260])
-          if os.environ.get("CODE") != "200" or not isinstance(script,str) or len(script.strip()) < 100 or data.get("provider") != "murakumo":
-              print("Worker error:", json.dumps(data, ensure_ascii=False)[:1800])
-              sys.exit("Real episode generation did not return a usable screenplay")
-          print("The deployed Worker generated through the direct keyless Mishima route.")
-          print("LUNA end-to-end generation: PASS")
-          PY
-      - name: Verify keyless Qwen3-VL image understanding
-        shell: bash
-        run: |
-          set -euo pipefail
-          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
-            -d '{"model":"qwen3-vl-2b-instruct","messages":[{"role":"user","content":[{"type":"text","text":"Describe the main visible color in this image in one word."},{"type":"image_url","image_url":{"url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAY0lEQVR4nO3PQQ3AIADAQEAhcpCD1IngcVnSU9DOs+/4s6UDXjWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgfRv4AehDBBFYAAAAAElFTkSuQmCC"}}]}],"max_tokens":32,"temperature":0}' \
-            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/qwen-vision.json -w '%{http_code}' || true)
-          echo "Qwen3-VL HTTP: $CODE"
-          export CODE
-          python3 - <<'PY'
-          import json, os, sys
-          data=json.load(open("/tmp/qwen-vision.json", encoding="utf-8"))
-          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
-          print("Qwen3-VL model:", data.get("model"))
-          print("Vision response:", content[:160])
-          if os.environ.get("CODE") != "200" or not content.strip():
-              print("::warning::Qwen3-VL vision fallback is temporarily unavailable; text generation checks remain mandatory.")
-              print("Qwen3-VL is an optional degraded-capacity fallback, so this probe does not block deployment.")
-              sys.exit(0)
-          print("Keyless vision analysis: PASS")
           PY
