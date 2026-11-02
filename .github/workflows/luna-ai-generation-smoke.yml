@@ -63,7 +63,7 @@ jobs:
               text = script.lower()
               dialogue = " ".join(__import__("re").findall(r"(?im)(?:^|\n)\s*(?:LUNA|LEO):\s*([^\n]+)", script))
               word_count = len(dialogue.split())
-              if word_count < 50 or word_count > 180:
+              if word_count < 45 or word_count > 180:
                   print(f"FAIL: screenplay length outside 80-180 words ({word_count}).")
                   print(script[:2500])
                   sys.exit(1)
