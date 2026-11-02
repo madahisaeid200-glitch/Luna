@@ -701,15 +701,24 @@ ${outputFormatText}
 If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
-    const murakumoPrompt = `Return ONLY one valid JSON object, with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
-You are writing a short romantic-comedy episode for the fictional adult couple LUNA and LEO. Only they may appear or speak. Keep the entire story in their luxury hotel suite. Do not describe clothing. Use only the reservation note and welcome card; add no other props, people, places, or side plots.
-The exact premise: LEO booked the suite for their anniversary but typed the wrong surname. LUNA sees the unfamiliar surname on the welcome card and thinks the suite was booked for another couple. LEO explains the typo. Resolve it with affectionate humor and tease the next episode.
-Each JSON key is a separate spoken turn; the speaker is defined by the key, so do not write speaker names inside the value. Keep this order and meaning: hook (LUNA notices the unfamiliar surname on the welcome card); luna1 (asks who the Brauns are); leo1 (must speak in first person and clearly say he typed the wrong surname on their anniversary reservation; never blame LUNA); luna2 (jokes that their anniversary is booked under another couple's name); leo2 (must openly accept that he made the typo; he must NEVER say "not a typo", "not a mistake", or "not a mix-up"; give a clever affectionate reply that confirms the reservation mistake); luna3 (a warm punchline); leo3 (an affectionate reply); tease (one relevant next-episode tease about a new romantic surprise, NOT another wrong booking or wrong suite). Make each value a complete, natural line of 12–18 words, except hook and tease may be 10–14 words. Total spoken text must be 100–130 words. Never swap speakers, contradict an earlier line, repeat wording, questions, or jokes. No circular dialogue. Every line adds new information.
-Tone: ${toneText}
-Language: ${language === "fa" ? "natural spoken Iranian Persian; keep only the names LUNA and LEO in Latin letters" : "natural conversational English"}
-Title: ${title.trim()}
-Premise (must remain unchanged): ${premise.trim()}
-`;
+    const surnameMixupPremise = /surname|welcome card|anniversary reservation/i.test(premise);
+    const murakumoPrompt = `Return ONLY one valid JSON object with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
+You are writing a short romantic-comedy episode for the fictional adult couple ${profile.lunaName} and ${profile.leoName}.
+Use the exact title and premise below. Do not substitute another plot or assume a hotel reservation story unless it is explicitly in the premise.
+TITLE: ${title.trim()}
+EXACT PREMISE (must remain unchanged): ${premise.trim()}
+TONE: ${toneText}
+LANGUAGE: ${language === "fa" ? "Natural spoken Iranian Persian. Keep the character names exactly as supplied." : "Natural conversational English."}
+CHARACTER CANON:
+- ${profile.lunaName}: ${profile.lunaLook} Personality: ${profile.lunaPersonality}
+- ${profile.leoName}: ${profile.leoLook} Personality: ${profile.leoPersonality}
+- Only these two characters may appear or speak unless the exact premise explicitly requires another person.
+- Preserve the location, chronology, actions, props and ending in the premise. Invent no side plot, wardrobe change, extra person or new location.
+Return one line for each key in this exact order: hook (opening visual/emotional hook); luna1 (LUNA's first response); leo1 (LEO's first response); luna2 (LUNA advances the misunderstanding); leo2 (LEO responds consistently); luna3 (warm punchline); leo3 (affectionate reply); tease (a relevant next-episode tease that follows naturally from this story).
+Each value must be one complete, natural, distinct spoken line. Aim for 8–20 words per line and 80–130 words total. Avoid repeated jokes, circular dialogue, contradictory statements, speaker swaps and generic filler. Keep the humour affectionate and the characters emotionally believable.
+${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS EXACT PREMISE: LEO's leo1 must say in first person that he typed the wrong surname on their anniversary reservation; never blame LUNA. LUNA's luna2 must show that she thinks he booked the suite for another couple or someone else. LEO's leo2 must explicitly accept that he made the typo and must never deny it with phrases such as not a typo, not a mistake, or not a mix-up. The tease must mention the next episode and promise a new romantic surprise, not another wrong booking or wrong suite." : ""}
+Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
+
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
@@ -764,11 +773,8 @@ Premise (must remain unchanged): ${premise.trim()}
               if (!data || !keys.every(key => typeof data[key] === "string" && data[key].trim())) return false;
               const values = keys.map(key => data[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
               if (new Set(values).size !== values.length) return false;
-              const wordCounts = Object.fromEntries(keys.map(key => [key, data[key].trim().split(/\s+/).length]));
-              const totalWords = keys.reduce((sum, key) => sum + wordCounts[key], 0);
-              if (totalWords < 100 || totalWords > 130) return false;
-              if (wordCounts.hook < 10 || wordCounts.hook > 14 || wordCounts.tease < 10 || wordCounts.tease > 14) return false;
-              if (keys.slice(1, 7).some(key => wordCounts[key] < 12 || wordCounts[key] > 18)) return false;
+              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
+              if (totalWords < 75 || totalWords > 150) return false;
               if (/surname|welcome card|anniversary reservation/i.test(premise) && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
@@ -787,9 +793,16 @@ Premise (must remain unchanged): ${premise.trim()}
             let structured = parseStructured(finalScript);
             if (!isValid(structured)) {
               const repairMessages = [
-                { role: "system", content: "You are a strict screenplay continuity editor. Return only valid JSON with the exact required keys. Never swap speakers or contradict the premise." },
-                { role: "user", content: "Repair this short LUNA and LEO screenplay JSON. Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. LEO's line leo1 MUST say in first person that he typed the wrong surname on their anniversary reservation; he must not blame LUNA. LUNA's luna2 line MUST say she thinks he booked the suite for another couple or someone else; do not say it is not their anniversary. LEO's leo2 must explicitly accept that he made the typo and say so; he must never say 'not a typo', 'not a mistake', or 'not a mix-up'. The tease must mention the next episode and hint at a new romantic surprise; never suggest a wrong suite, checking out, or another booking mistake. Each of the six dialogue lines must be 12–18 words; hook and tease 10–14 words. Total 100–130 words. Keep only LUNA and LEO, stay in the hotel suite, no extra props or people. Return only JSON. Original: " + JSON.stringify(structured || { draft: finalScript }) }
-              ];
+                { role: "system", content: "You are a strict screenplay continuity editor. Return only valid JSON with exactly the required keys. Preserve the exact premise, speaker roles, story order and ending." },
+                { role: "user", content: `Repair this short screenplay JSON for the exact user-supplied story.
+TITLE: ${title.trim()}
+EXACT PREMISE: ${premise.trim()}
+CHARACTERS: ${profile.lunaName} and ${profile.leoName} only, unless the premise explicitly requires another person.
+Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease.
+Keep the plot faithful to the exact premise. Never invent a different story, location, people, props or ending. Make all eight lines distinct, natural, coherent and affectionate. Use 75–150 words total. Keep the hook concise and make the tease relevant to the next episode.
+${surnameMixupPremise && language !== "fa" ? "SPECIAL RULES: LEO must clearly admit in first person that he typed the wrong surname on the anniversary reservation. LUNA must misunderstand it as a booking for another couple. LEO must accept the typo; never say 'not a typo', 'not a mistake' or 'not a mix-up'. The tease must promise a new romantic surprise in the next episode, not another wrong booking, wrong suite, or checkout." : ""}
+Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured || { draft: finalScript })}` }
+              
               try {
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
                 structured = parseStructured(repaired.response || "");
@@ -799,9 +812,9 @@ Premise (must remain unchanged): ${premise.trim()}
             }
             if (!isValid(structured)) throw new Error("Qwen draft failed screenplay consistency checks; no low-quality script was accepted.");
             finalScript = "**TITLE:** " + title.trim() + "\n\n**HOOK:**\n" + structured.hook.trim() +
-              "\n\n**SCENE 1**\nLUNA: " + structured.luna1.trim() + "\nLEO: " + structured.leo1.trim() +
-              "\n\n**SCENE 2**\nLUNA: " + structured.luna2.trim() + "\nLEO: " + structured.leo2.trim() +
-              "\n\n**PAYOFF**\nLUNA: " + structured.luna3.trim() + "\nLEO: " + structured.leo3.trim() +
+              "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() + "\n" + profile.leoName + ": " + structured.leo1.trim() +
+              "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
+              "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
               "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
           }
           if (provider === "qwen3vl") {
