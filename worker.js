@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature })
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature, reasoning_effort: "medium" })
         });
         const raw = await response.text();
         let data;
@@ -712,7 +712,7 @@ Keep the story physically continuous and the ending complete. Return only the sc
         let actualModel = model;
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, duration === "long" ? 1200 : 384, 0.7);
+          result = await externalChat(provider, messages, 2048, 0.7);
           actualModel = result.model;
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
