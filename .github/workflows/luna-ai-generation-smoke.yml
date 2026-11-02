@@ -1,0 +1,67 @@
+name: LUNA real AI script generation smoke test
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/luna-ai-generation-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: luna-ai-generation-smoke
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Test one real short script generation (not just Worker ping)
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          ORIGIN="https://madahisaeid200-glitch.github.io"
+          cat > /tmp/request.json <<'JSON'
+          {
+            "title": "The Five-Star Name Mix-Up",
+            "premise": "Luna and Leo are already inside one luxury hotel suite. Leo proudly reveals that he booked the suite for their romantic anniversary, but he accidentally used the wrong surname. Luna notices the welcome card has another couple's name. They stay in the suite, tease each other, and resolve the mix-up with a sweet joke. Do not add other people or locations.",
+            "duration": "short",
+            "tone": "romcom",
+            "language": "en",
+            "characterProfile": {
+              "lunaName": "LUNA",
+              "lunaLook": "Adult elegant European woman, long glossy chestnut-brown hair, hazel eyes, realistic natural features.",
+              "lunaPersonality": "Warm, witty, romantic and playful.",
+              "leoName": "LEO",
+              "leoLook": "Adult elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle stubble.",
+              "leoPersonality": "Charming, affectionate and adorably chaotic.",
+              "style": "Photorealistic luxury European lifestyle, natural cinematic lighting, realistic skin texture, vertical 9:16."
+            }
+          }
+          JSON
+          echo "Sending one real generation request to the deployed Worker..."
+          curl --silent --show-error --max-time 150 \
+            -H "Origin: $ORIGIN" \
+            -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/request.json \
+            "$URL" -o /tmp/response.json -w 'HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\n'
+          python3 - <<'PY'
+          import json, sys
+          with open("/tmp/response.json", encoding="utf-8") as f:
+              result = json.load(f)
+          script = result.get("script")
+          if isinstance(script, str) and len(script.strip()) >= 300:
+              print("PASS: A real AI-generated screenplay was returned.")
+              print("Model:", result.get("model"))
+              print("Fallback used:", result.get("fallbackUsed"))
+              print("Script characters:", len(script))
+              print("Preview:", script[:700].replace("\\n", " "))
+              sys.exit(0)
+          print("FAIL: The Worker did not return a valid AI screenplay.")
+          print(json.dumps(result, ensure_ascii=False, indent=2)[:6000])
+          sys.exit(1)
+          PY
