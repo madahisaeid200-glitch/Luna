@@ -870,7 +870,7 @@ CHARACTER CANON:
 - Only these two characters may appear or speak unless the exact premise explicitly requires another person.
 - Preserve the location, chronology, actions, props and ending in the premise. Invent no side plot, wardrobe change, extra person or new location.
 Return one line for each key in this exact order: hook (opening visual/emotional hook); luna1 (LUNA's first response); leo1 (LEO's first response); luna2 (LUNA advances the misunderstanding); leo2 (LEO responds consistently); luna3 (warm punchline); leo3 (affectionate reply); tease (a relevant next-episode tease that follows naturally from this story).
-Each value must be one complete, natural, distinct spoken line. Aim for 8–20 words per line and 80–130 words total. Avoid repeated jokes, circular dialogue, contradictory statements, speaker swaps and generic filler. Keep the humour affectionate and the characters emotionally believable.
+Each value must be one complete, natural, distinct spoken line. Keep each of the six dialogue values around 10–16 words, the hook and tease around 8–12 words each, and the complete JSON around 80–120 words. Do not compress the story into one-line replies. Avoid repeated jokes, circular dialogue, contradictory statements, speaker swaps and generic filler. Keep the humour affectionate and the characters emotionally believable.
 ${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS EXACT PREMISE: LEO's leo1 must say in first person that he typed the wrong surname on their anniversary reservation; never blame LUNA. LUNA's luna2 must show that she thinks he booked the suite for another couple or someone else. LEO's leo2 must explicitly accept that he made the typo and must never deny it with phrases such as not a typo, not a mistake, or not a mix-up. The tease must mention the next episode and promise a new romantic surprise, not another wrong booking or wrong suite." : ""}
 Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
 
@@ -906,7 +906,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a complete 80–120-word short screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
           { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
@@ -915,7 +915,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
-          result = await externalChat(provider, messages, provider === "ovhcloud" ? 1000 : structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
+          result = await externalChat(provider, messages, provider === "ovhcloud" ? 1400 : structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
           actualModel = result?.model || model;
 
         } else {
@@ -931,10 +931,38 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             if (!structured || !keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
               throw new Error("Public-provider screenplay must be valid JSON with all eight dialogue keys");
             }
+            let totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
+            // OVH sometimes returns a valid but over-compressed 30–40 word draft.
+            // Give the same verified provider one constrained expansion attempt before
+            // rejecting it and falling through to slower or unavailable providers.
+            if (provider === "ovhcloud" && totalWords < 70) {
+              const expansionMessages = [
+                { role: "system", content: "You are a screenplay expansion editor. Return only valid JSON with exactly the eight required string keys. Preserve the exact story and character roles." },
+                { role: "user", content: `The draft below is too short for a 30–60 second episode. Expand it naturally to 80–120 total words. Keep each of the six spoken dialogue lines around 10–16 words, and keep the hook and tease concise at around 8–12 words each. Do not add characters, props, locations, or plot events. Preserve the exact surname typo, LUNA's belief that the suite was booked for another couple, LEO accepting responsibility, the affectionate resolution, and the relevant next-episode tease. Keep all eight JSON keys and make every value distinct. TITLE: ${title.trim()}\nEXACT PREMISE: ${premise.trim()}\nORIGINAL JSON: ${JSON.stringify(structured)}` }
+              ];
+              try {
+                const expanded = await externalChat("ovhcloud", expansionMessages, 1400, 0.25);
+                const expandedText = expanded?.response || "";
+                const candidate = JSON.parse(String(expandedText).trim());
+                if (candidate && keys.every(key => typeof candidate[key] === "string" && candidate[key].trim())) {
+                  const candidateWords = keys.reduce((sum, key) => sum + candidate[key].trim().split(/\s+/).length, 0);
+                  if (candidateWords >= 70 && candidateWords <= 150) {
+                    structured = candidate;
+                    totalWords = candidateWords;
+                    actualModel = expanded?.model || actualModel;
+                  } else {
+                    failures.push("OVH expansion rejected: screenplay length outside 70–150 words (" + candidateWords + ")");
+                  }
+                } else {
+                  failures.push("OVH expansion rejected: missing one or more required JSON dialogue keys");
+                }
+              } catch (expansionError) {
+                failures.push("OVH expansion failed: " + String(expansionError?.message || expansionError || "unknown error").slice(0, 180));
+              }
+            }
             const values = keys.map(key => structured[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
             if (new Set(values).size !== values.length) throw new Error("Public-provider screenplay repeated dialogue lines");
-            const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
-            if (totalWords < 45 || totalWords > 150) throw new Error("Public-provider screenplay length outside 45–150 words (" + totalWords + ")");
+            if (totalWords < 70 || totalWords > 150) throw new Error("Public-provider screenplay length outside 70–150 words (" + totalWords + ")");
             const combinedPublicText = keys.map(key => structured[key]).join(" ").toLowerCase();
             const unrequestedPublicElements = ["hotel manager", "receptionist", "front desk", "phone", "staff", "rooftop", "restaurant", "street", "lobby", "private performance", "new booking", "wrong suite", "checking out"]
               .filter(term => !premise.toLowerCase().includes(term) && combinedPublicText.includes(term));
