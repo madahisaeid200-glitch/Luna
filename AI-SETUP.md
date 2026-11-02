@@ -34,11 +34,11 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 
 The Worker uses this order for short scripts:
 
-1. Direct public `mishima` through Murakumo (no key); this can be slow, so it has a bounded timeout.
-2. Cloudflare Workers AI while its daily neuron allowance is available.
-3. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
-4. OVHcloud AI Endpoints anonymous mode using `Meta-Llama-3_3-70B-Instruct`, with no Authorization header or user key. OVH documents anonymous access at 2 requests/minute per IP and model.
-5. Public keyless `qwen3-vl-2b-instruct` as the final short-script fallback. Its free fleet capacity is degraded and can be inconsistent, so it has a bounded 45-second timeout.
+1. Cloudflare Workers AI while its daily neuron allowance is available.
+2. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
+3. OVHcloud AI Endpoints anonymous mode using `Meta-Llama-3_3-70B-Instruct`, with no Authorization header or user key. OVH documents anonymous access at 2 requests/minute per IP and model.
+4. Direct public `mishima` through Murakumo (no key), with a short bounded timeout because live tests showed it can be slow.
+5. Public keyless `qwen3-vl-2b-instruct` as the final short-script fallback. Its free fleet capacity is degraded and can be inconsistent, so it has a bounded 40-second timeout.
 
 When Cloudflare returns its daily neuron-quota error, the Worker skips its remaining Cloudflare models rather than retrying the exhausted allowance. OVH and Qwen are currently short-script fallbacks; long scripts do not use them. Every provider output must pass the premise-specific continuity gate; otherwise the Worker tries the next provider rather than accepting a poor script.
 
