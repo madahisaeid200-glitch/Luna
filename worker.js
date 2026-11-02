@@ -25,6 +25,21 @@ export default {
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
+      if (provider === "qwen3vl") {
+        const model = "qwen3-vl-2b-instruct";
+        const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature })
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("qwen3vl HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("qwen3vl HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("qwen3vl returned an empty completion");
+        return { response: content.trim(), model: data.model || model };
+      }
       if (provider === "murakumo") {
         const model = "mishima";
         // Direct keyless Mishima inference; this bypasses OpenRouter entirely.
@@ -97,8 +112,8 @@ export default {
           nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
-        publicFallbacks: { murakumo: true, mishima: true, qwen3vl: true },
-        message: "Worker is reachable. Keyless Mishima text and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
+        publicFallbacks: { murakumo: true, mishima: true, qwen3vl: true, qwen3vlText: true },
+        message: "Worker is reachable. Keyless Qwen3-VL text, Mishima text, and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -691,6 +706,7 @@ Use headings: ${language === "fa" ? "عنوان، قلاب، صحنه ۱، صح�
 Keep the story physically continuous and the ending complete. Return only the screenplay.`;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
+      ...(duration === "long" ? [] : ["__QWEN3VL__"]),
       "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
@@ -714,15 +730,15 @@ Keep the story physically continuous and the ending complete. Return only the sc
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: model === "__MURAKUMO__" ? "Write concise, faithful LUNA and LEO screenplays. Never invent characters or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: model === "__MURAKUMO__" ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: (model === "__MURAKUMO__" || model === "__QWEN3VL__") ? "Write concise, faithful LUNA and LEO screenplays. Use exactly the names LUNA and LEO. Never invent characters, wardrobe changes, props, or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: (model === "__MURAKUMO__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, 2048, 0.7);
+          provider = model === "__QWEN3VL__" ? "qwen3vl" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, 0.7);
           actualModel = result.model;
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
