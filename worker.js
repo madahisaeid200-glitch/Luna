@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(maxTokens > 1200 ? 110_000 : 50_000),
+          signal: AbortSignal.timeout(maxTokens > 2500 ? 110_000 : 40_000),
           body: JSON.stringify({
             model,
             messages,
@@ -55,7 +55,7 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": "Bearer free" },
           body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature }),
-          signal: AbortSignal.timeout(45_000)
+          signal: AbortSignal.timeout(30_000)
         });
         const raw = await response.text();
         let data;
@@ -90,7 +90,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(provider === "murakumo-free" ? 55_000 : 15_000),
+          signal: AbortSignal.timeout(provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 10_000),
           body: JSON.stringify({
             model,
             messages,
@@ -857,7 +857,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"]),
+      ...(duration === "long" ? ["__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__LLMFAUCET__", "__OVH__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
