@@ -123,7 +123,7 @@ Mistral is another existing fallback option. Its official setup documentation sa
 
 ## 10. Keyless public fallback (Murakumo)
 
-The Worker now appends the public `mishima` Chat Completions route after Cloudflare and any configured provider keys. It requires no account, API key, card, or Cloudflare Secret. The endpoint is `https://api.murakumo.cloud/v1/chat/completions`; the model selector is `mishima`. The route has a published output cap of 2,048 tokens, so LUNA requests are capped at 2,048 tokens for this provider.
+The Worker now tries the public `mishima` Chat Completions route immediately after Cloudflare Workers AI and before any optional provider keys. This is the first no-key fallback, bypasses OpenRouter, and requires no account, API key, card, or Cloudflare Secret. The endpoint is `https://api.murakumo.cloud/v1/chat/completions`; the model selector is `mishima`. The route has a published output cap of 2,048 tokens, so LUNA requests are capped at 2,048 tokens for this provider.
 
 **Privacy warning:** Murakumo states that free-lane requests may be served on community-run nodes, where third-party operators may be able to read prompts and responses. Do not send personal, private, or confidential information. LUNA's fictional character/story prompts are suitable only if kept free of real personal details. Availability and speed are not guaranteed; the service may return HTTP 429 when busy. The Worker reports the actual provider/model on success and never converts a failed request into a successful AI draft.
 
