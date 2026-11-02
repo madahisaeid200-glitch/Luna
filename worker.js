@@ -340,12 +340,21 @@ export default {
         const chunks = splitSpeech(speech);
         const audioParts = [];
         const apiBase = "https://api.tts.ai";
+        // Bound the complete request so a slow anonymous queue cannot leave the browser
+        // waiting longer than the Producer's 150-second request budget.
+        const deadline = startedAt + 95_000;
+        const remainingMs = () => deadline - Date.now();
+        const boundedTimeout = (cap) => {
+          const remaining = remainingMs();
+          if (remaining <= 0) throw new Error("TTS.ai exceeded the 95-second total generation budget.");
+          return Math.min(cap, remaining);
+        };
 
         for (let index = 0; index < chunks.length; index++) {
           const submitResponse = await fetch(apiBase + "/v1/tts/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(20_000),
+            signal: AbortSignal.timeout(boundedTimeout(20_000)),
             body: JSON.stringify({
               model: "kokoro",
               text: chunks[index],
@@ -362,11 +371,11 @@ export default {
           }
 
           let completed = null;
-          for (let attempt = 0; attempt < 24; attempt++) {
-            if (attempt) await new Promise(resolve => setTimeout(resolve, 1250));
+          for (let attempt = 0; attempt < 18 && remainingMs() > 0; attempt++) {
+            if (attempt) await new Promise(resolve => setTimeout(resolve, Math.min(1250, Math.max(0, remainingMs()))));
             const pollResponse = await fetch(apiBase + "/v1/speech/results/?uuid=" + encodeURIComponent(job.uuid), {
               headers: { "Accept": "application/json" },
-              signal: AbortSignal.timeout(12_000)
+              signal: AbortSignal.timeout(boundedTimeout(6_000))
             });
             const pollRaw = await pollResponse.text();
             let poll;
@@ -375,13 +384,13 @@ export default {
             if (poll.status === "failed") throw new Error("TTS.ai generation failed for audio chunk " + (index + 1));
             if (poll.status === "completed" && poll.result_url) { completed = poll; break; }
           }
-          if (!completed) throw new Error("TTS.ai timed out on audio chunk " + (index + 1));
+          if (!completed) throw new Error("TTS.ai timed out or reached the total time budget on audio chunk " + (index + 1));
 
           const resultUrl = new URL(completed.result_url);
           if (resultUrl.protocol !== "https:" || !/(^|\.)tts\.ai$/i.test(resultUrl.hostname)) {
             throw new Error("TTS.ai returned an unexpected audio host.");
           }
-          const audioResponse = await fetch(resultUrl.toString(), { signal: AbortSignal.timeout(20_000) });
+          const audioResponse = await fetch(resultUrl.toString(), { signal: AbortSignal.timeout(boundedTimeout(12_000)) });
           if (!audioResponse.ok) throw new Error("TTS.ai audio download HTTP " + audioResponse.status);
           const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
           if (audioBytes.length < 1000) throw new Error("TTS.ai returned an empty or invalid audio chunk.");
