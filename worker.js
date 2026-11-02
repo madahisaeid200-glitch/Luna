@@ -307,12 +307,12 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        "__MURAKUMO__",
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-         "__MURAKUMO__"
       ];
       const failures = [];
       let cloudflareQuotaExhausted = false;
@@ -409,12 +409,12 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        "__MURAKUMO__",
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-         "__MURAKUMO__"
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -647,12 +647,12 @@ Keep the story physically continuous and the ending complete. Return only the sc
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+      "__MURAKUMO__",
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-         "__MURAKUMO__"
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
@@ -705,12 +705,12 @@ Rules:
             let persian = "";
             const translationModels = [
               ...(env.AI && provider === "cloudflare-workers-ai" && !cloudflareQuotaExhausted ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
+              "__MURAKUMO__",
               ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
               ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
               ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-         "__MURAKUMO__"
             ];
             for (const translationModel of translationModels) {
               try {
