@@ -49,7 +49,7 @@ export default {
         return { response: content.trim(), model: data.model || model };
       }
       if (provider === "llmfaucet") {
-        const model = maxTokens > 1200 ? "auto:smart" : "auto:fast";
+        const model = maxTokens > 2000 ? "auto:smart" : "auto:fast";
         // Public anonymous aggregator: up to 20 requests/day per IP; send only fictional LUNA material.
         const response = await fetch("https://api.llmfaucet.dev/v1/chat/completions", {
           method: "POST",
