@@ -700,8 +700,11 @@ ${outputFormatText}
 
 If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
-    const customizedPrompt = customizeCharacterPrompt(prompt);
     const surnameMixupPremise = /surname|welcome card|anniversary reservation/i.test(premise);
+    const specificStoryGuard = surnameMixupPremise && language !== "fa"
+      ? "\\n\\nSPECIAL STORY CONTINUITY RULES: LEO must explicitly say he typed or mistyped the wrong surname on their anniversary reservation. LUNA must think the booking was for another couple. LEO must own the typo and never deny it. Stay inside the hotel suite with only LUNA and LEO. The only visible items are those explicitly in the premise, especially the welcome card/reservation details; do not add a phone, candles, champagne, hotel manager, receptionist, front desk, staff, or a checkout. End with a next-episode tease about a new romantic surprise, not a new booking problem."
+      : "";
+    const customizedPrompt = customizeCharacterPrompt(prompt + specificStoryGuard);
     const murakumoPrompt = `Return ONLY one valid JSON object with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
 You are writing a short romantic-comedy episode for the fictional adult couple ${profile.lunaName} and ${profile.leoName}.
 Use the exact title and premise below. Do not substitute another plot or assume a hotel reservation story unless it is explicitly in the premise.
@@ -818,6 +821,26 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
               "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
               "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
               "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
+          }
+          if (provider !== "qwen3vl" && surnameMixupPremise && language !== "fa") {
+            const lowerScript = finalScript.toLowerCase();
+            const teaseMatch = finalScript.match(/(?:next[- ]episode tease|next episode|next time)([\\s\\S]*)/i);
+            const teaseText = (teaseMatch?.[1] || "").toLowerCase();
+            const hasLeoAdmission = /(typed|mistyped|typo|wrong surname)/i.test(finalScript);
+            const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people)/i.test(finalScript);
+            const hasRomanticTease = /(surprise|romantic|anniversary|date|gift|plan)/i.test(teaseText);
+            const deniesMistake = /(not a typo|not a mistake|not a mix-up)/i.test(finalScript);
+            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite"]
+              .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
+            if (!hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
+              throw new Error("Screenplay failed story continuity gate: " + [
+                !hasLeoAdmission ? "Leo must admit the wrong-surname typo" : "",
+                !hasOtherCoupleMisunderstanding ? "Luna must misunderstand it as another couple's booking" : "",
+                !hasRomanticTease ? "next-episode tease must promise a romantic surprise" : "",
+                deniesMistake ? "dialogue contradicts the admitted typo" : "",
+                forbiddenExtras.length ? "unrequested elements: " + forbiddenExtras.join(", ") : ""
+              ].filter(Boolean).join("; "));
+            }
           }
           if (provider === "qwen3vl") {
             const seenDialogue = new Set();
