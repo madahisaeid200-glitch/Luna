@@ -995,8 +995,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a complete 80–120-word short screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: duration === "long" ? "You are a professional screenplay writer. Write a complete 3–5 minute episode, not a short-form outline. Preserve the exact premise, character names, continuity, and requested language. Return the finished screenplay only." : (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a complete 80–120-word short screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: duration === "long" ? customizedPrompt : (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
@@ -1004,7 +1004,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
-          result = await externalChat(provider, messages, provider === "ovhcloud" ? 1400 : structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
+          const longScriptTokens = duration === "long" ? (provider === "ovhcloud" ? 3500 : 2048) : null;
+          result = await externalChat(provider, messages, duration === "long" ? longScriptTokens : (provider === "ovhcloud" ? 1400 : structuredProvider ? 512 : 1600), duration === "long" ? 0.45 : (structuredProvider ? 0.3 : 0.45));
           actualModel = result?.model || model;
 
         } else {
@@ -1014,7 +1015,20 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
           if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7" || provider === "murakumo-free" || provider === "murakumo") {
-            const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
+            if (duration === "long") {
+              const longWordCount = finalScript.split(/\\s+/).filter(Boolean).length;
+              const sceneHeadings = (finalScript.match(/^\\s*(?:\\*\\*)?(?:SCENE|صحنه)\\s*(?:[0-9۰-۹]+)?/gim) || []).length;
+              if (longWordCount < 250 || longWordCount > 950) {
+                throw new Error("Long-form screenplay length outside 250–950 words (" + longWordCount + ")");
+              }
+              if (!finalScript.includes(profile.lunaName) || !finalScript.includes(profile.leoName)) {
+                throw new Error("Long-form screenplay is missing one or both saved character names");
+              }
+              if (sceneHeadings < 4) {
+                throw new Error("Long-form screenplay must contain at least four clearly labelled scenes");
+              }
+            } else {
+              const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
             if (!structured || !keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
@@ -1074,12 +1088,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
                 throw new Error("OVH tease must promise a romantic surprise in the next episode");
               }
             }
-            finalScript = "**TITLE:** " + title.trim() +
-              "\n\n**HOOK:**\n" + structured.hook.trim() +
-              "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() + "\n" + profile.leoName + ": " + structured.leo1.trim() +
-              "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
-              "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
-              "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
+            }
           }
           if (provider === "qwen3vl") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
