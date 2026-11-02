@@ -803,6 +803,7 @@ Keep the plot faithful to the exact premise. Never invent a different story, loc
 ${surnameMixupPremise && language !== "fa" ? "SPECIAL RULES: LEO must clearly admit in first person that he typed the wrong surname on the anniversary reservation. LUNA must misunderstand it as a booking for another couple. LEO must accept the typo; never say 'not a typo', 'not a mistake' or 'not a mix-up'. The tease must promise a new romantic surprise in the next episode, not another wrong booking, wrong suite, or checkout." : ""}
 Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured || { draft: finalScript })}` }
               
+              ];
               try {
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
                 structured = parseStructured(repaired.response || "");
