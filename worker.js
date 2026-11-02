@@ -97,8 +97,8 @@ export default {
           nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
-        publicFallbacks: { murakumo: true, mishima: true },
-        message: "Worker is reachable. The keyless Mishima model is routed directly through Murakumo; health checks do not consume model quota."
+        publicFallbacks: { murakumo: true, mishima: true, qwen3vl: true },
+        message: "Worker is reachable. Keyless Mishima text and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -455,16 +455,13 @@ ${script.trim()}`;
       if (typeof body.image !== "string" || !body.image.startsWith("data:image/") || body.image.length > 7_000_000) {
         return json({ error: "Image data is missing, unsupported, or too large (maximum about 5 MB)." }, 400);
       }
+      if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
+        return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
+      }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
+      const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
       try {
-        // Follow Cloudflare's official Llama Vision tutorial input shape:
-        // messages for the question plus the data-URL image in the top-level image field.
-        if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
-          return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
-        }
-        const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
-        // Llama 4 Scout expects image input inside the user message content array.
-        // The separate top-level "image" field belongs to the older Llama 3.2 Vision API shape.
+        if (!env.AI) throw new Error("Cloudflare Workers AI binding is not configured");
         const result = await env.AI.run(visionModel, {
           messages: [{
             role: "user",
@@ -477,10 +474,48 @@ ${script.trim()}`;
           temperature: 0.2
         });
         const analysis = result?.response || result?.description || result?.result?.response || "";
-        if (typeof analysis !== "string" || !analysis.trim()) return json({ error: "Vision model returned no analysis." }, 502);
-        return json({ analysis: analysis.trim(), model: visionModel, mode: "analyze_image" });
-      } catch (error) {
-        return json({ error: "AI image analysis failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+        if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Vision model returned no analysis.");
+        return json({ analysis: analysis.trim(), model: visionModel, provider: "cloudflare-workers-ai", mode: "analyze_image", fallbackUsed: false });
+      } catch (cloudflareError) {
+        const cloudflareDetails = String(cloudflareError?.message || cloudflareError || "unknown Cloudflare vision error").slice(0, 260);
+        try {
+          // Keyless Qwen3-VL fallback. Free inference may log images; LUNA sends generated fictional character images only.
+          const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "qwen3-vl-2b-instruct",
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "text", text: analysisPrompt },
+                  { type: "image_url", image_url: { url: body.image } }
+                ]
+              }],
+              max_tokens: 450,
+              temperature: 0.2
+            })
+          });
+          const raw = await response.text();
+          let data;
+          try { data = JSON.parse(raw); } catch { throw new Error("Qwen3-VL HTTP " + response.status + ": non-JSON response"); }
+          if (!response.ok) throw new Error("Qwen3-VL HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+          const analysis = data?.choices?.[0]?.message?.content;
+          if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Qwen3-VL returned no analysis.");
+          return json({
+            analysis: analysis.trim(),
+            model: data.model || "qwen3-vl-2b-instruct",
+            provider: "murakumo",
+            mode: "analyze_image",
+            fallbackUsed: true,
+            fallbackReason: cloudflareDetails
+          });
+        } catch (fallbackError) {
+          return json({
+            error: "AI image analysis failed on Cloudflare and the keyless Qwen3-VL fallback.",
+            details: "Cloudflare: " + cloudflareDetails + " | Qwen3-VL: " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 260)
+          }, 502);
+        }
       }
     }
 
