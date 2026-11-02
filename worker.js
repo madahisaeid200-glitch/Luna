@@ -30,7 +30,8 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature })
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature }),
+          signal: AbortSignal.timeout(45000)
         });
         const raw = await response.text();
         let data;
@@ -693,7 +694,7 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
     const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
-Only LUNA and LEO may appear or speak. Keep the exact premise, location, objects, and misunderstanding; do not add people, places, or side plots. They are affectionate partners; use warm romantic comedy, playful teasing, escalating confusion, a clear sweet punchline, and a short next-episode tease.
+Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding; do not add people, places, props, wardrobe changes, or side plots. Exact beats: (1) LEO reveals the welcome card with the wrong surname, (2) LUNA thinks the suite was booked for another couple, (3) LEO explains the typo and makes the misunderstanding worse briefly, (4) they resolve it with one affectionate punchline and a relevant next-episode tease. They are affectionate partners; use warm romantic comedy and playful teasing. Every dialogue line must add new information. Never repeat a line, joke, or action; avoid circular back-and-forth.
 LUNA: ${profile.lunaLook}; personality: ${profile.lunaPersonality}.
 LEO: ${profile.leoLook}; personality: ${profile.leoPersonality}.
 Visual style: ${profile.style}.
