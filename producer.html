@@ -858,7 +858,7 @@ el('testImageUpload').onclick=async()=>{
    if(!speech){el('voiceStatus').textContent='متن انگلیسی برای صداگذاری وارد کن.';return;}
    button.disabled=true;button.textContent='در حال ساخت صدا…';el('voiceStatus').textContent='درخواست به Kokoro (TTS.ai) ارسال شد؛ منتظر فایل MP3 هستیم…';
    try{
-     const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})},90000);
+     const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})},150000);
      if(!response.ok||data.error)throw new Error((data.error||'Voice generation failed')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
      if(!data.audio)throw new Error('Worker response did not contain audio data.');
      const player=el('voicePreview');player.src='data:'+(data.mimeType||'audio/mpeg')+';base64,'+data.audio;player.style.display='block';el('makeVoicedVideo').disabled=generatedSceneImages.length<3;
