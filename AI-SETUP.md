@@ -115,11 +115,22 @@ When Cloudflare vision analysis fails, the Worker tries `qwen3-vl-2b-instruct` t
 
 Murakumo currently publishes a free allowance of 100 text requests per model per network per UTC day and five image-generation requests per network per UTC day. Shared service capacity still applies; busy refusals do not count. The service states that prompts are not used for training, but outputs can be stored for publication review, images may remain in the fleet cache, and approved examples can be public. Send only fictional LUNA material; never send personal, private, or confidential information.
 
+### Preserve Cloudflare's free neuron allowance for visuals and voice
+
+Text scripts and image analysis now use keyless Murakumo routes when Cloudflare's daily neuron quota is exhausted. This leaves the Cloudflare allowance available for the more important visual and audio steps.
+
+Cloudflare currently grants 10,000 free Neurons per day, resetting at 00:00 UTC. Published model rates:
+- FLUX.1 schnell: 4.8 Neurons per 512×512 tile plus 9.6 Neurons per inference step. LUNA uses four steps.
+- FLUX.2 Klein 4B: 5.37 Neurons per 512×512 input tile and 26.05 per output tile.
+- MeloTTS: 18.63 Neurons per generated audio minute.
+
+These are published unit rates, not a guaranteed image count; actual consumption depends on image dimensions and other model usage. The practical strategy is to avoid spending the daily Cloudflare pool on routine scripts and image scoring.
+
 ### What is not yet covered by a keyless fallback
 
 - Still-image generation remains on Cloudflare FLUX.1 schnell.
 - Reference-image editing remains on Cloudflare FLUX.2 Klein.
-- Voice generation remains on Cloudflare Workers AI. Murakumo's speech endpoint is documented but currently reports `speech-configured: false` / HTTP 501, so it is not a verified free TTS alternative.
+- Voice generation remains on Cloudflare MeloTTS. Murakumo's speech endpoint is documented but currently reports `speech-configured: false` / HTTP 501, so it is not a verified free TTS alternative.
 - Video generation uses the separate Wan 2.2 route and is not repaired by the text/vision fallback.
 
 Murakumo lists a public Hokusai image-generation endpoint, but its model card reports an unclear `other` license and no declared upstream license. It is therefore **not wired into the monetized LUNA production path** until commercial-use rights are clarified.
