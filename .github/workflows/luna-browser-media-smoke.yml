@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   media-smoke:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -49,7 +49,7 @@ jobs:
               const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html',{waitUntil:'domcontentloaded',timeout:30000});
               if(!pageResponse?.ok()) throw new Error('Producer HTTP failure');
               await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
-              await page.locator('#premise').fill('HOOK: Luna enters a breathtaking five-star hotel suite and is delighted. SCENE 1: Leo proudly says he booked the suite for their special night. Luna notices the reservation plaque says Mr. and Mrs. Thompson. Leo says he checked them in. Suspicious, Luna goes to reception to investigate. SCENE 2: Luna returns and tells Leo they are not Mr. and Mrs. Thompson; they are only Luna and Leo. Leo realizes he booked under the wrong guests by mistake. Luna teases him, then they laugh, hug and kiss. PAYOFF: tease the next episode: what will Leo plan to make it up to Luna? Keep all action inside the suite/reception context, only Luna and Leo as main characters, romantic and playful luxury-comedy tone. Final punchline: Leo grins: Next time, I’m booking under our real names… unless the hotel has a Mr. and Mrs. Genius suite!');
+              await page.locator('#premise').fill('HOOK: Luna enters a breathtaking five-star hotel suite, delighted by Leo’s romantic surprise. SCENE 1: Leo proudly reveals that he booked the suite for their anniversary. Luna notices the welcome card says Mr. and Mrs. Thompson. SCENE 2: Leo sheepishly admits he typed the wrong surname. Luna teases him that they are apparently celebrating another couple’s anniversary. Leo tries to defend himself, then realizes the welcome card is the only thing that is wrong. They stay together in the same suite, laugh, hug and share a sweet kiss. PAYOFF: Leo promises an even better surprise next time. Luna asks whether he will remember their names. Final punchline: Leo says, “Of course. I’ve saved them under ‘My Favourite People’.” Only LUNA and LEO; remain inside the same suite; no reception, hotel staff, extra people, phone or new props. Romantic, playful luxury-comedy tone.');
               await page.locator('#scriptLang').selectOption('en');
               await page.locator('#generate').click();
               await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return t.length>250&&/LUNA|LEO/i.test(t)&&!/Generating|در حال تولید/i.test(document.querySelector('#aiStatus')?.textContent||'');},115000,'script');
