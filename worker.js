@@ -309,7 +309,7 @@ export default {
       }
     }
 
-    // Keyless TTS.ai + Kokoro fallback; no Cloudflare AI quota or user API key required.
+    // Keyless TTS.ai + Kokoro fallback; no Cloudflare AI quota or user API key required. CDN allowlist accepts tts.ai subdomains.
     if (mode === "tts") {
       const speech = String(body.text || "").trim();
       const lang = String(body.lang || "en").slice(0, 8);
