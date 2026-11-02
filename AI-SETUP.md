@@ -57,3 +57,17 @@ Official references:
 - Groq rate limits: https://console.groq.com/docs/rate-limits
 - OpenRouter free models and limits: https://openrouter.ai/collections/free-models
 - Cloudflare Worker Secrets: https://developers.cloudflare.com/workers/configuration/secrets/
+
+
+## 7. Gemini free-tier testing (internal tests only)
+
+The Worker also supports Gemini as an optional test provider. The text-generation fallback order is Cloudflare Workers AI → Groq → Gemini → OpenRouter. Gemini is attempted only when the `GEMINI_API_KEY` Secret is present. The default model is `gemini-3.5-flash-lite`; it can be overridden with the optional `GEMINI_MODEL` Worker variable.
+
+For a limited internal test, create a key at https://aistudio.google.com/ and add it to the existing Cloudflare Worker as a **Secret** named exactly `GEMINI_API_KEY`. Never paste the key into ChatGPT, GitHub, or the public website. The Worker health endpoint reports only whether the Secret exists; it does not reveal the key or consume model quota.
+
+Important restrictions: this Gemini route is for private/internal evaluation only, not for serving users of the public LUNA app on an unpaid API tier. Google's current additional terms require Paid Services when making API Clients available to users in the EEA, Switzerland, or the UK. Do not enable billing just for this test. Free-tier availability and model access can change. Also avoid sending personal, confidential, or sensitive information in test prompts.
+
+Official references:
+- Gemini API models: https://ai.google.dev/gemini-api/docs/models
+- Gemini API pricing and free tier: https://ai.google.dev/gemini-api/docs/pricing
+- Gemini API terms (effective March 23, 2026): https://ai.google.dev/gemini-api/terms
