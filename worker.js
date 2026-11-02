@@ -224,6 +224,12 @@ export default {
       if (imageData.length > 12_000_000) return json({ error: "Reference image is too large. Please use an image under 8 MB." }, 413);
       if (!promptText) return json({ error: "A motion prompt is required." }, 400);
       const space = "https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space";
+      const wanDeadline = Date.now() + 210_000;
+      const wanFetch = (url, options, cap) => {
+        const remaining = wanDeadline - Date.now();
+        if (remaining <= 0) throw new Error("Wan exceeded the 210-second total generation budget.");
+        return fetch(url, { ...options, signal: AbortSignal.timeout(Math.min(cap, remaining)) });
+      };
       try {
         const comma = imageData.indexOf(",");
         const mime = imageData.slice(5, imageData.indexOf(";")).toLowerCase().replace("image/jpg", "image/jpeg");
@@ -232,7 +238,7 @@ export default {
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         const form = new FormData();
         form.append("files", new Blob([bytes], { type: mime }), "luna-reference." + (mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"));
-        const uploadResponse = await fetch(space + "/gradio_api/upload", { method: "POST", body: form });
+        const uploadResponse = await wanFetch(space + "/gradio_api/upload", { method: "POST", body: form }, 20_000);
         if (!uploadResponse.ok) throw new Error("Wan reference upload failed (HTTP " + uploadResponse.status + ").");
         const uploaded = await uploadResponse.json();
         const uploadedPath = Array.isArray(uploaded) ? uploaded[0] : uploaded?.path;
@@ -250,18 +256,18 @@ export default {
             true
           ]
         };
-        const submitResponse = await fetch(space + "/gradio_api/call/generate_video", {
+        const submitResponse = await wanFetch(space + "/gradio_api/call/generate_video", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
-        });
+        }, 20_000);
         if (!submitResponse.ok) {
           const detail = (await submitResponse.text()).slice(0, 500);
           throw new Error("Wan job submission failed (HTTP " + submitResponse.status + "): " + detail);
         }
         const submitted = await submitResponse.json();
         if (!submitted?.event_id) throw new Error("Wan did not return a generation job ID.");
-        const resultResponse = await fetch(space + "/gradio_api/call/generate_video/" + encodeURIComponent(submitted.event_id));
+        const resultResponse = await wanFetch(space + "/gradio_api/call/generate_video/" + encodeURIComponent(submitted.event_id), {}, 180_000);
         if (!resultResponse.ok) throw new Error("Wan result polling failed (HTTP " + resultResponse.status + ").");
         const eventText = await resultResponse.text();
         const dataLines = eventText.split(/\r?\n/).filter(line => line.startsWith("data:"));
@@ -285,7 +291,7 @@ export default {
         if (!fileUrl && file.path) fileUrl = "/gradio_api/file=" + encodeURIComponent(file.path);
         if (fileUrl.startsWith("/")) fileUrl = space + fileUrl;
         if (!/^https:\/\/zerogpu-aoti-wan2-2-fp8da-aoti-faster\.hf\.space\//.test(fileUrl)) throw new Error("Wan returned an unexpected video URL.");
-        const videoResponse = await fetch(fileUrl);
+        const videoResponse = await wanFetch(fileUrl, {}, 20_000);
         if (!videoResponse.ok) throw new Error("Wan video download failed (HTTP " + videoResponse.status + ").");
         const videoType = videoResponse.headers.get("Content-Type") || "video/mp4";
         if (!videoType.includes("video") && !fileUrl.toLowerCase().endsWith(".mp4")) throw new Error("Wan result is not a video file (" + videoType + ").");
