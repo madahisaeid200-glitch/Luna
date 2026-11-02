@@ -16,6 +16,8 @@ jobs:
       - name: Call deployed Worker using the exact producer.html request shape
         run: |
           set -euo pipefail
+          echo 'Waiting for Worker deployment to finish...'
+          sleep 50
           node <<'NODE'
           const fs=require('fs');
           (async()=>{
