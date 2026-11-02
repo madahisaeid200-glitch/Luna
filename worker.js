@@ -807,12 +807,12 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
                 validationError = "missing or extra JSON keys";
                 return false;
               }
-              const values = keys.map(key => data[key].toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim());
+              const values = keys.map(key => data[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
               if (new Set(values).size !== values.length) {
                 validationError = "repeated dialogue lines";
                 return false;
               }
-              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\\s+/).length, 0);
+              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
               if (totalWords < 75 || totalWords > 150) {
                 validationError = "script length outside 75–150 words";
                 return false;
@@ -827,7 +827,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
               if (surnameMixupPremise && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
-                if (!/\\b(i|i've|i'm|my)\\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) {
+                if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) {
                   validationError = "LEO's first line must admit in first person that he typed the wrong surname on the reservation";
                   return false;
                 }
