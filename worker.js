@@ -53,8 +53,8 @@ export default {
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: Math.min(maxTokens, 2048),
-            temperature,
+            max_tokens: Math.min(maxTokens, provider === "murakumo-free" ? 512 : 2048),
+            temperature: provider === "murakumo-free" ? Math.min(temperature, 0.3) : temperature,
             ...(provider === "murakumo" ? { reasoning_effort: "low" } : {})
           })
         });
