@@ -916,7 +916,7 @@ ${script.trim()}`;
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768" }),
-          signal: AbortSignal.timeout(65_000)
+          signal: AbortSignal.timeout(95_000)
         });
         const raw = await response.text();
         let data;
