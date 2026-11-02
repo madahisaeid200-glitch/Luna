@@ -121,7 +121,7 @@ export default {
           nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
-        publicFallbacks: { murakumo: true, mishima: true, qwen3vl: true, qwen3vlText: true },
+        publicFallbacks: { murakumo: true, murakumoFree: true, mishima: true, qwen3vl: true },
         message: "Worker is reachable. Keyless Qwen3-VL text, Mishima text, and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
       }, env.AI ? 200 : 503);
     }
