@@ -1,0 +1,50 @@
+name: LUNA live Worker image fallback proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/luna-worker-image-proof.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the deployed LUNA Worker image endpoint
+        shell: bash
+        run: |
+          set -uo pipefail
+          START=$(date +%s)
+          CODE=$(curl -sS --max-time 95 -X POST 'https://orange-firefly-6434.madahisaeid200.workers.dev' \
+            -H 'Content-Type: application/json' \
+            --data-binary '{"mode":"image","script":"Photorealistic studio photograph of a single red apple on a plain white background, centered composition, no text."}' \
+            -o /tmp/luna-image.json -w '%{http_code}' || true)
+          ELAPSED=$(($(date +%s)-START))
+          echo "HTTP: $CODE"
+          echo "Elapsed seconds: $ELAPSED"
+          python3 - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open('/tmp/luna-image.json'))
+          except Exception as e:
+              print("Worker response was not JSON:", str(e))
+              print(open('/tmp/luna-image.json', errors='replace').read(1500) if os.path.exists('/tmp/luna-image.json') else "No response body")
+              sys.exit(1)
+          image=data.get("image")
+          if isinstance(image,str) and len(image)>1000:
+              print("PASS: deployed Worker returned a real image payload.")
+              print("Provider:",data.get("provider"))
+              print("Model:",data.get("model"))
+              print("Fallback used:",data.get("fallbackUsed"))
+              print("Image payload characters:",len(image))
+              print("Worker generation ms:",data.get("generationMs"))
+              sys.exit(0)
+          print("FAIL: deployed Worker returned no usable image.")
+          print(json.dumps(data,ensure_ascii=False)[:2500])
+          sys.exit(1)
+          PY
