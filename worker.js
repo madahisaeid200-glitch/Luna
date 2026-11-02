@@ -25,21 +25,6 @@ export default {
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
-      if (provider === "pollinations") {
-        const model = env.POLLINATIONS_MODEL || "openai-fast";
-        const response = await fetch("https://text.pollinations.ai/openai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature })
-        });
-        const raw = await response.text();
-        let data;
-        try { data = JSON.parse(raw); } catch { throw new Error("pollinations HTTP " + response.status + ": non-JSON response"); }
-        if (!response.ok) throw new Error("pollinations HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
-        const content = data?.choices?.[0]?.message?.content;
-        if (typeof content !== "string" || !content.trim()) throw new Error("pollinations returned an empty completion");
-        return { response: content.trim(), model: data.model || model };
-      }
       if (provider === "gemini") {
         const apiKey = env.GEMINI_API_KEY;
         const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
@@ -90,7 +75,6 @@ export default {
         providers: {
           cloudflare: Boolean(env.AI),
           groq: Boolean(env.GROQ_API_KEY),
-          pollinations: true,
           gemini: Boolean(env.GEMINI_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
@@ -590,7 +574,6 @@ If language is BOTH, output the English version only. The Worker will translate 
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
-      "__POLLINATIONS__",
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
@@ -612,7 +595,7 @@ If language is BOTH, output the English version only. The Worker will translate 
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__GROQ__" ? "groq" : model === "__POLLINATIONS__" ? "pollinations" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          provider = model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
           actualModel = result.model;
         } else {
@@ -652,7 +635,7 @@ Rules:
                   { role: "user", content: translationPrompt }
                 ];
                 const translated = translationModel.startsWith("__")
-                  ? await externalChat(translationModel === "__GROQ__" ? "groq" : translationModel === "__POLLINATIONS__" ? "pollinations" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  ? await externalChat(translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
