@@ -1,0 +1,91 @@
+name: LUNA AI provider health and fallback smoke test
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "worker.js"
+      - ".github/workflows/luna-provider-health-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: luna-provider-health-smoke
+  cancel-in-progress: false
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for the updated Worker and inspect provider readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          for attempt in $(seq 1 24); do
+            code=$(curl -sS --max-time 15 "$URL" -o /tmp/health.json -w '%{http_code}' || true)
+            if [ "$code" = "200" ] && python3 -c 'import json; d=json.load(open("/tmp/health.json")); assert "providers" in d' 2>/dev/null; then
+              break
+            fi
+            echo "Waiting for new Worker version (attempt $attempt/24; HTTP $code)..."
+            sleep 5
+          done
+          python3 - <<'PY'
+          import json,sys
+          d=json.load(open("/tmp/health.json"))
+          print("Worker health:", d.get("ok"))
+          print("Provider readiness:", json.dumps(d.get("providers",{}), sort_keys=True))
+          print("Health message:", d.get("message"))
+          if not d.get("ok") or "providers" not in d:
+              print("FAIL: updated Worker health endpoint is not live")
+              sys.exit(1)
+          providers=d.get("providers",{})
+          if not providers.get("groq") and not providers.get("openrouter"):
+              print("BLOCKED: external fallback code is deployed, but no external provider key is configured yet.")
+              print("No model-generation request was sent, avoiding a wasted Cloudflare quota call.")
+              sys.exit(0)
+          print("PASS: at least one external fallback provider is configured.")
+          PY
+      - name: Test one real generation only when an external provider is configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,sys
+          url="https://orange-firefly-6434.madahisaeid200.workers.dev/"
+          health=json.load(urllib.request.urlopen(url,timeout=20))
+          providers=health.get("providers",{})
+          if not (providers.get("groq") or providers.get("openrouter")):
+              print("SKIP: no external provider key; no quota-consuming generation attempted.")
+              sys.exit(0)
+          body={
+            "title":"The Five-Star Name Mix-Up",
+            "premise":"LUNA and LEO are together in one luxury hotel suite. Leo booked a romantic anniversary surprise but used the wrong surname. Luna notices the welcome card has another couple's name. Only the couple are present; they resolve the mix-up with a sweet joke. Stay in the suite.",
+            "duration":"short","tone":"romcom","language":"en",
+            "characterProfile":{"lunaName":"LUNA","lunaLook":"Adult elegant European woman with chestnut-brown hair.","lunaPersonality":"Warm, witty and romantic.","leoName":"LEO","leoLook":"Adult elegant European man with dark-brown hair.","leoPersonality":"Charming and adorably chaotic.","style":"Photorealistic luxury European live-action style."}
+          }
+          req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json","Origin":"https://madahisaeid200-glitch.github.io"})
+          try:
+              response=urllib.request.urlopen(req,timeout=150)
+              result=json.loads(response.read())
+          except urllib.error.HTTPError as e:
+              result=json.loads(e.read())
+              print("HTTP",e.code)
+          script=result.get("script","")
+          print("Provider:",result.get("provider"))
+          print("Model:",result.get("model"))
+          print("Fallback used:",result.get("fallbackUsed"))
+          print("Script length:",len(script))
+          if len(script.strip())<300:
+              print(json.dumps(result,ensure_ascii=False,indent=2)[:5000])
+              sys.exit(1)
+          if result.get("provider") not in ("groq","openrouter"):
+              print("FAIL: request did not use an external fallback provider.")
+              sys.exit(1)
+          print("PASS: real external-provider screenplay generation succeeded.")
+          print(script[:500].replace("\\n"," "))
+          PY
