@@ -20,6 +20,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - name: Probe OVHcloud anonymous Llama 3.3 (no key, optional)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+            -d '{"model":"Meta-Llama-3_3-70B-Instruct","messages":[{"role":"system","content":"Return only valid JSON with keys hook, luna1, leo1, luna2, leo2, luna3, leo3, tease."},{"role":"user","content":"Write a short romantic comedy for only LUNA and LEO, already in one luxury hotel suite. LEO admits he typed the wrong surname on their anniversary reservation. LUNA thinks the booking was for another couple. They stay in the suite and resolve it with a sweet joke. Tease a new romantic surprise next episode."}],"max_tokens":512,"temperature":0.3}' \
+            "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions" -o /tmp/ovh-anon.json -w '%{http_code}' || true)
+          echo "OVH anonymous HTTP: $CODE"
+          export CODE
+          python3 - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open("/tmp/ovh-anon.json", encoding="utf-8"))
+          except Exception as e:
+              print("OVH anonymous probe returned no JSON:", e)
+              sys.exit(0)
+          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
+          print("OVH model:", data.get("model"))
+          print("Response preview:", content[:280])
+          if os.environ.get("CODE") == "200" and len(content.strip()) >= 80:
+              print("OVH anonymous text inference: PASS")
+          else:
+              print("OVH anonymous route is unavailable or rate-limited; current LUNA fallback remains active.")
+          PY
       - name: Test one real short script generation (not just Worker ping)
         shell: bash
         run: |
