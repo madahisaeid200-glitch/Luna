@@ -32,11 +32,11 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(50_000),
+          signal: AbortSignal.timeout(maxTokens > 1200 ? 110_000 : 50_000),
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: Math.min(maxTokens, 1200),
+            max_tokens: Math.min(maxTokens, 3500),
             temperature
           })
         });
@@ -511,13 +511,14 @@ ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
-        "__MURAKUMO__",
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+        "__OVH__",
+        "__MURAKUMO__"
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -532,8 +533,8 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, 2200, 0.35);
+            provider = model === "__OVH__" ? "ovhcloud" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            result = await externalChat(provider, messages, provider === "ovhcloud" ? 3500 : 2200, provider === "ovhcloud" ? 0.25 : 0.35);
             actualModel = result.model;
           } else {
             result = await env.AI.run(model, { messages, max_tokens: 2200, temperature: 0.35 });
