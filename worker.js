@@ -925,7 +925,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7") {
+          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7" || provider === "murakumo-free" || provider === "murakumo") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
