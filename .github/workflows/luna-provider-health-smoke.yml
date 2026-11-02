@@ -37,6 +37,31 @@ jobs:
           print("Keyless Qwen3-VL fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
           print("Health GET does not consume model quota.")
           PY
+      - name: Probe optional Murakumo free text router
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 45 -H "Content-Type: application/json" \
+            -d '{"model":"murakumo/free","messages":[{"role":"system","content":"Return only valid JSON with keys hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Preserve the premise exactly."},{"role":"user","content":"Write a short affectionate romantic comedy scene with only LUNA and LEO in one hotel suite. LEO typed the wrong surname on their anniversary reservation. LUNA thinks it was booked for another couple. LEO admits his typo. End with a relevant next-episode romantic surprise tease."}],"max_tokens":512,"temperature":0.3}' \
+            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/murakumo-free.json -w '%{http_code}' || true)
+          echo "Murakumo free HTTP: $CODE"
+          export CODE
+          python3 - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open("/tmp/murakumo-free.json", encoding="utf-8"))
+          except Exception as e:
+              print("Optional Murakumo free route returned no JSON:", e)
+              sys.exit(0)
+          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
+          print("Murakumo served model:", data.get("model"))
+          print("Draft preview:", content[:220])
+          if os.environ.get("CODE") != "200" or len(content.strip()) < 80:
+              print("Optional Murakumo free route is not usable for this prompt; Qwen remains primary keyless fallback.")
+              sys.exit(0)
+          print("Optional Murakumo free route: PASS")
+          PY
       - name: Probe keyless Qwen3-VL text generation
         shell: bash
         run: |
