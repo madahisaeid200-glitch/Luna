@@ -338,7 +338,7 @@ ${script.trim()}`;
         } catch (error) {
           const errorText = String(error?.message || error || "unknown error");
           failures.push(model + ": " + errorText.slice(0, 180));
-          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\\d,]+ neurons/i.test(errorText))) {
+          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\d,]+ neurons/i.test(errorText))) {
             cloudflareQuotaExhausted = true;
             failures.push("Cloudflare daily quota exhausted; switching to configured external providers.");
           }
@@ -418,7 +418,7 @@ ${script.trim()}`;
         } catch (error) {
           const errorText = String(error?.message || error || "unknown error");
           productionFailures.push(model + ": " + errorText.slice(0, 180));
-          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\\d,]+ neurons/i.test(errorText))) {
+          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\d,]+ neurons/i.test(errorText))) {
             productionQuotaExhausted = true;
             productionFailures.push("Cloudflare daily quota exhausted; switching to configured external providers.");
           }
