@@ -469,9 +469,10 @@ el('generateSceneImage').onclick=async()=>{
     if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه اول را بساز.';return;}
     if(!lastProductionPack){el('visualStatus').textContent='بسته تولید در دسترس نیست؛ ابتدا سناریو و بسته تولید را بساز.';return;}
     const parsed=parseProductionPack(lastProductionPack);
+    const neededSceneCount=Math.max(0,3-generatedSceneImages.length);
     const existingShotIds=new Set(generatedSceneImages.map(x=>Number(x.shot)).filter(Number.isFinite));
-    const remaining=(parsed.shots||[]).filter(x=>x.id>1&&!existingShotIds.has(Number(x.id))).slice(0,Math.max(0,3-generatedSceneImages.length));
-    if(remaining.length<2){el('visualStatus').textContent='در بسته تولید حداقل سه صحنه مستقل پیدا نشد. بسته تولید را دوباره بساز تا برای هر صحنه دستور تصویر داشته باشیم.';return;}
+    const remaining=(parsed.shots||[]).filter(x=>x.id>1&&!existingShotIds.has(Number(x.id))).slice(0,neededSceneCount);
+    if(remaining.length<neededSceneCount){el('visualStatus').textContent='در بسته تولید برای تکمیل سه صحنه مستقل، دستور کافی پیدا نشد. بسته تولید را دوباره بساز.';return;}
     const button=el('generateMoreScenes'),profile=saveCharacterProfile(false)||readCharacterProfile();
     const endpoint=(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).trim();
     const identity='CONTINUITY LOCK: Use exactly the same two adult lead characters as the reference episode image. LUNA: '+profile.lunaLook.slice(0,240)+' LEO: '+profile.leoLook.slice(0,240)+' Keep their exact faces, hair, age, body proportions, wardrobe palette and accessories consistent with scene 1. '+profile.style.slice(0,300);
