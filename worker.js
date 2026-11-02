@@ -695,9 +695,6 @@ If language is BOTH, output the English version only. The Worker will translate 
     const customizedPrompt = customizeCharacterPrompt(prompt);
     const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
 Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding. Do not add people, places, props, wardrobe changes, background guests, or side plots. Use only the suite, the reservation note, and the welcome card; do not describe clothing. Exact story beats in this order: (1) LUNA notices the unfamiliar surname BRAUN on the welcome card, (2) she asks who the Brauns are, (3) LEO admits he accidentally typed the wrong surname on their anniversary reservation, (4) LUNA teases him for booking their romance under a stranger's name, (5) they resolve it with one affectionate punchline and a relevant next-episode tease. Include the phrases welcome card and wrong surname. Use these dialogue anchors naturally: LUNA: Who are the Brauns? LEO: That's us, well, that's the name I accidentally typed on the reservation. LUNA: So our anniversary is booked under someone else's name? LEO: I wanted to surprise you, not give us a second identity. LUNA: Next year, use our real name. LEO: Deal. Tonight, can we at least enjoy being the Brauns? LUNA: Only until dessert. Write 6–8 unique dialogue turns; every line must advance the misunderstanding. Never repeat a sentence, joke, or action. No circular back-and-forth. Add only brief facial-expression directions; no clothing or extra props.
-LUNA: ${profile.lunaLook}; personality: ${profile.lunaPersonality}.
-LEO: ${profile.leoLook}; personality: ${profile.leoPersonality}.
-Visual style: ${profile.style}.
 Title: ${title.trim()}
 Premise (must remain unchanged): ${premise.trim()}
 Tone: ${toneText}
