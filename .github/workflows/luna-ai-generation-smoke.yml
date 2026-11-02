@@ -108,3 +108,65 @@ jobs:
           print(json.dumps(result, ensure_ascii=False, indent=2)[:6000])
           sys.exit(1)
           PY
+
+      - name: Test director shot-plan generation from the accepted screenplay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          result=json.load(open("/tmp/response.json", encoding="utf-8"))
+          script=result.get("script")
+          if not isinstance(script,str) or len(script.strip()) < 300:
+              raise SystemExit("Cannot build director request: accepted screenplay is missing.")
+          payload={
+            "mode":"director",
+            "title":"The Five-Star Name Mix-Up",
+            "duration":"short",
+            "tone":"romcom",
+            "language":"en",
+            "script":script,
+            "characterProfile":{
+              "lunaName":"LUNA",
+              "lunaLook":"Adult elegant European woman, long glossy chestnut-brown hair, hazel eyes, realistic natural features.",
+              "lunaPersonality":"Warm, witty, romantic and playful.",
+              "leoName":"LEO",
+              "leoLook":"Adult elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle stubble.",
+              "leoPersonality":"Charming, affectionate and adorably chaotic.",
+              "style":"Photorealistic luxury European lifestyle, natural cinematic lighting, realistic skin texture, vertical 9:16."
+            }
+          }
+          json.dump(payload,open("/tmp/director-request.json","w"),ensure_ascii=False)
+          PY
+          echo "Requesting a real multi-shot director plan..."
+          curl --silent --show-error --max-time 150 \
+            -H "Origin: https://madahisaeid200-glitch.github.io" \
+            -H "Content-Type: text/plain;charset=UTF-8" \
+            --data-binary @/tmp/director-request.json \
+            "https://orange-firefly-6434.madahisaeid200.workers.dev/" -o /tmp/director-response.json -w 'Director HTTP %{http_code}; total_seconds=%{time_total}; bytes=%{size_download}\\n'
+          python3 - <<'PY'
+          import json,sys
+          result=json.load(open("/tmp/director-response.json",encoding="utf-8"))
+          plan=result.get("plan") or {}
+          shots=plan.get("shots") or []
+          if result.get("ok") is not True or result.get("mode") != "director":
+              print(json.dumps(result,ensure_ascii=False,indent=2)[:5000])
+              raise SystemExit("FAIL: director-plan request did not return success.")
+          if plan.get("schemaVersion") != "luna-video-plan@1.0.0":
+              raise SystemExit("FAIL: unexpected director-plan schema.")
+          if not 4 <= len(shots) <= 10:
+              raise SystemExit(f"FAIL: expected 4-10 short shots; received {len(shots)}.")
+          for index,shot in enumerate(shots,1):
+              if not isinstance(shot.get("videoPrompt"),str) or len(shot["videoPrompt"].strip()) < 30:
+                  raise SystemExit(f"FAIL: shot {index} has no usable motion prompt.")
+              if not isinstance(shot.get("referenceFramePrompt"),str) or len(shot["referenceFramePrompt"].strip()) < 30:
+                  raise SystemExit(f"FAIL: shot {index} has no usable reference-frame prompt.")
+              if any(name not in ("LUNA","LEO") for name in (shot.get("characters") or [])):
+                  raise SystemExit(f"FAIL: shot {index} introduced an unapproved character.")
+          print("PASS: director shot plan generated.")
+          print("Provider:",result.get("provider"))
+          print("Model:",result.get("model"))
+          print("Shots:",len(shots))
+          print("Duration seconds:",plan.get("episode",{}).get("targetDurationSeconds"))
+          print("First shot:",shots[0].get("action","")[:180])
+          PY
