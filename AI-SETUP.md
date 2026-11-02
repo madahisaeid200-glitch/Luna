@@ -32,11 +32,11 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 
 The Worker uses this order for text generation:
 
-1. Cloudflare Workers AI, while its daily neuron allowance is available.
-2. Murakumo's public `mishima` model, directly and without OpenRouter, an account, an API key, or a card.
-3. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if configured and the no-key route fails.
+1. Murakumo's public `mishima` model first, directly and without OpenRouter, an account, an API key, or a card.
+2. Cloudflare Workers AI if Mishima is busy or unavailable.
+3. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if both no-key routes fail.
 
-After Cloudflare reports its daily neuron quota is exhausted, the Worker skips the remaining Cloudflare models instead of wasting time retrying the same exhausted allowance. The direct Mishima route is capped at 2,048 output tokens. The Worker reports the actual provider/model and never treats template text as successful AI output.
+This keeps routine scripts off Cloudflare so its daily neuron allowance can be reserved for images, reference edits, and voice. If Cloudflare itself reports quota exhaustion, the Worker skips its remaining models rather than retrying the exhausted allowance. The direct Mishima route is capped at 2,048 output tokens. The Worker reports the actual provider/model and never treats template text as successful AI output.
 
 No new key or manual dashboard change is required to use Mishima. The public API is `https://api.murakumo.cloud/v1/chat/completions`, model `mishima`.
 
@@ -105,11 +105,11 @@ Mistral is another existing fallback option. Its official setup documentation sa
 
 ### Text generation
 
-The Worker tries `mishima` immediately after Cloudflare Workers AI and before optional API-key providers. It bypasses OpenRouter and needs no account, key, card, or Cloudflare Secret. The public Chat Completions route currently caps output at 2,048 tokens. The Worker sets `reasoning_effort: "medium"` and caps each request accordingly.
+The Worker tries `mishima` first; Cloudflare Workers AI is the fallback if Mishima is busy or unavailable. It bypasses OpenRouter and needs no account, key, card, or Cloudflare Secret. The public Chat Completions route currently caps output at 2,048 tokens. The Worker sets `reasoning_effort: "medium"` and caps each request accordingly.
 
 ### Image quality analysis
 
-When Cloudflare vision analysis fails, the Worker tries `qwen3-vl-2b-instruct` through the same public Murakumo Chat Completions endpoint. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+The Worker tries `qwen3-vl-2b-instruct` first through the public Murakumo Chat Completions endpoint; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
 
 ### Privacy and free limits
 
@@ -117,7 +117,7 @@ Murakumo currently publishes a free allowance of 100 text requests per model per
 
 ### Preserve Cloudflare's free neuron allowance for visuals and voice
 
-Text scripts and image analysis now use keyless Murakumo routes when Cloudflare's daily neuron quota is exhausted. This leaves the Cloudflare allowance available for the more important visual and audio steps.
+Text scripts and image analysis now use keyless Murakumo routes first. This preserves Cloudflare's daily neuron allowance for the more important visual and audio steps; Cloudflare remains the fallback if Murakumo is unavailable.
 
 Cloudflare currently grants 10,000 free Neurons per day, resetting at 00:00 UTC. Published model rates:
 - FLUX.1 schnell: 4.8 Neurons per 512×512 tile plus 9.6 Neurons per inference step. LUNA uses four steps.
