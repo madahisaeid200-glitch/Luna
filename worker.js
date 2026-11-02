@@ -378,10 +378,10 @@ export default {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Generate or paste an episode script first." }, 400);
       if (script.length > 14000) return json({ error: "The episode script is too long for one director-plan request." }, 400);
       const directorPrompt = `Convert this finished screenplay into a production-ready multi-shot generative-video plan.
-Return ONLY valid JSON, no markdown, with this shape:
-{"schemaVersion":"luna-video-plan@1.0.0","episode":{"title":"...","logline":"...","targetAspectRatio":"9:16","targetDurationSeconds":60},"continuityBible":{"luna":"...","leo":"...","visualStyle":"...","continuityRules":["..."]},"shots":[{"id":"S01","durationSeconds":6,"location":"...","shotType":"wide|medium|close-up|over-shoulder|insert","characters":["LUNA","LEO"],"action":"one visible action only","emotion":"...","dialogue":[{"speaker":"LUNA","text":"..."}],"videoPrompt":"self-contained live-action video prompt focused on motion and camera choreography","referenceFramePrompt":"self-contained still-image prompt for this shot","audio":{"ambience":"...","sfx":"...","musicMood":"..."},"transition":"cut|match-cut|dissolve"}],"captions":[{"shotId":"S01","text":"..."}],"qualityGates":["..."]}
+Return ONLY compact valid JSON, no markdown. Keep every field concise and output exactly 6 shots for a short episode. Use this schema:
+{"schemaVersion":"luna-video-plan@1.0.0","episode":{"title":"...","logline":"...","targetAspectRatio":"9:16","targetDurationSeconds":36},"continuityBible":{"luna":"...","leo":"...","visualStyle":"...","continuityRules":["..."]},"shots":[{"id":"S01","durationSeconds":6,"location":"...","shotType":"wide|medium|close-up|over-shoulder|insert","characters":["LUNA"],"action":"one visible action","emotion":"...","dialogue":[{"speaker":"LUNA","text":"exact source line"}],"videoPrompt":"concise motion and camera prompt","referenceFramePrompt":"concise still-image prompt","audio":{"ambience":"...","sfx":"...","musicMood":"..."},"transition":"cut"}],"captions":[{"shotId":"S01","text":"..."}],"qualityGates":["..."]}
 Rules:
-- 6-10 shots for a short, 10-16 for a longer episode. Each shot is ONE coherent action, suitable for a separate 4-10 second video generation.
+- Exactly 6 shots for a short episode; 10-12 for a longer episode. Each shot is ONE coherent action, suitable for a separate 4-10 second video generation. Keep each prompt under 35 words and JSON compact.
 - Preserve exact story, chronology, punchline and ending. Invent no events, people, props or locations.
 - Main couple only: ${profile.lunaName} and ${profile.leoName}.
 - Fixed character bible: ${profile.lunaName}: ${profile.lunaLook} Personality: ${profile.lunaPersonality}. ${profile.leoName}: ${profile.leoLook} Personality: ${profile.leoPersonality}. Style: ${profile.style}.
@@ -500,10 +500,10 @@ ${script.trim()}`;
           let actualModel = model;
           if (model.startsWith("__")) {
             provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, 2200, 0.25);
+            result = await externalChat(provider, messages, 3500, 0.2);
             actualModel = result.model;
           } else {
-            result = await env.AI.run(model, { messages, max_tokens: 2200, temperature: 0.25 });
+            result = await env.AI.run(model, { messages, max_tokens: 3500, temperature: 0.2 });
           }
           let raw = result?.response || result?.result?.response || "";
           if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
