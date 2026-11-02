@@ -119,8 +119,7 @@ export default {
             messages,
             max_tokens: Math.min(maxTokens, 2048),
             temperature: provider === "murakumo-free" ? Math.min(temperature, 0.3) : temperature,
-            ...(provider === "murakumo" ? { reasoning_effort: "low" } : {}),
-            ...(messages.some(message => /JSON/i.test(String(message.content || ""))) ? { response_format: { type: "json_object" } } : {})
+            ...(provider === "murakumo" ? { reasoning_effort: "low" } : {})
           })
         });
         const raw = await response.text();
@@ -926,7 +925,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7" || provider === "murakumo-free" || provider === "murakumo") {
+          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
@@ -1063,9 +1062,9 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
             const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people|different couple|another pair|different pair|booking belongs to|reservation belongs to|booked for someone|reserved for someone)/i.test(finalScript);
             const hasRomanticTease = /(surprise|romantic|anniversary|date|gift|plan)/i.test(teaseText);
             const deniesMistake = /(not a typo|not a mistake|not a mix-up)/i.test(finalScript);
-            const dialogueForLength = finalScript.split(/\r?\n/).filter(line => /^\s*(LUNA|LEO):/i.test(line)).join(" ");
+            const dialogueForLength = [...finalScript.matchAll(/(?:^|\n)\s*(?:LUNA|LEO):\s*([^\n]+)/gi)].map(match => match[1]).join(" ");
             const screenplayWords = dialogueForLength.trim().split(/\s+/).filter(Boolean).length;
-            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "rooftop", "private yacht", "yacht", "island", "private performance", "restaurant", "street", "lobby", "scene 3"]
+            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "rooftop", "private yacht", "yacht", "island", "private performance", "restaurant", "street", "lobby"]
               .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
             if (screenplayWords < 75 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
               throw new Error("Screenplay failed story continuity gate: " + [
