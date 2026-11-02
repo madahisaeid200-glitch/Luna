@@ -28,37 +28,17 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 - This endpoint generates scripts only. Image/video generation is a separate integration and may cost extra.
 - Keep the Worker restricted to the LUNA site origin. Do not publish provider tokens or secrets in GitHub, the browser, or this public repository.
 
-## 6. Automatic free-provider fallback (new)
+## 6. Automatic free-provider fallback
 
-The Worker now tries providers in this order for episode-script generation:
+The Worker uses this order for text generation:
 
-1. Cloudflare Workers AI (existing primary and secondary models).
-2. Mistral API Free mode, when `MISTRAL_API_KEY` is configured (default model: `mistral-small-latest`).
-3. Groq, when `GROQ_API_KEY` is configured.
-4. OpenRouter's free-model router, when `OPENROUTER_API_KEY` is configured.
+1. Cloudflare Workers AI, while its daily neuron allowance is available.
+2. Murakumo's public `mishima` model, directly and without OpenRouter, an account, an API key, or a card.
+3. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if configured and the no-key route fails.
 
-When Cloudflare returns its daily quota error, the Worker now skips only the remaining Cloudflare models and continues to separately configured external providers. Provider errors move to the next configured provider. The Worker returns the actual provider and model used. It does not claim success when no model returns a real script.
+After Cloudflare reports its daily neuron quota is exhausted, the Worker skips the remaining Cloudflare models instead of wasting time retrying the same exhausted allowance. The direct Mishima route is capped at 2,048 output tokens. The Worker reports the actual provider/model and never treats template text as successful AI output.
 
-### One-time setup — keys stay private
-
-To activate the free fallback, create an API key from at least one provider:
-- Groq: https://console.groq.com/keys — Free plan limits are per model and are shown in the Groq console.
-- OpenRouter: https://openrouter.ai/settings/keys — use of free models is capped; current free-tier documentation lists 20 requests/minute and 50 requests/day for `:free` models.
-
-Then add the key to the existing Cloudflare Worker as a **Secret**, not as a plain text variable:
-1. Open https://dash.cloudflare.com/ and select Workers & Pages.
-2. Open the existing Worker `orange-firefly-6434`.
-3. Open Settings → Variables and Secrets (wording may vary).
-4. Add a Secret named exactly `GROQ_API_KEY` and paste the Groq key into its value. If using OpenRouter, add another Secret named exactly `OPENROUTER_API_KEY`.
-5. Save/deploy the Worker.
-
-You can add only one provider key; both are not required. No API key should be sent in ChatGPT, pasted into the website, or committed to GitHub. The Worker health response exposes only true/false provider-presence flags, never key values.
-
-Official references:
-- Groq rate limits: https://console.groq.com/docs/rate-limits
-- OpenRouter free models and limits: https://openrouter.ai/collections/free-models
-- Cloudflare Worker Secrets: https://developers.cloudflare.com/workers/configuration/secrets/
-
+No new key or manual dashboard change is required to use Mishima. The public API is `https://api.murakumo.cloud/v1/chat/completions`, model `mishima`.
 
 ## 7. Gemini free-tier testing (internal tests only)
 
@@ -121,12 +101,30 @@ If NVIDIA access is available, add the API key to the existing Cloudflare Worker
 Mistral is another existing fallback option. Its official setup documentation says Free mode is enabled without a credit card, with usage and rate limits. Secret name: `MISTRAL_API_KEY`.
 
 
-## 10. Keyless public fallback (Murakumo)
+## 10. Keyless Murakumo fallbacks and remaining limits
 
-The Worker now tries the public `mishima` Chat Completions route after Cloudflare Workers AI and any configured provider keys. This is the first no-key fallback, bypasses OpenRouter, and requires no account, API key, card, or Cloudflare Secret. The endpoint is `https://api.murakumo.cloud/v1/chat/completions`; the model selector is `mishima`. The route has a published output cap of 2,048 tokens. LUNA uses `reasoning_effort: "medium"` because this model reasons before answering; this reduces empty completions caused by spending the output budget on reasoning.
+### Text generation
 
-**Privacy warning:** Murakumo states that free-lane requests may be served on community-run nodes, where third-party operators may be able to read prompts and responses. Do not send personal, private, or confidential information. LUNA's fictional character/story prompts are suitable only if kept free of real personal details. Availability and speed are not guaranteed; the service may return HTTP 429 when busy. The Worker reports the actual provider/model on success and never converts a failed request into a successful AI draft.
+The Worker tries `mishima` immediately after Cloudflare Workers AI and before optional API-key providers. It bypasses OpenRouter and needs no account, key, card, or Cloudflare Secret. The public Chat Completions route currently caps output at 2,048 tokens. The Worker sets `reasoning_effort: "medium"` and caps each request accordingly.
 
-The Worker health endpoint reports `publicFallbacks.murakumo: true` to mean the public route is wired in code. It does not prove the upstream service is currently accepting generation requests. A successful non-empty LUNA script is the only end-to-end generation proof.
+### Image quality analysis
 
-References: https://murakumo.cloud/free and https://murakumo.cloud/docs
+When Cloudflare vision analysis fails, the Worker tries `qwen3-vl-2b-instruct` through the same public Murakumo Chat Completions endpoint. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+
+### Privacy and free limits
+
+Murakumo currently publishes a free allowance of 100 text requests per model per network per UTC day and five image-generation requests per network per UTC day. Shared service capacity still applies; busy refusals do not count. The service states that prompts are not used for training, but outputs can be stored for publication review, images may remain in the fleet cache, and approved examples can be public. Send only fictional LUNA material; never send personal, private, or confidential information.
+
+### What is not yet covered by a keyless fallback
+
+- Still-image generation remains on Cloudflare FLUX.1 schnell.
+- Reference-image editing remains on Cloudflare FLUX.2 Klein.
+- Voice generation remains on Cloudflare Workers AI. Murakumo's speech endpoint is documented but currently reports `speech-configured: false` / HTTP 501, so it is not a verified free TTS alternative.
+- Video generation uses the separate Wan 2.2 route and is not repaired by the text/vision fallback.
+
+Murakumo lists a public Hokusai image-generation endpoint, but its model card reports an unclear `other` license and no declared upstream license. It is therefore **not wired into the monetized LUNA production path** until commercial-use rights are clarified.
+
+References:
+- API and free limits: https://murakumo.cloud/docs and https://murakumo.cloud/
+- Qwen3-VL model card: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
+- Hokusai model card and license note: https://huggingface.co/awai-network/hokusai
