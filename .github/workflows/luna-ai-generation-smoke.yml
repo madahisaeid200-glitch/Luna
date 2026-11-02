@@ -78,10 +78,14 @@ jobs:
                   print("FAIL: Screenplay did not pass LUNA story-continuity checks.")
                   print(script[:2500])
                   sys.exit(1)
-              print("PASS: A real AI-generated screenplay passed continuity checks.")
               print("Model:", result.get("model"))
+              print("Provider:", result.get("provider"))
               print("Fallback used:", result.get("fallbackUsed"))
-              print("Provider failure details:", result.get("fallbackReason"))
+              if result.get("provider") == "local-template" or result.get("fallbackUsed") is True:
+                  print("FAIL: valid screenplay came from a deterministic fallback, not a live AI provider.")
+                  print("Provider failure details:", result.get("fallbackReason") or result.get("details"))
+                  sys.exit(1)
+              print("PASS: live AI provider generated a screenplay and it passed continuity checks.")
               print("Script characters:", len(script))
               print("Preview:", script[:700].replace("\\n", " "))
               sys.exit(0)
@@ -133,6 +137,9 @@ jobs:
           if result.get("ok") is not True or result.get("mode") != "director":
               print(json.dumps(result,ensure_ascii=False,indent=2)[:5000])
               raise SystemExit("FAIL: director-plan request did not return success.")
+          if result.get("provider") == "local-template" or result.get("fallbackUsed") is True:
+              print(json.dumps(result,ensure_ascii=False,indent=2)[:5000])
+              raise SystemExit("FAIL: director plan used a deterministic fallback, not a live AI provider.")
           if plan.get("schemaVersion") != "luna-video-plan@1.0.0":
               raise SystemExit("FAIL: unexpected director-plan schema.")
           if not 4 <= len(shots) <= 10:
