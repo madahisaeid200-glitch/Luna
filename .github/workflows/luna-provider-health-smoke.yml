@@ -49,6 +49,7 @@ jobs:
             -d '{"model":"murakumo/free","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":16,"temperature":0}' \
             "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/murakumo.json -w '%{http_code}' || true)
           echo "Murakumo HTTP: $CODE"
+          export CODE
           python3 - <<'PY'
           import json, os
           try:
