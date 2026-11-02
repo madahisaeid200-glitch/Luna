@@ -727,7 +727,7 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const surnameMixupPremise = /surname|welcome card|anniversary reservation/i.test(premise);
     const specificStoryGuard = surnameMixupPremise && language !== "fa"
-      ? "\\n\\nSPECIAL STORY CONTINUITY RULES: LEO must explicitly say he typed or mistyped the wrong surname on their anniversary reservation. LUNA must think the booking was for another couple. LEO must own the typo and never deny it. Stay inside the hotel suite with only LUNA and LEO. The only visible items are those explicitly in the premise, especially the welcome card/reservation details; do not add a phone, candles, champagne, hotel manager, receptionist, front desk, staff, or a checkout. End with a next-episode tease about a new romantic surprise, not a new booking problem."
+      ? "\\n\\nSPECIAL STORY CONTINUITY RULES: LEO must explicitly say he typed or mistyped the wrong surname on their anniversary reservation. LUNA must think the booking was for another couple. LEO must own the typo and never deny it. Stay inside the hotel suite with only LUNA and LEO. The only visible items are those explicitly in the premise, especially the welcome card/reservation details; do not add a phone, hotel manager, receptionist, front desk, staff, or a checkout. Tasteful suite details such as candles or champagne are acceptable only as background and must not change the plot. End with a next-episode tease about a new romantic surprise, not a new booking problem."
       : "";
     const customizedPrompt = customizeCharacterPrompt(prompt + specificStoryGuard);
     const murakumoPrompt = `Return ONLY one valid JSON object with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
@@ -821,7 +821,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
                 return false;
               }
               const combinedText = keys.map(key => data[key]).join(" ").toLowerCase();
-              const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite", "new name"]
+              const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "new name"]
                 .filter(term => !premise.toLowerCase().includes(term) && combinedText.includes(term));
               if (forbiddenExtras.length) {
                 validationError = "unrequested story elements: " + forbiddenExtras.join(", ");
@@ -892,7 +892,7 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
             const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people|different couple|another pair|different pair|booking belongs to|reservation belongs to|booked for someone|reserved for someone)/i.test(finalScript);
             const hasRomanticTease = /(surprise|romantic|anniversary|date|gift|plan)/i.test(teaseText);
             const deniesMistake = /(not a typo|not a mistake|not a mix-up)/i.test(finalScript);
-            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite"]
+            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite"]
               .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
             if (!hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
               throw new Error("Screenplay failed story continuity gate: " + [
