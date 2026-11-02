@@ -559,8 +559,8 @@ ${script.trim()}`;
               action,
               emotion: "Natural romantic-comedy reaction",
               dialogue: [{ speaker: name, text: item.text }],
-              videoPrompt: profile.style + " Continuous live-action vertical 9:16 shot. " + action + " Subtle facial movement, believable eye-line and gentle camera motion. Preserve identity, gender presentation and wardrobe; no extra people or locations.",
-              referenceFramePrompt: profile.style + " Photorealistic vertical 9:16 frame in the same luxury hotel suite. " + action + " Natural skin texture, realistic anatomy and consistent wardrobe; no extra people, text or logos.",
+              videoPrompt: profile.style + " Continuous live-action vertical 9:16 shot in the same location established by the screenplay. " + action + " Subtle facial movement, believable eye-line and gentle camera motion. Preserve identity, gender presentation and wardrobe; no extra people or locations.",
+              referenceFramePrompt: profile.style + " Photorealistic vertical 9:16 frame in the same location established by the screenplay. " + action + " Natural skin texture, realistic anatomy and consistent wardrobe; no extra people, text or logos.",
               audio: { ambience: "Natural ambience of the established location", sfx: "Only sounds already implied by the screenplay", musicMood: "Soft romantic comedy" },
               transition: "cut"
             };
