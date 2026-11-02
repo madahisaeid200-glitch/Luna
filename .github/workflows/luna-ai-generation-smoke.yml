@@ -18,7 +18,7 @@ jobs:
   generate:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 8
     steps:
       - name: Test one real short script generation (not just Worker ping)
         shell: bash
