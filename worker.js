@@ -1062,14 +1062,16 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
             const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people|different couple|another pair|different pair|booking belongs to|reservation belongs to|booked for someone|reserved for someone)/i.test(finalScript);
             const hasRomanticTease = /(surprise|romantic|anniversary|date|gift|plan)/i.test(teaseText);
             const deniesMistake = /(not a typo|not a mistake|not a mix-up)/i.test(finalScript);
-            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite"]
+            const screenplayWords = finalScript.trim().split(/\\s+/).length;
+            const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "rooftop", "private yacht", "yacht", "island", "private performance", "restaurant", "street", "lobby", "coffee table", "candles", "champagne", "scene 3"]
               .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
-            if (!hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
+            if (screenplayWords < 75 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
               throw new Error("Screenplay failed story continuity gate: " + [
                 !hasLeoAdmission ? "Leo must admit the wrong-surname typo" : "",
                 !hasOtherCoupleMisunderstanding ? "Luna must misunderstand it as another couple's booking" : "",
                 !hasRomanticTease ? "next-episode tease must promise a romantic surprise" : "",
                 deniesMistake ? "dialogue contradicts the admitted typo" : "",
+                screenplayWords < 75 || screenplayWords > 180 ? "screenplay length outside 75–180 words (" + screenplayWords + ")" : "",
                 forbiddenExtras.length ? "unrequested elements: " + forbiddenExtras.join(", ") : ""
               ].filter(Boolean).join("; "));
             }
