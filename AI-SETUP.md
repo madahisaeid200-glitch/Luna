@@ -30,17 +30,21 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 
 ## 6. Automatic free-provider fallback
 
-The Worker uses this order for text generation:
+### Main screenplay generation
 
-1. Murakumo's public `murakumo/free` route first. It tries currently available free hosted models and has a documented direct Mishima fallback.
-2. Direct public `mishima` if the free router is busy or unavailable.
-3. Qwen3-VL as a bounded, 30-second text fallback if both Murakumo text routes fail.
-4. Cloudflare Workers AI if no-key Murakumo routes fail and its daily neuron allowance remains.
-5. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if all no-key routes fail.
+The Worker uses this order for short scripts:
 
-This keeps routine scripts off Cloudflare so its daily neuron allowance can be reserved for images, reference edits, and voice. If Cloudflare itself reports quota exhaustion, the Worker skips its remaining models rather than retrying the exhausted allowance. Both Murakumo routes are keyless and have a 2,048-token public response cap. The Worker reports the actual provider/model and never treats template text as successful AI output.
+1. Cloudflare Workers AI while its daily neuron allowance is available.
+2. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
+3. Public keyless `qwen3-vl-2b-instruct` as the short-script fallback. It is capped at 30 seconds because its free fleet capacity is degraded and can be inconsistent.
 
-No new key, account, card, or manual dashboard change is required. The public API is `https://api.murakumo.cloud/v1/chat/completions`; models are `murakumo/free` and `mishima`.
+When Cloudflare returns its daily neuron-quota error, the Worker skips its remaining Cloudflare models rather than retrying the exhausted allowance. Long scripts do not currently use Qwen3-VL as a fallback. The Worker reports the actual provider/model and never treats template text as successful AI output.
+
+### Persian translation and correction
+
+For bilingual output, the Worker tries Murakumo's public `murakumo/free` route, then direct `mishima`, before other configured routes. These routes are keyless, but live tests showed that the free router can return HTTP 422 for some prompt shapes and direct Mishima can be slow; they are not the primary English screenplay generator.
+
+No new key, account, card, or manual dashboard change is required for the Qwen3-VL short-script fallback. The public API is `https://api.murakumo.cloud/v1/chat/completions`.
 
 ## 7. Gemini free-tier testing (internal tests only)
 
@@ -111,7 +115,7 @@ The Worker uses `murakumo/free` first, then direct `mishima`, then Cloudflare Wo
 
 ### Image quality analysis
 
-The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. Qwen3-VL is also retained as a bounded third-line text fallback after both Murakumo routes; it returned a usable short screenplay in one live test but has degraded capacity and timed out in another, so the Worker caps that attempt at 30 seconds and continues to Cloudflare if quota remains. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint first for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. The same model is used as a bounded short-script fallback after the configured providers, but not for long scripts. It has degraded capacity: one live screenplay test succeeded and another timed out, so text attempts are capped at 30 seconds. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
 
 ### Privacy and free limits
 
