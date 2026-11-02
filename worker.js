@@ -476,6 +476,7 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
         "__MURAKUMO_FREE__",
+        "__LLM7__",
         "__OVH__",
         "__LLMFAUCET__",
         "__MURAKUMO__",
@@ -588,7 +589,6 @@ ${script.trim()}`;
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
         "__OVH__",
-        "__LLM7__",
         "__LLM7__",
         "__LLMFAUCET__",
         "__MURAKUMO_FREE__",
