@@ -850,6 +850,42 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
+          if (provider === "ovhcloud") {
+            const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
+            let structured = null;
+            try { structured = JSON.parse(finalScript.trim()); } catch {}
+            if (!structured || !keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
+              throw new Error("OVH screenplay must be valid JSON with all eight dialogue keys");
+            }
+            const values = keys.map(key => structured[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
+            if (new Set(values).size !== values.length) throw new Error("OVH screenplay repeated dialogue lines");
+            const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
+            if (totalWords < 75 || totalWords > 150) throw new Error("OVH screenplay length outside 75–150 words (" + totalWords + ")");
+            if (surnameMixupPremise && language !== "fa") {
+              const leo1 = structured.leo1.toLowerCase();
+              const luna2 = structured.luna2.toLowerCase();
+              const leo2 = structured.leo2.toLowerCase();
+              const tease = structured.tease.toLowerCase();
+              if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1)) {
+                throw new Error("OVH LEO first line must admit the wrong surname in first person");
+              }
+              if (!/(another couple|other couple|someone else|someone else's|different couple|another pair|other people)/.test(luna2)) {
+                throw new Error("OVH LUNA second line must show the other-couple misunderstanding");
+              }
+              if (!/(typo|typed|mistake|my fault)/.test(leo2) || /(not a typo|not a mistake|not a mix-up)/.test(leo2)) {
+                throw new Error("OVH LEO second line must accept responsibility for the typo");
+              }
+              if (!/(next episode|next time)/.test(tease) || !/(surprise|romantic|anniversary|date|gift|plan)/.test(tease)) {
+                throw new Error("OVH tease must promise a romantic surprise in the next episode");
+              }
+            }
+            finalScript = "**TITLE:** " + title.trim() +
+              "\n\n**HOOK:**\n" + structured.hook.trim() +
+              "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() + "\n" + profile.leoName + ": " + structured.leo1.trim() +
+              "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
+              "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
+              "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
+          }
           if (provider === "qwen3vl") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             const parseStructured = value => {
