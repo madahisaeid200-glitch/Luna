@@ -580,6 +580,7 @@ If language is BOTH, output the English version only. The Worker will translate 
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
     const failures = [];
+    let cloudflareQuotaExhausted = false;
     if (!modelsToTry.length) {
       return json({
         error: "No text AI provider is configured.",
@@ -588,6 +589,9 @@ If language is BOTH, output the English version only. The Worker will translate 
       }, 503);
     }
     for (const model of modelsToTry) {
+      // A Cloudflare daily-quota failure should skip only the remaining Cloudflare
+      // models, not separately configured external providers such as OpenRouter.
+      if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
           { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
@@ -714,19 +718,20 @@ ${finalScript}`;
         // Workers AI's daily neuron allowance is shared across its models.
         // Once error 4006 is returned, trying the second Cloudflare model cannot help
         // and only adds latency. Continue only to separately configured external providers.
-        const cloudflareQuotaExhausted = !model.startsWith("__") &&
+        const isCloudflareQuotaError = !model.startsWith("__") &&
           (/4006/i.test(errorText) ||
            /used up (your )?daily free allocation/i.test(errorText) ||
            /daily free allocation of [\d,]+ neurons/i.test(errorText));
-        if (cloudflareQuotaExhausted) {
-          failures.push("Cloudflare Workers AI daily neuron allowance is exhausted; remaining Cloudflare models were skipped.");
-          break;
+        if (isCloudflareQuotaError && !cloudflareQuotaExhausted) {
+          cloudflareQuotaExhausted = true;
+          failures.push("Cloudflare Workers AI daily neuron allowance is exhausted; remaining Cloudflare models were skipped. Trying configured external providers.");
         }
       }
     }
-    const quotaExhausted = failures.some(item =>
-      /4006|daily free allocation|neuron allowance is exhausted/i.test(item)
+    const externalProviderConfigured = Boolean(
+      env.MISTRAL_API_KEY || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.OPENROUTER_API_KEY
     );
+    const quotaExhausted = cloudflareQuotaExhausted && !externalProviderConfigured;
     return json({
       error: quotaExhausted
         ? "Cloudflare Workers AI daily free quota is exhausted. No script was generated."
