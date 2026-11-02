@@ -253,7 +253,7 @@ el('generate').onclick=async()=>{
      if(!response.ok){const detail=Array.isArray(data.details)?' — '+data.details.join(' | '):'';throw new Error((data.error||'AI endpoint request failed')+detail);}
      if(typeof data.script!=='string'||!data.script.trim())throw new Error('مدل پاسخ داد، اما متن سناریو در پاسخ وجود ندارد.');
      lastDraft=data.script;lastDraftIsAi=true;
-     updateAiStatus(data.translationWarning ? 'سناریوی انگلیسی با هوش مصنوعی تولید شد، اما ترجمه فارسی ناموفق بود. جزئیات: '+(Array.isArray(data.details)?data.details.slice(-4).join(' | '):'ترجمه در دسترس نبود') : 'اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.model||'AI')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
+     updateAiStatus(data.translationWarning ? 'سناریوی انگلیسی با هوش مصنوعی تولید شد، اما ترجمه فارسی ناموفق بود. جزئیات: '+(Array.isArray(data.details)?data.details.slice(-4).join(' | '):'ترجمه در دسترس نبود') : 'اتصال موفق بود؛ سناریو با هوش مصنوعی تولید شد ('+(data.provider||'AI')+' / '+(data.model||'model')+(data.translationModel ? '؛ مدل ترجمه فارسی: '+data.translationModel : '')+').');
    }else{
      lastDraftIsAi=false;lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
      updateAiStatus('هنوز Worker تنظیم نشده؛ این خروجی از قالب داخلی است، نه مدل هوش مصنوعی.');
@@ -292,7 +292,7 @@ el('makeProductionPack').onclick=async()=>{
     el('exportProductionJson').disabled=false;
     const firstPrompt=extractFirstImagePrompt(lastProductionPack);if(firstPrompt)el('imagePrompt').value=firstPrompt;
    el('output').textContent=lastProductionPack;
-   updateAiStatus('بسته تولید ویدئو با هوش مصنوعی آماده شد ('+(data.model||'AI')+'). از «کپی متن» یا «دانلود فایل متنی» برای استفاده در ابزارهای تصویر و ویدئو استفاده کن.');
+   updateAiStatus('بسته تولید ویدئو با هوش مصنوعی آماده شد ('+(data.provider||'AI')+' / '+(data.model||'model')+'). از «کپی متن» یا «دانلود فایل متنی» برای استفاده در ابزارهای تصویر و ویدئو استفاده کن.');
  }catch(error){
    updateAiStatus('ساخت بسته تولید ناموفق بود: '+(error.name==='AbortError'?'زمان درخواست تمام شد.':(error.message||'خطای نامشخص')));
    alert('ساخت بسته تولید ناموفق بود: '+(error.message||'خطای نامشخص'));
