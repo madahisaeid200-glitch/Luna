@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(maxTokens > 2500 ? 40_000 : 30_000),
+          signal: AbortSignal.timeout(maxTokens > 2500 ? 65_000 : 50_000),
           body: JSON.stringify({
             model,
             messages,
@@ -475,9 +475,8 @@ ${script.trim()}`;
       }
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
-        "__MURAKUMO_FREE__",
         "__OVH__",
-        "__LLMFAUCET__",
+        "__MURAKUMO_FREE__",
         "__MURAKUMO__",
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
@@ -501,10 +500,10 @@ ${script.trim()}`;
           let actualModel = model;
           if (model.startsWith("__")) {
             provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, 3500, 0.25);
+            result = await externalChat(provider, messages, 2200, 0.25);
             actualModel = result.model;
           } else {
-            result = await env.AI.run(model, { messages, max_tokens: 3500, temperature: 0.25 });
+            result = await env.AI.run(model, { messages, max_tokens: 2200, temperature: 0.25 });
           }
           let raw = result?.response || result?.result?.response || "";
           if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
