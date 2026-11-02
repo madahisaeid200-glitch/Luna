@@ -1,4 +1,4 @@
-name: LUNA Hokusai portrait-size provider probe
+name: LUNA Hokusai portrait-size and capacity probe
 
 on:
   workflow_dispatch:
