@@ -119,7 +119,8 @@ export default {
             messages,
             max_tokens: Math.min(maxTokens, 2048),
             temperature: provider === "murakumo-free" ? Math.min(temperature, 0.3) : temperature,
-            ...(provider === "murakumo" ? { reasoning_effort: "low" } : {})
+            ...(provider === "murakumo" ? { reasoning_effort: "low" } : {}),
+            ...(messages.some(message => /JSON/i.test(String(message.content || ""))) ? { response_format: { type: "json_object" } } : {})
           })
         });
         const raw = await response.text();
