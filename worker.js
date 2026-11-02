@@ -758,7 +758,7 @@ Premise (must remain unchanged): ${premise.trim()}
                   "\n\n**PAYOFF**\nLUNA: " + data.luna3.trim() + "\nLEO: " + data.leo3.trim() +
                   "\n\n**NEXT-EPISODE TEASE:**\n" + data.tease.trim();
               }
-            }
+            } catch (_) {
               // Keep the raw model text if it did not return valid structured JSON.
             }
           }
