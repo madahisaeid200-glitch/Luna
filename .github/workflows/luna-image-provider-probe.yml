@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - ".github/workflows/luna-image-provider-probe.yml"
+      - "README.md"
 
 permissions:
   contents: read
