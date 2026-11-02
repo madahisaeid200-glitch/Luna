@@ -931,8 +931,7 @@ STORY RULES:
 - When writing Persian, write like a native Iranian comedy screenwriter, not a translator. Prefer short, natural spoken lines; avoid stiff literal translations and awkward phrases. Stage directions must also be fluent Persian. Use «پیش‌نمایش قسمت بعد» for the next-episode tease and «پایان بامزه» for the payoff; never use «پرداخت» as a screenplay heading.
 - In Persian dialogue, use respectful/intimate pronouns consistently for this loving couple; avoid unnatural formal phrasing unless it is intentionally a joke.
 - Keep each scene physically and logically continuous with the previous scene.
-- For a 30–60 second Short/Reel, target 110–150 spoken words, with an absolute maximum of 160 spoken words. Use exactly TWO scenes, then PAYOFF and NEXT-EPISODE TEASE. Never add SCENE 3. Keep each dialogue line short and natural; production directions must be concise.
-- For a 3–5 minute long episode, write a complete 400–700-word screenplay with 6–8 fully developed scenes, clear scene headings, dialogue and concise cinematic action. Include a complete payoff and relevant next-episode tease. Do not compress it into a short outline.
+${duration === "long" ? "- For a 3–5 minute long episode, write a complete 400–700-word screenplay with 6–8 fully developed scenes, clear scene headings, dialogue and concise cinematic action. Include a complete payoff and relevant next-episode tease. Do not compress it into a short outline." : "- For a 30–60 second Short/Reel, target 110–150 spoken words, with an absolute maximum of 160 spoken words. Use exactly TWO scenes, then PAYOFF and NEXT-EPISODE TEASE. Never add SCENE 3. Keep each dialogue line short and natural; production directions must be concise."}
 - Return only the script. Do not add explanations, apologies, analysis, or meta-commentary.
 
 STYLE: ${toneText}
@@ -1244,7 +1243,7 @@ Rules:
 - Use warm, informal, believable dialogue for an affectionate couple. Prefer «امیدوارم غافلگیرت کرده باشم» over stiff formal wording such as «امیدوارم بتوانم شما را شگفت زده کنم».
 - Make stage directions clear and physically logical; explain who is holding or handing over an object, and do not create contradictory object movements.
 - Write all dialogue and production directions in Persian, except the names LUNA and LEO.
-- Use only Persian script for headings: عنوان، قلاب، صحنه ۱ تا صحنه ۶ برای قسمت بلند، پایان بامزه، پیش‌نمایش قسمت بعد. Never translate PAYOFF as «پرداخت».
+- Use only Persian script for headings: ${duration === "long" ? "عنوان، قلاب، صحنه ۱ تا صحنه ۶، پایان بامزه، پیش‌نمایش قسمت بعد" : "عنوان، قلاب، صحنه ۱، صحنه ۲، پایان بامزه، پیش‌نمایش قسمت بعد"}. Never translate PAYOFF as «پرداخت».
 - Never output Japanese or Chinese characters, and never leave stray English words such as "joking" in Persian sentences.
 - Before returning, silently proofread the Persian for natural phrasing, grammar, missing words, foreign-language fragments, and continuity.
 - Preserve the complete ending; do not truncate or stop mid-sentence.
