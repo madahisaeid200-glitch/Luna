@@ -540,7 +540,7 @@ ${script.trim()}`;
       // Explicitly labelled local shot-plan fallback, used only after every live director provider failed.
       // It is derived from the accepted screenplay and never claims that AI video was rendered.
       if (duration !== "long") {
-        const dialogueLines = [...script.matchAll(/^\\s*(LUNA|LEO):\\s*(.+)$/gim)]
+        const dialogueLines = [...script.matchAll(/^\s*(LUNA|LEO):\s*(.+)$/gim)]
           .map(match => ({ speaker: match[1].toUpperCase(), text: match[2].trim() }))
           .filter(item => item.text.length > 0);
         if (dialogueLines.length >= 4) {
