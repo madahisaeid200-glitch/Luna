@@ -46,9 +46,9 @@ export default {
         if (!content) throw new Error("gemini returned an empty or blocked completion");
         return { response: content, model };
       }
-      const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : provider === "mistral" ? "https://api.mistral.ai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions";
-      const apiKey = provider === "groq" ? env.GROQ_API_KEY : provider === "mistral" ? env.MISTRAL_API_KEY : env.OPENROUTER_API_KEY;
-      const model = provider === "groq" ? (env.GROQ_MODEL || "openai/gpt-oss-20b") : provider === "mistral" ? (env.MISTRAL_MODEL || "mistral-small-latest") : (env.OPENROUTER_MODEL || "openrouter/free");
+      const endpoint = provider === "nvidia" ? "https://integrate.api.nvidia.com/v1/chat/completions" : provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : provider === "mistral" ? "https://api.mistral.ai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions";
+      const apiKey = provider === "nvidia" ? env.NVIDIA_API_KEY : provider === "groq" ? env.GROQ_API_KEY : provider === "mistral" ? env.MISTRAL_API_KEY : env.OPENROUTER_API_KEY;
+      const model = provider === "nvidia" ? (env.NVIDIA_MODEL || "nvidia/nemotron-3.5-bolt-e4b") : provider === "groq" ? (env.GROQ_MODEL || "openai/gpt-oss-20b") : provider === "mistral" ? (env.MISTRAL_MODEL || "mistral-small-latest") : (env.OPENROUTER_MODEL || "openrouter/free");
       if (!apiKey) throw new Error(provider.toUpperCase() + "_API_KEY is not configured as a Worker Secret");
       const headers = { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" };
       if (provider === "openrouter") {
@@ -77,6 +77,7 @@ export default {
           groq: Boolean(env.GROQ_API_KEY),
           mistral: Boolean(env.MISTRAL_API_KEY),
           gemini: Boolean(env.GEMINI_API_KEY),
+          nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
         message: "Worker is reachable. Provider flags show configuration presence only; they do not consume model quota."
@@ -291,6 +292,7 @@ ${script.trim()}`;
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
       ];
       const failures = [];
@@ -391,6 +393,7 @@ ${script.trim()}`;
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
       ];
       const productionFailures = [];
@@ -613,6 +616,7 @@ If language is BOTH, output the English version only. The Worker will translate 
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
@@ -622,7 +626,7 @@ If language is BOTH, output the English version only. The Worker will translate 
     if (!modelsToTry.length) {
       return json({
         error: "No text AI provider is configured.",
-        requiredSecrets: ["GROQ_API_KEY", "OPENROUTER_API_KEY"],
+        requiredSecrets: ["MISTRAL_API_KEY", "NVIDIA_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY"],
         note: "Add at least one provider key as a Cloudflare Worker Secret. Never place keys in GitHub Pages or public source files."
       }, 503);
     }
@@ -639,7 +643,7 @@ If language is BOTH, output the English version only. The Worker will translate 
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MISTRAL__" ? "mistral" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          provider = model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
           actualModel = result.model;
         } else {
@@ -669,6 +673,7 @@ Rules:
             const translationModels = [
               ...(env.AI ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
               ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
               ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
               ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
@@ -680,7 +685,7 @@ Rules:
                   { role: "user", content: translationPrompt }
                 ];
                 const translated = translationModel.startsWith("__")
-                  ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
@@ -712,7 +717,7 @@ ${finalScript}`;
                         { role: "user", content: repairPrompt }
                       ];
                       const repaired = translationModel.startsWith("__")
-                        ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
+                        ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
                         : await env.AI.run(translationModel, { messages: repairMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.1 });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
@@ -767,7 +772,7 @@ ${finalScript}`;
       }
     }
     const externalProviderConfigured = Boolean(
-      env.MISTRAL_API_KEY || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.OPENROUTER_API_KEY
+      env.MISTRAL_API_KEY || env.NVIDIA_API_KEY || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.OPENROUTER_API_KEY
     );
     const quotaExhausted = cloudflareQuotaExhausted && !externalProviderConfigured;
     return json({
