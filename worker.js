@@ -378,7 +378,7 @@ export default {
           if (!completed) throw new Error("TTS.ai timed out on audio chunk " + (index + 1));
 
           const resultUrl = new URL(completed.result_url);
-          if (resultUrl.protocol !== "https:" || !/(^|\\.)tts\\.ai$/i.test(resultUrl.hostname)) {
+          if (resultUrl.protocol !== "https:" || !/(^|\.)tts\.ai$/i.test(resultUrl.hostname)) {
             throw new Error("TTS.ai returned an unexpected audio host.");
           }
           const audioResponse = await fetch(resultUrl.toString(), { signal: AbortSignal.timeout(20_000) });
