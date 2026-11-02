@@ -800,7 +800,7 @@ ${script.trim()}`;
       ? "3–5 minutes. Use 6–8 clearly staged scenes and enough dialogue for the full runtime."
       : "30–60 seconds. Keep it tight enough to fit the runtime, but complete: hook, setup, escalation, payoff, and cliffhanger.";
     const languageText = language === "fa"
-      ? "Write the complete script only in idiomatic, conversational Persian as a native Persian comedy screenwriter would write it. Do NOT translate English idioms word-for-word. Dialogue must sound natural when spoken aloud. Do not mix English into Persian except the character names LUNA and LEO. Use these exact Persian headings: عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد. Never use headings such as پرداخت or پایان‌بندی به‌عنوان ترجمهٔ لفظی PAYOFF. Never output Japanese, Chinese, or other non-Persian scripts. Avoid unnatural phrases like «من را با خوشی جذب کنید»; use natural romantic teasing such as «به‌جای این‌همه برنامه‌ریزی، فقط کافیه دلم رو به دست بیاری» when appropriate."
+      ? "Write the complete script only in idiomatic, conversational Persian as a native Persian comedy screenwriter would write it. Do NOT translate English idioms word-for-word. Dialogue must sound natural when spoken aloud. Do not mix English into Persian except the character names LUNA and LEO. Use these exact Persian headings: عنوان، قلاب، صحنه ۱، صحنه ۲، پایان بامزه، پیش‌نمایش قسمت بعد. Never use headings such as پرداخت or پایان‌بندی به‌عنوان ترجمهٔ لفظی PAYOFF. Never output Japanese, Chinese, or other non-Persian scripts. Avoid unnatural phrases like «من را با خوشی جذب کنید»; use natural romantic teasing such as «به‌جای این‌همه برنامه‌ریزی، فقط کافیه دلم رو به دست بیاری» when appropriate."
       : "Write the complete script only in natural English.";
     const toneText = ({
       romcom: "warm romantic comedy, cute chemistry, playful teasing, and an affectionate misunderstanding",
@@ -809,8 +809,8 @@ ${script.trim()}`;
     })[tone] || "warm romantic comedy";
 
     const outputFormatText = language === "fa"
-      ? "عنوان\nقلاب\nصحنه ۱\nصحنه ۲\nصحنه ۳\nپایان بامزه\nپیش‌نمایش قسمت بعد"
-      : "TITLE\nHOOK\nSCENE 1\nSCENE 2\nSCENE 3\nPAYOFF\nNEXT-EPISODE TEASE";
+      ? "عنوان\nقلاب\nصحنه ۱\nصحنه ۲\nپایان بامزه\nپیش‌نمایش قسمت بعد"
+      : "TITLE\nHOOK\nSCENE 1\nSCENE 2\nPAYOFF\nNEXT-EPISODE TEASE";
 
     const prompt = `You are the lead writer for the fictional AI influencer couple LUNA and LEO. Create ONE original, production-ready short-form episode.
 
@@ -837,7 +837,7 @@ STORY RULES:
 - When writing Persian, write like a native Iranian comedy screenwriter, not a translator. Prefer short, natural spoken lines; avoid stiff literal translations and awkward phrases. Stage directions must also be fluent Persian. Use «پیش‌نمایش قسمت بعد» for the next-episode tease and «پایان بامزه» for the payoff; never use «پرداخت» as a screenplay heading.
 - In Persian dialogue, use respectful/intimate pronouns consistently for this loving couple; avoid unnatural formal phrasing unless it is intentionally a joke.
 - Keep each scene physically and logically continuous with the previous scene.
-- For a 30–60 second Short/Reel, target approximately 120–170 spoken words and keep production directions concise.
+- For a 30–60 second Short/Reel, target 110–150 spoken words, with an absolute maximum of 160 spoken words. Use exactly TWO scenes, then PAYOFF and NEXT-EPISODE TEASE. Never add SCENE 3. Keep each dialogue line short and natural; production directions must be concise.
 - Return only the script. Do not add explanations, apologies, analysis, or meta-commentary.
 
 STYLE: ${toneText}
