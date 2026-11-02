@@ -25,6 +25,29 @@ export default {
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
+      if (provider === "ovhcloud") {
+        const model = "Meta-Llama-3_3-70B-Instruct";
+        // Anonymous OVH AI Endpoints mode: no account key or Authorization header.
+        // Anonymous limit is 2 requests/minute per IP and model; only fictional LUNA material is sent.
+        const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(45_000),
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: Math.min(maxTokens, 1200),
+            temperature
+          })
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("ovhcloud HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("ovhcloud HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("ovhcloud returned an empty completion");
+        return { response: content.trim(), model: data.model || model };
+      }
       if (provider === "qwen3vl") {
         const model = "qwen3-vl-2b-instruct";
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
@@ -351,7 +374,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -732,7 +755,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+      ...(duration === "long" ? [] : ["__OVH__", "__QWEN3VL__"])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
