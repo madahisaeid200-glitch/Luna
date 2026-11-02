@@ -712,15 +712,13 @@ Premise (must remain unchanged): ${premise.trim()}
 `;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
-      "__MURAKUMO_FREE__",
-      "__MURAKUMO__",
-      "__QWEN3VL__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+      ...(duration === "long" ? [] : ["__QWEN3VL__"])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
