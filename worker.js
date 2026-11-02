@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(35_000),
+          signal: AbortSignal.timeout(50_000),
           body: JSON.stringify({
             model,
             messages,
@@ -72,7 +72,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(provider === "murakumo-free" ? 55_000 : 20_000),
+          signal: AbortSignal.timeout(provider === "murakumo-free" ? 55_000 : 15_000),
           body: JSON.stringify({
             model,
             messages,
