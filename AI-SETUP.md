@@ -119,3 +119,14 @@ The Worker supports NVIDIA's OpenAI-compatible NIM chat-completions API as an op
 If NVIDIA access is available, add the API key to the existing Cloudflare Worker as a Secret named exactly `NVIDIA_API_KEY`. Optional model override: `NVIDIA_MODEL`. Never put the key in GitHub source, GitHub Pages, or this chat.
 
 Mistral is another existing fallback option. Its official setup documentation says Free mode is enabled without a credit card, with usage and rate limits. Secret name: `MISTRAL_API_KEY`.
+
+
+## 10. Keyless public fallback (Murakumo)
+
+The Worker now appends the public `murakumo/free` Chat Completions route after Cloudflare and any configured provider keys. It requires no account, API key, card, or Cloudflare Secret. The endpoint is `https://api.murakumo.cloud/v1/chat/completions`; the model selector is `murakumo/free`. The route has a published output cap of 2,048 tokens, so LUNA requests are capped at 1,900 tokens for this provider.
+
+**Privacy warning:** Murakumo states that free-lane requests may be served on community-run nodes, where third-party operators may be able to read prompts and responses. Do not send personal, private, or confidential information. LUNA's fictional character/story prompts are suitable only if kept free of real personal details. Availability and speed are not guaranteed; the service may return HTTP 429 when busy. The Worker reports the actual provider/model on success and never converts a failed request into a successful AI draft.
+
+The Worker health endpoint reports `publicFallbacks.murakumo: true` to mean the public route is wired in code. It does not prove the upstream service is currently accepting generation requests. A successful non-empty LUNA script is the only end-to-end generation proof.
+
+References: https://murakumo.cloud/free and https://murakumo.cloud/docs
