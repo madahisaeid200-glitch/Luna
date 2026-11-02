@@ -243,7 +243,7 @@ el('generate').onclick=async()=>{
      updateAiStatus('در حال اتصال به مدل هوش مصنوعی…');
      button.textContent=fa?'در حال تولید…':'Generating…';
      const controller=new AbortController();
-     const requestTimeout=setTimeout(()=>controller.abort(),75000);
+     const requestTimeout=setTimeout(()=>controller.abort(),120000);
      let response;
      try{
        response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});
@@ -261,7 +261,7 @@ el('generate').onclick=async()=>{
    el('output').textContent=lastDraft;
    el('makeDirectorPlan').disabled=false;
  }catch(error){
-   const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
+   const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۱۲۰ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
    lastDraft='';
    lastDraftIsAi=false;
    lastProductionPack='';
