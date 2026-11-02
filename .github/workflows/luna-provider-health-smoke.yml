@@ -41,3 +41,25 @@ jobs:
           print("Keyless public fallback wired:", bool(data.get("publicFallbacks", {}).get("murakumo")))
           print("No generation request was sent by this health check.")
           PY
+      - name: Probe Murakumo keyless endpoint with a tiny harmless prompt
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+            -d '{"model":"murakumo/free","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":16,"temperature":0}' \
+            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/murakumo.json -w '%{http_code}' || true)
+          echo "Murakumo HTTP: $CODE"
+          python3 - <<'PY'
+          import json, os
+          try:
+              data=json.load(open("/tmp/murakumo.json", encoding="utf-8"))
+          except Exception as e:
+              print("Murakumo returned non-JSON:", str(e))
+              raise SystemExit(0)
+          if os.environ.get("CODE") == "200":
+              choice=(data.get("choices") or [{}])[0]
+              print("Murakumo response:", (choice.get("message") or {}).get("content","")[:300])
+              print("Model:", data.get("model"))
+          else:
+              print("Murakumo error:", json.dumps(data, ensure_ascii=False)[:1200])
+          PY
