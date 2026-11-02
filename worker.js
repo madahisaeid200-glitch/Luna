@@ -414,6 +414,60 @@ ${script.trim()}`;
           }
         }
       }
+      // Deterministic, no-key fallback for short scripts when free inference providers time out.
+      // This creates a real shot manifest from the accepted screenplay; it does not claim video rendering.
+      if (duration !== "long") {
+        let structured = null;
+        try { structured = JSON.parse(script.trim()); } catch {}
+        const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
+        if (structured && keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
+          const makeShot = (id, shotType, action, emotion, characters, dialogue, camera) => ({
+            id,
+            durationSeconds: 6,
+            location: "Use only the location already established in the screenplay",
+            shotType,
+            characters,
+            action,
+            emotion,
+            dialogue,
+            videoPrompt: profile.style + " Continuous live-action 9:16 cinematic shot in the same established location. " + camera + " " + action + " Natural body motion, subtle facial micro-expressions, believable eye-lines and stable lighting. Preserve both character identities, gender presentation and wardrobe exactly. No extra people, props, locations, captions or logos.",
+            referenceFramePrompt: profile.style + " Photorealistic 9:16 reference frame from the same established location. " + action + " Natural skin texture, anatomically correct hands, stable character identity and wardrobe. Only the named characters; no invented props or background people.",
+            audio: { ambience: "Natural ambience of the established location only", sfx: "No added prop sounds", musicMood: "Soft romantic-comedy underscore" },
+            transition: "cut"
+          });
+          const shots = [
+            makeShot("S01", "wide", "LUNA and LEO share the opening beat described by the screenplay hook.", "Warm curiosity", [profile.lunaName, profile.leoName], [], "A steady establishing two-shot with gentle camera drift."),
+            makeShot("S02", "close-up", profile.lunaName + " delivers her first line and reacts naturally to the situation.", "Curious and playful", [profile.lunaName], [{ speaker: profile.lunaName, text: structured.luna1.trim() }], "A gentle close-up on LUNA with a natural eye-line toward LEO."),
+            makeShot("S03", "medium", profile.leoName + " delivers his first line while staying in the same position and location.", "Affectionate, slightly sheepish", [profile.leoName], [{ speaker: profile.leoName, text: structured.leo1.trim() }], "A medium close-up on LEO with restrained, believable expression."),
+            makeShot("S04", "over-shoulder", profile.lunaName + " advances the misunderstanding in her second line.", "Mock suspicion", [profile.lunaName, profile.leoName], [{ speaker: profile.lunaName, text: structured.luna2.trim() }], "An over-the-shoulder composition that keeps LUNA and LEO spatially consistent."),
+            makeShot("S05", "medium", profile.leoName + " responds, then " + profile.lunaName + " delivers the warm punchline.", "Playful relief", [profile.lunaName, profile.leoName], [{ speaker: profile.leoName, text: structured.leo2.trim() }, { speaker: profile.lunaName, text: structured.luna3.trim() }], "A continuous two-shot with a subtle reaction from LUNA after LEO speaks."),
+            makeShot("S06", "close-up", profile.leoName + " gives the affectionate final reply, holding the same emotional moment.", "Tender and romantic", [profile.lunaName, profile.leoName], [{ speaker: profile.leoName, text: structured.leo3.trim() }], "A gentle two-person close-up with a slow, natural camera settle.")
+          ];
+          const plan = {
+            schemaVersion: "luna-video-plan@1.0.0",
+            episode: { title: String(title || "LUNA short episode"), logline: "A short episode planned directly from the accepted screenplay.", targetAspectRatio: "9:16", targetDurationSeconds: 36 },
+            continuityBible: {
+              luna: profile.lunaLook,
+              leo: profile.leoLook,
+              visualStyle: profile.style,
+              continuityRules: ["Keep the same location throughout.", "No wardrobe or identity changes.", "Only LUNA and LEO may appear.", "Invent no props or story events.", "Keep dialogue exactly as supplied."]
+            },
+            shots,
+            captions: [{ shotId: "S01", text: structured.hook.trim() }, { shotId: "S06", text: structured.tease.trim() }],
+            qualityGates: ["Deterministic fallback built from the accepted screenplay.", "Reject altered identity, wardrobe swaps, extra characters, invented props or broken chronology."]
+          };
+          return json({
+            ok: true,
+            mode: "director",
+            plan,
+            model: "LUNA deterministic director fallback v1",
+            provider: "local-template",
+            fallbackUsed: true,
+            providerReady: false,
+            note: "A six-shot plan was built from the accepted screenplay without another AI call. Video has not been rendered."
+          });
+        }
+      }
       return json({ error: "LUNA director-plan generation failed.", details: failures }, 502);
     }
 
@@ -727,7 +781,7 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const surnameMixupPremise = /surname|welcome card|anniversary reservation/i.test(premise);
     const specificStoryGuard = surnameMixupPremise && language !== "fa"
-      ? "\\n\\nSPECIAL STORY CONTINUITY RULES: LEO must explicitly say he typed or mistyped the wrong surname on their anniversary reservation. LUNA must think the booking was for another couple. LEO must own the typo and never deny it. Stay inside the hotel suite with only LUNA and LEO. The only visible items are those explicitly in the premise, especially the welcome card/reservation details; do not add a phone, hotel manager, receptionist, front desk, staff, or a checkout. Tasteful suite details such as candles or champagne are acceptable only as background and must not change the plot. End with a next-episode tease about a new romantic surprise, not a new booking problem."
+      ? "\n\nSPECIAL STORY CONTINUITY RULES: LEO must explicitly say he typed or mistyped the wrong surname on their anniversary reservation. LUNA must think the booking was for another couple. LEO must own the typo and never deny it. Stay inside the hotel suite with only LUNA and LEO. The only visible items are those explicitly in the premise, especially the welcome card/reservation details; do not add a phone, hotel manager, receptionist, front desk, staff, or a checkout. Tasteful suite details such as candles or champagne are acceptable only as background and must not change the plot. End with a next-episode tease about a new romantic surprise, not a new booking problem."
       : "";
     const customizedPrompt = customizeCharacterPrompt(prompt + specificStoryGuard);
     const murakumoPrompt = `Return ONLY one valid JSON object with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
