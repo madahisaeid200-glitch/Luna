@@ -477,7 +477,6 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
         "__MURAKUMO_FREE__",
-        "__LLM7__",
         "__OVH__",
         "__LLMFAUCET__",
         "__MURAKUMO__",
@@ -589,10 +588,9 @@ ${script.trim()}`;
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-        "__OVH__",
-        "__LLM7__",
-        "__LLMFAUCET__",
         "__MURAKUMO_FREE__",
+        "__OVH__",
+        "__LLMFAUCET__",
         "__MURAKUMO__"
       ];
       const productionFailures = [];
@@ -883,7 +881,10 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__LLM7__", "__LLMFAUCET__", "__MURAKUMO_FREE__", "__MURAKUMO__", "__OVH__"] : ["__LLM7__", "__LLMFAUCET__", "__MURAKUMO_FREE__", "__MURAKUMO__", "__OVH__"]),
+      "__MURAKUMO_FREE__",
+      "__OVH__",
+      "__LLMFAUCET__",
+      "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
