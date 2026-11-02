@@ -706,14 +706,14 @@ Use headings: ${language === "fa" ? "عنوان، قلاب، صحنه ۱، صح�
 Keep the story physically continuous and the ending complete. Return only the screenplay.`;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
-      ...(duration === "long" ? [] : ["__QWEN3VL__"]),
-      "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
-        ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
+      ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+      ...(duration === "long" ? [] : ["__QWEN3VL__"]),
+      "__MURAKUMO__"
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
