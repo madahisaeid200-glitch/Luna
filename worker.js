@@ -632,6 +632,18 @@ ${outputFormatText}
 If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
+    const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
+Only LUNA and LEO may appear or speak. Keep the exact premise, location, objects, and misunderstanding; do not add people, places, or side plots. They are affectionate partners; use warm romantic comedy, playful teasing, escalating confusion, a clear sweet punchline, and a short next-episode tease.
+LUNA: ${profile.lunaLook}; personality: ${profile.lunaPersonality}.
+LEO: ${profile.leoLook}; personality: ${profile.leoPersonality}.
+Visual style: ${profile.style}.
+Title: ${title.trim()}
+Premise (must remain unchanged): ${premise.trim()}
+Tone: ${toneText}
+Length: ${duration === "long" ? "3–5 minutes, 5–7 scenes with concise dialogue" : "30–60 seconds, about 120–150 spoken words"}
+Language: ${language === "fa" ? "natural spoken Iranian Persian only" : "natural English only"}
+Use headings: ${language === "fa" ? "عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد" : "TITLE, HOOK, SCENE 1, SCENE 2, SCENE 3, PAYOFF, NEXT-EPISODE TEASE"}.
+Keep the story physically continuous and the ending complete. Return only the screenplay.`;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
@@ -657,15 +669,15 @@ If language is BOTH, output the English version only. The Worker will translate 
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: customizedPrompt }
+          { role: "system", content: model === "__MURAKUMO__" ? "Write concise, faithful LUNA and LEO screenplays. Never invent characters or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: model === "__MURAKUMO__" ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
+          result = await externalChat(provider, messages, duration === "long" ? 1200 : 384, 0.7);
           actualModel = result.model;
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
