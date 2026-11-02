@@ -1028,8 +1028,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
               if (!finalScript.includes(profile.lunaName) || !finalScript.includes(profile.leoName)) {
                 throw new Error("Long-form screenplay is missing one or both saved character names");
               }
-              if (sceneHeadings < 4) {
-                throw new Error("Long-form screenplay must contain at least four clearly labelled scenes");
+              if (sceneHeadings < 6) {
+                throw new Error("Long-form screenplay must contain at least six clearly labelled scenes");
               }
             } else {
               const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
