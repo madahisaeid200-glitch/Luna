@@ -1,0 +1,51 @@
+name: LUNA deployed Worker TTS proof
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - worker.js
+      - .github/workflows/luna-worker-tts-smoke.yml
+permissions:
+  contents: read
+jobs:
+  deployed-worker-tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Call deployed Worker using the exact producer.html request shape
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          (async()=>{
+            const endpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
+            const payload={mode:'tts',text:'LUNA: Wait… Mr. and Mrs. Thompson? LEO: I booked this suite for our special night! LUNA: Darling, we are Luna and Leo, not the Thompsons.',lang:'en'};
+            const started=Date.now();
+            const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload),signal:AbortSignal.timeout(110000)});
+            const raw=await response.text();
+            console.log('WORKER_HTTP:',response.status,'ELAPSED_MS:',Date.now()-started);
+            let data;try{data=JSON.parse(raw)}catch{throw new Error('Worker returned non-JSON: '+raw.slice(0,500))}
+            if(!response.ok||data.error)throw new Error('Worker TTS failed: '+JSON.stringify(data).slice(0,900));
+            if(!data.audio||data.mimeType!=='audio/mpeg')throw new Error('Missing MP3 payload or wrong MIME: '+JSON.stringify({mimeType:data.mimeType,model:data.model}));
+            const bytes=Buffer.from(data.audio,'base64');
+            if(bytes.length<1000)throw new Error('MP3 too small: '+bytes.length);
+            fs.writeFileSync('luna-worker-tts.mp3',bytes);
+            fs.writeFileSync('luna-worker-tts.json',JSON.stringify({status:'PASS',provider:data.provider,model:data.model,chunks:data.chunks,generationMs:data.generationMs,bytes:bytes.length},null,2));
+            console.log('PROVIDER:',data.provider,'MODEL:',data.model,'CHUNKS:',data.chunks,'MP3_BYTES:',bytes.length);
+            console.log('DEPLOYED_WORKER_TTS: PASS');
+          })().catch(e=>{console.error('DEPLOYED_WORKER_TTS: FAIL',e);process.exit(1)});
+          NODE
+      - name: Validate MP3 decoding
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -v error -i luna-worker-tts.mp3 -f null -
+          echo "WORKER_MP3_DECODE: PASS"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: luna-deployed-worker-tts-proof
+          path: luna-worker-tts.*
+          if-no-files-found: ignore
+          retention-days: 7
