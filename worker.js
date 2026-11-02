@@ -855,7 +855,7 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
           }
           if (provider !== "qwen3vl" && provider !== "ovhcloud" && surnameMixupPremise && language !== "fa") {
             const lowerScript = finalScript.toLowerCase();
-            const teaseParts = finalScript.split(/(?:next[- ]episode tease|next episode|next time)\\s*[:—-]?/i);
+            const teaseParts = finalScript.split(/(?:next[- ]episode tease|next episode|next time)\s*[:—-]?/i);
             const teaseText = (teaseParts.length > 1 ? teaseParts.slice(1).join(" ") : finalScript.slice(-420)).toLowerCase();
             const hasLeoAdmission = /(typed|mistyped|typo|wrong surname)/i.test(finalScript);
             const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people|different couple|another pair|different pair|booking belongs to|reservation belongs to|booked for someone|reserved for someone)/i.test(finalScript);
