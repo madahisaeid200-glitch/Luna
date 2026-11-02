@@ -828,8 +828,9 @@ Rules:
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
             const translationModels = [
-              ...(env.AI && provider === "cloudflare-workers-ai" && !cloudflareQuotaExhausted ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
+              "__MURAKUMO_FREE__",
               "__MURAKUMO__",
+              ...(env.AI && provider === "cloudflare-workers-ai" && !cloudflareQuotaExhausted ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
               ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
@@ -843,7 +844,7 @@ Rules:
                   { role: "user", content: translationPrompt }
                 ];
                 const translated = translationModel.startsWith("__")
-                  ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  ? await externalChat(translationModel === "__MURAKUMO_FREE__" ? "murakumo-free" : translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
@@ -875,7 +876,7 @@ ${finalScript}`;
                         { role: "user", content: repairPrompt }
                       ];
                       const repaired = translationModel.startsWith("__")
-                        ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
+                        ? await externalChat(translationModel === "__MURAKUMO_FREE__" ? "murakumo-free" : translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", repairMessages, duration === "long" ? 2200 : 1200, 0.1)
                         : await env.AI.run(translationModel, { messages: repairMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.1 });
                       const repairedText = repaired?.response || repaired?.result?.response || "";
                       const repairedCandidate = typeof repairedText === "string" ? repairedText.trim() : "";
