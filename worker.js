@@ -754,14 +754,14 @@ Premise (must remain unchanged): ${premise.trim()}
             };
             const isValid = data => {
               if (!data || !keys.every(key => typeof data[key] === "string" && data[key].trim())) return false;
-              const values = keys.map(key => data[key].toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim());
+              const values = keys.map(key => data[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
               if (new Set(values).size !== values.length) return false;
-              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\\s+/).length, 0);
+              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
               if (totalWords < 75 || totalWords > 150) return false;
               if (/surname|welcome card|anniversary reservation/i.test(premise) && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
-                if (!/\\b(i|i've|i'm|my)\\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
+                if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
                 if (!/(anniversary|another couple|other couple|another name)/.test(luna2)) return false;
               }
               return true;
