@@ -693,15 +693,15 @@ ${outputFormatText}
 If language is BOTH, output the English version only. The Worker will translate that English script into Persian separately and append the Persian version.`;
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
-    const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
-Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding. Do not add people, places, props, wardrobe changes, background guests, or side plots. Use only the suite, the reservation note, and the welcome card; do not describe clothing. Write a concise 30–60 second screenplay, about 120–150 spoken words, in 3 scenes. Follow these beats in order: LUNA reads an unfamiliar surname on the welcome card and asks who the other couple is; LEO admits he typed the wrong surname on their anniversary reservation; LUNA teases him for booking their romance under a stranger's name; LEO makes one brief, clever joke; LUNA gives one affectionate punchline; end with a relevant next-episode tease. Include the phrases welcome card and wrong surname. Use 8–10 short, distinct dialogue lines. Each line must add a new fact or move the joke forward. Do not repeat a sentence, phrase, joke, question, or action. No circular back-and-forth, no filler, no repeated words for emphasis. Only LUNA and LEO speak. Keep the whole story in the hotel suite. Do not describe clothing or add props beyond the reservation note and welcome card.
+    const murakumoPrompt = `Return ONLY one valid JSON object, with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. No markdown, no explanation, no extra keys.
+You are writing a short romantic-comedy episode for the fictional adult couple LUNA and LEO. Only they may appear or speak. Keep the entire story in their luxury hotel suite. Do not describe clothing. Use only the reservation note and welcome card; add no other props, people, places, or side plots.
+The exact premise: LEO booked the suite for their anniversary but typed the wrong surname. LUNA sees the unfamiliar surname on the welcome card and thinks the suite was booked for another couple. LEO explains the typo. Resolve it with affectionate humor and tease the next episode.
+Write the eight JSON values as short, distinct spoken lines or a brief hook/tease. Keep this order: hook (LUNA notices the card), luna1 (asks who the other couple is), leo1 (admits the wrong surname typo), luna2 (teases him), leo2 (clever reply), luna3 (warm punchline), leo3 (short affectionate reply), tease (one sentence about the next episode). Each value should be 8–18 words. Never repeat wording, questions, or jokes. No circular dialogue. Every line must add new information.
+Tone: ${toneText}
+Language: ${language === "fa" ? "natural spoken Iranian Persian; keep only the names LUNA and LEO in Latin letters" : "natural conversational English"}
 Title: ${title.trim()}
 Premise (must remain unchanged): ${premise.trim()}
-Tone: ${toneText}
-Length: ${duration === "long" ? "3–5 minutes, 5–7 scenes with concise dialogue" : "30–60 seconds, about 120–150 spoken words"}
-Language: ${language === "fa" ? "natural spoken Iranian Persian only" : "natural English only"}
-Use headings: ${language === "fa" ? "عنوان، قلاب، صحنه ۱، صحنه ۲، صحنه ۳، پایان بامزه، پیش‌نمایش قسمت بعد" : "TITLE, HOOK, SCENE 1, SCENE 2, SCENE 3, PAYOFF, NEXT-EPISODE TEASE"}.
-Keep the story physically continuous and the ending complete. Return only the screenplay.`;
+`;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
@@ -744,6 +744,22 @@ Keep the story physically continuous and the ending complete. Return only the sc
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
+          if (provider === "qwen3vl") {
+            try {
+              const match = finalScript.match(/\\{[\\s\\S]*\\}/);
+              const data = JSON.parse(match ? match[0] : finalScript);
+              const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
+              if (keys.every(key => typeof data[key] === "string" && data[key].trim())) {
+                finalScript = "**TITLE:** " + title.trim() + "\\n\\n**HOOK:**\\n" + data.hook.trim() +
+                  "\\n\\n**SCENE 1**\\nLUNA: " + data.luna1.trim() + "\\nLEO: " + data.leo1.trim() +
+                  "\\n\\n**SCENE 2**\\nLUNA: " + data.luna2.trim() + "\\nLEO: " + data.leo2.trim() +
+                  "\\n\\n**PAYOFF**\\nLUNA: " + data.luna3.trim() + "\\nLEO: " + data.leo3.trim() +
+                  "\\n\\n**NEXT-EPISODE TEASE:**\\n" + data.tease.trim();
+              }
+            } catch (_) {
+              // Keep the raw model text if it did not return valid structured JSON.
+            }
+          }
           if (provider === "qwen3vl") {
             const seenDialogue = new Set();
             finalScript = finalScript.split("\n").filter(line => {
