@@ -58,9 +58,10 @@ jobs:
           print("Provider:", result.get("provider"))
           print("Model:", result.get("model"))
           print("Fallback used:", result.get("fallbackUsed"))
+          print("Provider failure details:", result.get("fallbackReason") or result.get("details"))
           if isinstance(script, str) and len(script.strip()) >= 300:
               text = script.lower()
-              dialogue = " ".join(__import__("re").findall(r"(?im)^\\s*(?:LUNA|LEO):\\s*(.*)$", script))
+              dialogue = " ".join(__import__("re").findall(r"(?im)^\s*(?:LUNA|LEO):\s*(.*)$", script))
               word_count = len(dialogue.split())
               if word_count < 75 or word_count > 180:
                   print(f"FAIL: screenplay length outside 80-180 words ({word_count}).")
