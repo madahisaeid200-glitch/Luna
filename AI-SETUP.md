@@ -110,3 +110,12 @@ Official references:
 - Free plan and rate limits: https://openrouter.ai/pricing
 - Current free model catalogue: https://openrouter.ai/collections/free-models
 
+
+
+## 8. NVIDIA NIM optional text fallback (added Nov 2, 2026)
+
+The Worker supports NVIDIA's OpenAI-compatible NIM chat-completions API as an optional text-generation fallback. The default model is `nvidia/nemotron-3.5-bolt-e4b`; it can be overridden with `NVIDIA_MODEL`. The API endpoint is `https://integrate.api.nvidia.com/v1/chat/completions`. NVIDIA lists free API endpoints for developer prototyping; access, rate limits, and model availability are subject to NVIDIA account eligibility and current catalog status. Do not treat this as an unlimited production guarantee.
+
+If NVIDIA access is available, add the API key to the existing Cloudflare Worker as a Secret named exactly `NVIDIA_API_KEY`. Optional model override: `NVIDIA_MODEL`. Never put the key in GitHub source, GitHub Pages, or this chat.
+
+Mistral is another existing fallback option. Its official setup documentation says Free mode is enabled without a credit card, with usage and rate limits. Secret name: `MISTRAL_API_KEY`.
