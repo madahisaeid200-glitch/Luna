@@ -1,11 +1,10 @@
 name: LUNA real AI script generation smoke test
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Deploy LUNA AI Worker"]
+    types: [completed]
     branches: ["main"]
-    paths:
-      - "worker.js"
-      - ".github/workflows/luna-ai-generation-smoke.yml"
   workflow_dispatch:
 
 permissions:
@@ -17,6 +16,7 @@ concurrency:
 
 jobs:
   generate:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
