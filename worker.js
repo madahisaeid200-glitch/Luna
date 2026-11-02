@@ -852,7 +852,7 @@ ${script.trim()}`;
         const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768", response_format: "b64_json" }),
+          body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768" }),
           signal: AbortSignal.timeout(65_000)
         });
         const raw = await response.text();
