@@ -34,7 +34,7 @@ jobs:
           print("Providers:",json.dumps(data.get("providers",{}),sort_keys=True))
           if not data.get("ok") or "providers" not in data:
               sys.exit("Worker health check failed")
-          if not data["providers"].get("groq") and not data["providers"].get("openrouter"):
+          if not any(data["providers"].get(name) for name in ("mistral", "nvidia", "groq", "gemini", "openrouter")):
               print("External fallback keys are not configured yet; no generation request was sent.")
           else:
               print("At least one external fallback provider is configured.")
