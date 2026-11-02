@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(45_000),
+          signal: AbortSignal.timeout(35_000),
           body: JSON.stringify({
             model,
             messages,
@@ -54,7 +54,7 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature, top_p: 0.85, frequency_penalty: 0.8, presence_penalty: 0.2 }),
-          signal: AbortSignal.timeout(45_000)
+          signal: AbortSignal.timeout(40_000)
         });
         const raw = await response.text();
         let data;
@@ -72,7 +72,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(provider === "murakumo-free" ? 55_000 : 35_000),
+          signal: AbortSignal.timeout(provider === "murakumo-free" ? 55_000 : 20_000),
           body: JSON.stringify({
             model,
             messages,
@@ -749,14 +749,13 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     // Free-first screenplay routing: Mishima handles text; Qwen3-VL is vision-only.
     const modelsToTry = [
-      "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-      ...(duration === "long" ? [] : ["__OVH__", "__QWEN3VL__"])
+      ...(duration === "long" ? ["__MURAKUMO__"] : ["__OVH__", "__MURAKUMO__", "__QWEN3VL__"])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
