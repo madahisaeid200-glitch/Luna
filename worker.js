@@ -51,7 +51,12 @@ export default {
         aiBinding: Boolean(env.AI),
         model: env.AI_MODEL || DEFAULT_MODEL,
         fallbackModel: FALLBACK_MODEL,
-        message: env.AI ? "Worker is reachable and the AI binding exists." : "Worker is reachable, but the AI binding named AI is missing."
+        providers: {
+          cloudflare: Boolean(env.AI),
+          groq: Boolean(env.GROQ_API_KEY),
+          openrouter: Boolean(env.OPENROUTER_API_KEY)
+        },
+        message: "Worker is reachable. Provider flags show configuration presence only; they do not consume model quota."
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -550,6 +555,13 @@ If language is BOTH, output the English version only. The Worker will translate 
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
     const failures = [];
+    if (!modelsToTry.length) {
+      return json({
+        error: "No text AI provider is configured.",
+        requiredSecrets: ["GROQ_API_KEY", "OPENROUTER_API_KEY"],
+        note: "Add at least one provider key as a Cloudflare Worker Secret. Never place keys in GitHub Pages or public source files."
+      }, 503);
+    }
     for (const model of modelsToTry) {
       try {
         const messages = [
