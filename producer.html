@@ -8,7 +8,7 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}header{background:var(--dark);color:white;padding:16px clamp(16px,5vw,56px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.15em}.brand span{color:#e2b9d5}a,button{font:inherit;cursor:pointer}a{color:inherit;text-decoration:none}button,.link{border:1px solid #d7c6d5;border-radius:12px;padding:9px 14px;background:white;color:var(--ink);font-weight:750}.primary{background:var(--accent);color:white;border-color:var(--accent)}main{max-width:1050px;margin:auto;padding:24px 16px 60px}.hero,.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:clamp(18px,4vw,30px);margin-bottom:16px}.hero{background:linear-gradient(120deg,#f0e3ed,#f9eee2)}.eyebrow{color:var(--accent);font-size:.75rem;font-weight:900;letter-spacing:.1em}.layout{display:grid;grid-template-columns: minmax(0, .9fr) minmax(0,1.1fr);gap:16px}.field{display:grid;gap:5px;margin:12px 0}.field label{font-weight:800;font-size:.9rem}.field input,.field select,.field textarea{width:100%;font:inherit;padding:11px;border:1px solid var(--line);border-radius:11px;background:white;color:var(--ink)}.field textarea{min-height:100px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.output{white-space:pre-wrap;overflow-wrap:anywhere;background:#fcf9fc;border:1px solid var(--line);border-radius:14px;padding:16px;min-height:220px}.hint{font-size:.85rem;color:var(--muted)}.checklist label{display:flex;align-items:flex-start;gap:9px;padding:8px 0}.checklist input{margin-top:6px;accent-color:var(--accent)}footer{text-align:center;padding:18px;color:var(--muted);font-size:.82rem}@media(max-width:760px){.layout{grid-template-columns:1fr}}
 </style></head>
 <body>
-<header><div><div class="brand">L<span>U</span>NA STUDIO</div><div style="color:#c9bdce;font-size:.8rem" id="subtitle">استودیو آماده‌سازی قسمت‌ها</div><div style="color:#e2b9d5;font-size:.72rem;margin-top:3px" id="appVersion">نسخه 1.0.12</div></div><div class="actions" style="margin:0"><a class="link" href="./index.html">بازگشت به داشبورد</a><button id="language">English</button></div></header>
+<header><div><div class="brand">L<span>U</span>NA STUDIO</div><div style="color:#c9bdce;font-size:.8rem" id="subtitle">استودیو آماده‌سازی قسمت‌ها</div><div style="color:#e2b9d5;font-size:.72rem;margin-top:3px" id="appVersion">نسخه 1.0.13</div></div><div class="actions" style="margin:0"><a class="link" href="./index.html">بازگشت به داشبورد</a><button id="language">English</button></div></header>
 <main>
 <section class="hero"><div class="eyebrow">EPISODE PRODUCER · BETA</div><h1 id="heading">کارگاه تولید قسمت LUNA</h1><p id="description">ایده قسمت را وارد کن و یک پیش‌نویس منظم شامل شروع جذاب، صحنه‌ها، دیالوگ و پایان بامزه بساز.</p><p class="hint" id="notice">آدرس Worker امن تنظیم شده است. آزمایش اتصال فقط دسترسی شبکه را تأیید می‌کند؛ تولید واقعی زمانی تأیید می‌شود که مدل پاسخ معتبر بدهد.</p></section>
 <div class="layout">
@@ -49,8 +49,8 @@
 <div class="eyebrow">IMAGE → VIDEO · FIRST TEST</div><h2>ساخت تصویر و ویدئوی آزمایشی / Image-to-video test</h2>
 <p class="hint">پس از ساخت تصویر مرجع، Wan 2.2 آن را به یک کلیپ واقعی و متحرک تبدیل می‌کند. تولید از GPU ابری رایگان Hugging Face استفاده می‌کند و ممکن است در صف بماند.</p>
 <div class="field"><label for="imagePrompt">توضیح تصویر صحنهٔ اول / First-scene image prompt</label><textarea id="imagePrompt" placeholder="ابتدا بسته تولید ویدئو را بساز تا این بخش خودکار پر شود."></textarea></div>
-<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="generateMoreScenes" type="button" disabled>۲. ساخت تصاویر مستقل صحنه‌های بعدی</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی واقعی Wan 2.2</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت پیش‌نمایش تدوین‌شده از سه تصویر (Animatic)</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
-<p class="hint" id="sceneImagesStatus" role="status">تصاویر مستقل داستان: ۰ از ۳</p><p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
+<div class="actions"><button class="primary" id="generateSceneImage" type="button">۱. ساخت تصویر واقعی صحنه</button><button id="generateWanClips" type="button" disabled>ساخت ۳ کلیپ واقعی از سه صحنه (Wan 2.2)</button><button id="generateMoreScenes" type="button" disabled>۲. ساخت تصاویر مستقل صحنه‌های بعدی</button><button id="editSceneImage" type="button" disabled>اصلاح همین تصویر با حفظ صحنه</button><button id="testImageUpload" type="button" disabled>آزمایش ارسال تصویر (بدون تولید)</button><button id="makePreviewVideo" type="button" disabled>۲. ساخت ویدئوی واقعی Wan 2.2</button><button id="makeVoicedVideo" type="button" disabled>۴. ساخت پیش‌نمایش تدوین‌شده از سه تصویر (Animatic)</button><button id="downloadSceneImage" type="button" disabled>دانلود تصویر</button></div>
+<p class="hint" id="sceneImagesStatus" role="status">تصاویر مستقل داستان: ۰ از ۳</p><div id="wanClipResults" class="output" style="display:none;margin-top:12px"><strong>کلیپ‌های واقعی صحنه‌ها</strong><div id="wanClipList"></div></div><p class="hint" id="visualStatus" role="status">وضعیت: منتظر بستهٔ تولید ویدئو.</p>
  <div class="field"><label for="voiceTestText">متن آزمایشی صدای انگلیسی / English voice test</label><textarea id="voiceTestText" maxlength="1200">LUNA: Wait… Mr. and Mrs. Thompson? LEO: I booked this suite for our special night! LUNA: Darling, we are Luna and Leo, not the Thompsons. LEO: Next time, I’ll book under our real names… unless the hotel has a Mr. and Mrs. Genius suite!</textarea></div>
  <div class="actions"><button id="generateVoice" type="button">۳. ساخت صدای واقعی انگلیسی</button></div>
  <p class="hint" id="voiceStatus" role="status">صدای آزمایشی پس از اتصال Worker ساخته می‌شود.</p>
@@ -389,12 +389,12 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
    return (section.split(/SHOT\s*2|SCENE\s*2|\n\s*2[.):]/i)[0]||section).replace(/^\s*[:\n-]+/,'').replace(/^(?:SHOT\s*1|SCENE\s*1|1[.):])\s*/i,'').trim().slice(0,1800);
  }
- let generatedImageData='',generatedImageObjectUrl='';let generatedSceneImages=[];
+ let generatedImageData='',generatedImageObjectUrl='';let generatedSceneImages=[];let generatedWanClipUrls=[];
  const lunaDiagnostics=[];
  function logLunaDiagnostic(kind,message,extra={}){const item={time:new Date().toISOString(),kind,message:String(message||'').slice(0,1200),extra};lunaDiagnostics.push(item);try{localStorage.setItem('lunaDiagnostics',JSON.stringify(lunaDiagnostics.slice(-30)))}catch(e){}}
  function openLunaImageDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('luna-image-library',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images',{keyPath:'id',autoIncrement:true})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
  async function saveLunaImage(dataUrl,meta={}){try{const db=await openLunaImageDb();await new Promise((resolve,reject)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').add({dataUrl,meta,createdAt:new Date().toISOString()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){logLunaDiagnostic('image-storage-error',e.message||e);return false}}
- async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;const baseRows=rows.filter(x=>x.meta?.mode!=='story-scene');if(!baseRows.length)return false;baseRows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=baseRows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
+ async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;const baseRows=rows.filter(x=>x.meta?.mode!=='story-scene');if(!baseRows.length)return false;baseRows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=baseRows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;el('generateWanClips').disabled=true;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
 function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{profile:readCharacterProfile(),title:el('epTitle').value,worker:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,'')});}
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
  async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
@@ -492,7 +492,7 @@ el('generateSceneImage').onclick=async()=>{
         el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد ('+(data.model||'FLUX')+').'+(data.fallbackUsed?' مسیر جایگزین رایگان استفاده شد.':'');
         logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,imageChars:data.image.length});
       }
-      el('makeVoicedVideo').disabled=!(el('voicePreview').src||'').startsWith('data:audio/');
+      el('makeVoicedVideo').disabled=!(el('voicePreview').src||'').startsWith('data:audio/');el('generateWanClips').disabled=generatedSceneImages.length<3;
        el('visualStatus').textContent='هر سه تصویر مستقل داستان آماده‌اند. حالا صدای دیالوگ را بساز و پیش‌نمایش تدوین‌شده را تولید کن.';
       button.textContent='تصاویر سه صحنه آماده شد';
     }catch(error){
@@ -606,6 +606,66 @@ el('testImageUpload').onclick=async()=>{
    }finally{button.disabled=false;button.textContent='۲. ساخت ویدئوی واقعی Wan 2.2';}
  };
  
+
+ el('generateWanClips').onclick=async()=>{
+   const button=el('generateWanClips');
+   if(generatedSceneImages.length<3){el('visualStatus').textContent='برای ساخت سه کلیپ واقعی، ابتدا سه تصویر مستقل صحنه را کامل کن.';return;}
+   const endpoint=(localStorage.getItem('lunaAiEndpoint')||el('aiEndpoint').value||'').trim().replace(/\\/$/,'');
+   if(!endpoint){el('visualStatus').textContent='آدرس Worker تنظیم نشده است.';return;}
+   const profile=saveCharacterProfile(false)||readCharacterProfile();
+   const parsed=lastProductionPack?parseProductionPack(lastProductionPack):{shots:[]};
+   const shots=(parsed.shots||[]).slice(0,3);
+   if(shots.length<3){el('visualStatus').textContent='برای سه کلیپ، بسته تولید باید سه دستور نمای مستقل داشته باشد.';return;}
+   const selected=generatedSceneImages.slice(0,3);
+   button.disabled=true;button.textContent='در حال تولید سه کلیپ واقعی…';
+   const results=el('wanClipResults'),list=el('wanClipList');
+   list.replaceChildren();results.style.display='block';
+   generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];
+   let completed=0;
+   try{
+     for(let i=0;i<3;i++){
+       const scene=selected[i],shot=shots[i];
+       const shotPrompt=String(shot.videoPrompt||shot.action||shot.raw||'A natural continuous cinematic moment').slice(0,900);
+       const motionPrompt=[
+         'Photorealistic live-action continuous cinematic shot, 3.5 seconds, vertical 9:16.',
+         'Animate only the supplied reference frame. Preserve the exact visible people, faces, age, hair, gender presentation, wardrobe, accessories, props and location. Do not add or remove people or objects.',
+         'Natural believable body movement, subtle facial expression and eye movement, realistic cloth response, smooth restrained camera movement, physically consistent lighting.',
+         'No slideshow, no montage, no scene cut, no face morphing, no identity drift, no wardrobe change, no extra limbs, no text or logos.',
+         'Character continuity bible: '+profile.lunaName+': '+profile.lunaLook.slice(0,180)+' '+profile.leoName+': '+profile.leoLook.slice(0,180)+'. Shared style: '+profile.style.slice(0,180),
+         'This is shot '+(i+1)+' of the same episode. Keep story chronology and location continuity. Shot direction: '+shotPrompt
+       ].join(' ').slice(0,1750);
+       el('visualStatus').textContent='Wan 2.2: در حال تولید کلیپ '+(i+1)+' از ۳؛ کلیپ‌های تکمیل‌شده حفظ می‌شوند. صف رایگان ممکن است طولانی باشد.';
+       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),240000);
+       let response;
+       try{
+         response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:scene.dataUrl,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+       }finally{clearTimeout(timer);}
+       if(!response.ok){
+         let detail='HTTP '+response.status;
+         try{const data=JSON.parse(await response.text());detail=(data.error||detail)+(data.details?' — '+data.details:'');}catch(e){}
+         throw new Error('کلیپ '+(i+1)+': '+detail);
+       }
+       const type=response.headers.get('Content-Type')||'';
+       if(!type.toLowerCase().includes('video'))throw new Error('پاسخ کلیپ '+(i+1)+' فایل ویدئویی نبود ('+type+').');
+       const blob=await response.blob();
+       if(blob.size<50000)throw new Error('فایل کلیپ '+(i+1)+' غیرعادی و کوچک است ('+blob.size+' بایت).');
+       const url=URL.createObjectURL(blob);generatedWanClipUrls.push(url);
+       const card=document.createElement('div');card.style.margin='14px 0';card.style.padding='10px';card.style.border='1px solid #7775';card.style.borderRadius='12px';
+       const heading=document.createElement('p');heading.textContent='صحنه '+(i+1)+' · '+(shot.id||'SHOT '+(i+1));card.appendChild(heading);
+       const video=document.createElement('video');video.controls=true;video.playsInline=true;video.preload='metadata';video.src=url;video.style.width='100%';video.style.maxWidth='560px';video.style.display='block';video.style.borderRadius='10px';card.appendChild(video);
+       const link=document.createElement('a');link.href=url;link.download='LUNA-shot-'+(i+1)+(type.includes('mp4')?'.mp4':'.webm');link.textContent='دانلود کلیپ واقعی صحنه '+(i+1);link.style.display='inline-block';link.style.marginTop='8px';card.appendChild(link);
+       list.appendChild(card);completed++;
+       logLunaDiagnostic('wan-shot-video-success','Wan generated an independent scene clip',{shot:shot.id||i+1,bytes:blob.size,type});
+     }
+     el('visualStatus').textContent='هر سه کلیپ مستقل Wan 2.2 تولید شدند. این‌ها سه فایل ویدئویی واقعی و جداگانه‌اند؛ هنوز به یک فیلم واحد متصل نشده‌اند.';
+   }catch(error){
+     const message=error.name==='AbortError'?'زمان انتظار یکی از کلیپ‌ها تمام شد؛ صف رایگان ممکن است شلوغ باشد.':(error.message||'خطای نامشخص');
+     el('visualStatus').textContent='تولید چندکلیپی در '+completed+' از ۳ کلیپ متوقف شد: '+message+'؛ خروجی‌های موفق در همین صفحه باقی مانده‌اند.';
+     logLunaDiagnostic('wan-multishot-error',message,{completed,total:3});
+   }finally{
+     button.disabled=generatedSceneImages.length<3;button.textContent='تلاش/تولید سه کلیپ واقعی Wan 2.2';
+   }
+ };
  el('makeVoicedVideo').onclick=async()=>{
    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
    const audio=el('voicePreview');
