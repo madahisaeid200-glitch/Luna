@@ -694,7 +694,7 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
     const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
-Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding; do not add people, places, props, wardrobe changes, or side plots. Exact beats: (1) LEO reveals the welcome card with the wrong surname, (2) LUNA thinks the suite was booked for another couple, (3) LEO explains the typo and makes the misunderstanding worse briefly, (4) they resolve it with one affectionate punchline and a relevant next-episode tease. They are affectionate partners; use warm romantic comedy and playful teasing. Every dialogue line must add new information. Never repeat a line, joke, or action; avoid circular back-and-forth.
+Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding. Do not add people, places, props, wardrobe changes, background guests, or side plots. Use only the suite, the reservation note, and the welcome card; do not describe clothing. Exact story beats in this order: (1) LUNA notices the unfamiliar surname on the welcome card, (2) she asks LEO who the other couple is, (3) LEO admits he mistyped the surname on their anniversary reservation, (4) LUNA teases him for booking their romance under a stranger's name, (5) they resolve it with one affectionate punchline and a relevant next-episode tease. Include the exact ideas 'welcome card' and 'wrong surname'. Write 6–8 unique dialogue turns; every line must advance the misunderstanding. Never repeat a sentence, joke, or action. No circular back-and-forth.
 LUNA: ${profile.lunaLook}; personality: ${profile.lunaPersonality}.
 LEO: ${profile.leoLook}; personality: ${profile.leoPersonality}.
 Visual style: ${profile.style}.
@@ -739,7 +739,7 @@ Keep the story physically continuous and the ending complete. Return only the sc
         let actualModel = model;
         if (model.startsWith("__")) {
           provider = model === "__QWEN3VL__" ? "qwen3vl" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, 0.7);
+          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, provider === "qwen3vl" ? 0.2 : 0.7);
           actualModel = result.model;
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
