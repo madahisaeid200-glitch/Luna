@@ -1020,7 +1020,7 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
     status.textContent='درخواست صدا به Worker ارسال شد…';
     try{
       const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),90000);
+      const timer=setTimeout(()=>controller.abort(),115000);
       let response,raw,data;
       try{
         response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',signal:controller.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})});
