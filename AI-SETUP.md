@@ -139,3 +139,10 @@ References:
 - API and free limits: https://murakumo.cloud/docs and https://murakumo.cloud/
 - Qwen3-VL model card: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
 - Hokusai model card and license note: https://huggingface.co/awai-network/hokusai
+
+
+### Fast keyless short-script fallback: Qwen3-VL
+
+For short episodes, the Worker now tries the public `qwen3-vl-2b-instruct` text-capable route before Mishima, after Cloudflare and any configured provider keys. It requires no API key or Cloudflare Secret. The route is capped at 512 output tokens and is intended for Shorts/Reels drafts; longer 3–5 minute episodes continue to use the larger Mishima fallback. The model is smaller, so its story quality and continuity must be checked against the exact premise before publishing.
+
+A direct no-key text-drafting probe returned HTTP 200 and a non-empty completion. This confirms the provider can generate text, not yet that the complete LUNA Worker screenplay pipeline passes. The Worker must still pass its end-to-end script test before this is treated as production-ready.
