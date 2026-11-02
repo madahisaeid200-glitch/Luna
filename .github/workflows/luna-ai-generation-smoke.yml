@@ -4,6 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
+      - "worker.js"
       - ".github/workflows/luna-ai-generation-smoke.yml"
   workflow_dispatch:
 
