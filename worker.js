@@ -425,7 +425,7 @@ ${script.trim()}`;
           };
         }
         const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
-        if (structured && keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
+        if (false && structured && keys.every(key => typeof structured[key] === "string" && structured[key].trim())) { // Keep the deterministic plan builder dormant: always try a live AI director provider first.
           const makeShot = (id, shotType, action, emotion, characters, dialogue, camera) => ({
             id,
             durationSeconds: 6,
