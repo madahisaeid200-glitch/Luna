@@ -553,7 +553,7 @@ ${script.trim()}`;
             return {
               id: "S" + String(index + 1).padStart(2, "0"),
               durationSeconds: 6,
-              location: "The same luxury hotel suite established in the screenplay",
+              location: "The same location established in the screenplay",
               shotType: framing,
               characters: [name, ...(index % 2 === 0 ? [other] : [])],
               action,
@@ -561,7 +561,7 @@ ${script.trim()}`;
               dialogue: [{ speaker: name, text: item.text }],
               videoPrompt: profile.style + " Continuous live-action vertical 9:16 shot. " + action + " Subtle facial movement, believable eye-line and gentle camera motion. Preserve identity, gender presentation and wardrobe; no extra people or locations.",
               referenceFramePrompt: profile.style + " Photorealistic vertical 9:16 frame in the same luxury hotel suite. " + action + " Natural skin texture, realistic anatomy and consistent wardrobe; no extra people, text or logos.",
-              audio: { ambience: "Quiet natural hotel-suite ambience", sfx: "Only sounds already implied by the screenplay", musicMood: "Soft romantic comedy" },
+              audio: { ambience: "Natural ambience of the established location", sfx: "Only sounds already implied by the screenplay", musicMood: "Soft romantic comedy" },
               transition: "cut"
             };
           });
@@ -572,7 +572,7 @@ ${script.trim()}`;
               luna: profile.lunaLook,
               leo: profile.leoLook,
               visualStyle: profile.style,
-              continuityRules: ["Use the same hotel suite throughout.", "Keep both character identities and wardrobe consistent.", "Only LUNA and LEO may appear.", "Preserve the exact screenplay dialogue and order."]
+              continuityRules: ["Use only the location established in the screenplay throughout.", "Keep both character identities and wardrobe consistent.", "Only LUNA and LEO may appear.", "Preserve the exact screenplay dialogue and order."]
             },
             shots,
             captions: [],
