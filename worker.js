@@ -706,13 +706,35 @@ ${finalScript}`;
         }
         failures.push(model + ": model returned an empty response");
       } catch (error) {
-        failures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 220));
+        const errorText = String(error?.message || error || "unknown error");
+        failures.push(model + ": " + errorText.slice(0, 220));
+        // Workers AI's daily neuron allowance is shared across its models.
+        // Once error 4006 is returned, trying the second Cloudflare model cannot help
+        // and only adds latency. Continue only to separately configured external providers.
+        const cloudflareQuotaExhausted = !model.startsWith("__") &&
+          (/4006/i.test(errorText) ||
+           /used up (your )?daily free allocation/i.test(errorText) ||
+           /daily free allocation of [\\d,]+ neurons/i.test(errorText));
+        if (cloudflareQuotaExhausted) {
+          failures.push("Cloudflare Workers AI daily neuron allowance is exhausted; remaining Cloudflare models were skipped.");
+          break;
+        }
       }
     }
+    const quotaExhausted = failures.some(item =>
+      /4006|daily free allocation|neuron allowance is exhausted/i.test(item)
+    );
     return json({
-      error: "AI generation failed on all configured models.",
+      error: quotaExhausted
+        ? "Cloudflare Workers AI daily free quota is exhausted. No script was generated."
+        : "AI generation failed on all configured models.",
+      code: quotaExhausted ? "CLOUDFLARE_DAILY_QUOTA_EXHAUSTED" : "AI_GENERATION_FAILED",
+      retryable: quotaExhausted,
+      retryAfter: quotaExhausted ? "After the Cloudflare daily quota resets (00:00 UTC)." : null,
       details: failures,
-      checks: ["Confirm Workers AI is enabled for this account.", "Check Workers AI usage/quota.", "Review the Worker logs in Cloudflare.", "If needed, set AI_MODEL to an active text-generation model ID."]
-    }, 502);
+      checks: quotaExhausted
+        ? ["No need to retry repeatedly today; Cloudflare's daily neuron allowance is shared across its Workers AI models.", "No paid plan was enabled and no template text was returned as a successful AI result."]
+        : ["Confirm Workers AI is enabled for this account.", "Check Workers AI usage/quota.", "Review the Worker logs in Cloudflare.", "If needed, set AI_MODEL to an active text-generation model ID."]
+    }, quotaExhausted ? 503 : 502);
   }
 };
