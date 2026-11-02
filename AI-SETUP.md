@@ -33,8 +33,9 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 The Worker now tries providers in this order for episode-script generation:
 
 1. Cloudflare Workers AI (existing primary and secondary models).
-2. Groq, when `GROQ_API_KEY` is configured.
-3. OpenRouter's free-model router, when `OPENROUTER_API_KEY` is configured.
+2. Mistral API Free mode, when `MISTRAL_API_KEY` is configured (default model: `mistral-small-latest`).
+3. Groq, when `GROQ_API_KEY` is configured.
+4. OpenRouter's free-model router, when `OPENROUTER_API_KEY` is configured.
 
 A quota/rate-limit/provider error moves to the next configured provider. The Worker returns the actual provider and model used. It does not claim success when no model returns a real script.
 
@@ -71,3 +72,21 @@ Official references:
 - Gemini API models: https://ai.google.dev/gemini-api/docs/models
 - Gemini API pricing and free tier: https://ai.google.dev/gemini-api/docs/pricing
 - Gemini API terms (effective March 23, 2026): https://ai.google.dev/gemini-api/terms
+
+## 8. Mistral API Free mode (recommended fallback)
+
+Mistral's official Studio quickstart says API access is enabled in Free mode with no credit card required; usage and rate limits apply. This is an included limited allowance, not unlimited free production capacity. Do not enable pay-as-you-go or add payment details for this setup.
+
+1. Create an account and API key at https://console.mistral.ai/api-keys/ (or open Mistral Studio and choose API Keys).
+2. Keep the key private. In the existing Cloudflare Worker `orange-firefly-6434`, add a **Secret** named exactly `MISTRAL_API_KEY` and paste the key there.
+3. Save/deploy the Worker. The existing GitHub Actions Worker deployment will also deploy source changes; adding a secret is a separate Cloudflare dashboard action.
+4. Open the Worker health URL. Its `providers.mistral` field should become `true`. This confirms only that the secret exists, not that generation has succeeded.
+5. Run one real episode draft test in LUNA. A successful response must include a non-empty generated script and identify `provider: "mistral"` with the actual model. If the Free allowance is exhausted, the Worker must report the upstream error and must not return template text as AI success.
+
+Default model: `mistral-small-latest`. You may optionally set a Worker variable `MISTRAL_MODEL` to another model available to your Free-mode organization. The Worker calls the official OpenAI-compatible chat-completions endpoint at `https://api.mistral.ai/v1/chat/completions`.
+
+Official references:
+- Mistral API key quickstart and Free-mode/no-card statement: https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key
+- Mistral usage limits and Free-mode included monthly usage: https://docs.mistral.ai/admin/billing-usage/usage-limits
+- Mistral API pricing: https://mistral.ai/pricing/api/
+
