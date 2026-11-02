@@ -693,6 +693,52 @@ ${script.trim()}`;
           }
         }
       }
+      // Honest no-key fallback: derive a usable production pack from the accepted screenplay.
+      // This never claims that a live AI provider succeeded.
+      if (duration !== "long") {
+        const dialogue = [...script.matchAll(/^\s*(LUNA|LEO):\s*(.+)$/gim)]
+          .map(match => ({ speaker: match[1].toUpperCase(), text: match[2].trim() }))
+          .filter(item => item.text.length > 0)
+          .slice(0, 6);
+        if (dialogue.length >= 4) {
+          const shots = dialogue.map((item, index) => {
+            const name = item.speaker === "LUNA" ? profile.lunaName : profile.leoName;
+            const framing = index === 0 ? "medium two-shot" : index % 2 ? "natural close-up" : "over-shoulder medium";
+            const action = name + " speaks the exact screenplay line: " + item.text;
+            const visualRules = " Vertical 9:16 photorealistic candid cinematic frame. Same established location and unchanged wardrobe. Natural skin texture, realistic anatomy. Only LUNA and LEO; no other people, human figures, portraits, faces in artwork, mirrors or reflections. No invented props, text, logos or location changes. Natural practical lighting.";
+            return {
+              number: index + 1,
+              duration: "6 seconds",
+              framing,
+              action,
+              dialogue: item.speaker + ": " + item.text,
+              imagePrompt: customizeCharacterPrompt(profile.style + visualRules + " " + framing + ". " + action),
+              motionPrompt: "One continuous restrained live-action moment: " + action + ". Subtle facial expression, natural eye-line, minimal believable body motion, gentle camera drift, stable lighting and wardrobe."
+            };
+          });
+          const sections = [
+            "1. EPISODE SUMMARY\nA short romantic-comedy episode mapped directly from the accepted screenplay. No story events added.",
+            "2. CHARACTER CONTINUITY\n" + profile.lunaName + ": " + profile.lunaLook + "\n" + profile.leoName + ": " + profile.leoLook + "\nStyle: " + profile.style + "\nKeep wardrobe and location unchanged. Only the established couple.",
+            "3. SHOT LIST\n" + shots.map(s => "SHOT " + s.number + " (" + s.duration + ", " + s.framing + ")\nAction: " + s.action + "\nExact dialogue: " + s.dialogue).join("\n\n"),
+            "4. IMAGE PROMPTS\n" + shots.map(s => "SHOT " + s.number + ": " + s.imagePrompt).join("\n\n"),
+            "5. VIDEO/MOTION PROMPTS\n" + shots.map(s => "SHOT " + s.number + ": " + s.motionPrompt).join("\n\n"),
+            "6. VOICE AND SOUND\nLUNA: warm, witty, natural conversational delivery. LEO: affectionate, charming, lightly sheepish. Clean dialogue, subtle room ambience and an original soft romantic-comedy music bed.",
+            "7. ON-SCREEN CAPTIONS\n" + shots.map(s => s.dialogue).join("\n"),
+            "8. EDITING PLAN\nArrange shots in screenplay order. Use clean cuts, brief reaction pauses before the punchline, restrained pacing and an ending hold for the next-episode tease. Keep vertical 9:16 safe margins.",
+            "9. FINAL QUALITY CHECK\nPreserve exact dialogue and chronology. Keep faces, hair, wardrobe and location consistent. No extra people, human figures, portraits, reflected faces, invented props, logos or text inside generated images.",
+            "FALLBACK NOTICE\nThis pack was assembled locally from the accepted screenplay because live production-pack providers failed. It is not represented as AI-generated. Image, voice and video generation have not yet been completed."
+          ];
+          return json({
+            script: sections.join("\n\n"),
+            model: "LUNA local screenplay-to-production-pack fallback v1",
+            provider: "local-fallback",
+            mode: "production",
+            fallbackUsed: true,
+            providerFailures: productionFailures.slice(-8),
+            note: "A practical pack was derived from the accepted screenplay; no live AI success is claimed."
+          });
+        }
+      }
       return json({ error: "AI production-pack generation failed.", details: productionFailures }, 502);
     }
 
