@@ -81,6 +81,7 @@ jobs:
               print("PASS: A real AI-generated screenplay passed continuity checks.")
               print("Model:", result.get("model"))
               print("Fallback used:", result.get("fallbackUsed"))
+              print("Provider failure details:", result.get("fallbackReason"))
               print("Script characters:", len(script))
               print("Preview:", script[:700].replace("\\n", " "))
               sys.exit(0)
