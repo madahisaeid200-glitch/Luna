@@ -772,7 +772,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? "Write concise, faithful screenplays for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
           { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
@@ -804,6 +804,10 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
               if (new Set(values).size !== values.length) return false;
               const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
               if (totalWords < 75 || totalWords > 150) return false;
+              const combinedText = keys.map(key => data[key]).join(" ").toLowerCase();
+              const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite", "new name"]
+                .filter(term => !premise.toLowerCase().includes(term) && combinedText.includes(term));
+              if (forbiddenExtras.length) return false;
               if (/surname|welcome card|anniversary reservation/i.test(premise) && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
