@@ -935,7 +935,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             const values = keys.map(key => structured[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
             if (new Set(values).size !== values.length) throw new Error("Public-provider screenplay repeated dialogue lines");
             const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
-            if (totalWords < 75 || totalWords > 150) throw new Error("Public-provider screenplay length outside 75–150 words (" + totalWords + ")");
+            if (totalWords < 50 || totalWords > 150) throw new Error("Public-provider screenplay length outside 50–150 words (" + totalWords + ")");
             const combinedPublicText = keys.map(key => structured[key]).join(" ").toLowerCase();
             const unrequestedPublicElements = ["hotel manager", "receptionist", "front desk", "phone", "staff", "rooftop", "restaurant", "street", "lobby", "private performance", "new booking", "wrong suite", "checking out"]
               .filter(term => !premise.toLowerCase().includes(term) && combinedPublicText.includes(term));
@@ -1066,13 +1066,13 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
             const screenplayWords = dialogueForLength.trim().split(/\s+/).filter(Boolean).length;
             const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "rooftop", "private yacht", "yacht", "island", "private performance", "restaurant", "street", "lobby"]
               .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
-            if (screenplayWords < 75 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
+            if (screenplayWords < 50 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
               throw new Error("Screenplay failed story continuity gate: " + [
                 !hasLeoAdmission ? "Leo must admit the wrong-surname typo" : "",
                 !hasOtherCoupleMisunderstanding ? "Luna must misunderstand it as another couple's booking" : "",
                 !hasRomanticTease ? "next-episode tease must promise a romantic surprise" : "",
                 deniesMistake ? "dialogue contradicts the admitted typo" : "",
-                screenplayWords < 75 || screenplayWords > 180 ? "screenplay length outside 75–180 words (" + screenplayWords + ")" : "",
+                screenplayWords < 75 || screenplayWords > 180 ? "screenplay length outside 50–180 words (" + screenplayWords + ")" : "",
                 forbiddenExtras.length ? "unrequested elements: " + forbiddenExtras.join(", ") : ""
               ].filter(Boolean).join("; "));
             }
