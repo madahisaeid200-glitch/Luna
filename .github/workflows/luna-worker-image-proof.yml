@@ -1,4 +1,4 @@
-name: LUNA live Worker image fallback proof
+name: LUNA live Worker image fallback proof (repeat verification)
 
 on:
   workflow_dispatch:
