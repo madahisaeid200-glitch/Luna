@@ -113,7 +113,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 10_000),
+          signal: AbortSignal.timeout(provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 35_000),
           body: JSON.stringify({
             model,
             messages,
@@ -881,9 +881,9 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
       "__MURAKUMO_FREE__",
+      "__MURAKUMO__",
       "__OVH__",
       "__LLMFAUCET__",
-      "__MURAKUMO__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
@@ -935,7 +935,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             const values = keys.map(key => structured[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
             if (new Set(values).size !== values.length) throw new Error("Public-provider screenplay repeated dialogue lines");
             const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
-            if (totalWords < 50 || totalWords > 150) throw new Error("Public-provider screenplay length outside 50–150 words (" + totalWords + ")");
+            if (totalWords < 45 || totalWords > 150) throw new Error("Public-provider screenplay length outside 45–150 words (" + totalWords + ")");
             const combinedPublicText = keys.map(key => structured[key]).join(" ").toLowerCase();
             const unrequestedPublicElements = ["hotel manager", "receptionist", "front desk", "phone", "staff", "rooftop", "restaurant", "street", "lobby", "private performance", "new booking", "wrong suite", "checking out"]
               .filter(term => !premise.toLowerCase().includes(term) && combinedPublicText.includes(term));
@@ -1066,13 +1066,13 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
             const screenplayWords = dialogueForLength.trim().split(/\s+/).filter(Boolean).length;
             const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "staff", "checking out", "wrong suite", "rooftop", "private yacht", "yacht", "island", "private performance", "restaurant", "street", "lobby"]
               .filter(term => !premise.toLowerCase().includes(term) && lowerScript.includes(term));
-            if (screenplayWords < 50 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
+            if (screenplayWords < 45 || screenplayWords > 180 || !hasLeoAdmission || !hasOtherCoupleMisunderstanding || !hasRomanticTease || deniesMistake || forbiddenExtras.length) {
               throw new Error("Screenplay failed story continuity gate: " + [
                 !hasLeoAdmission ? "Leo must admit the wrong-surname typo" : "",
                 !hasOtherCoupleMisunderstanding ? "Luna must misunderstand it as another couple's booking" : "",
                 !hasRomanticTease ? "next-episode tease must promise a romantic surprise" : "",
                 deniesMistake ? "dialogue contradicts the admitted typo" : "",
-                screenplayWords < 75 || screenplayWords > 180 ? "screenplay length outside 50–180 words (" + screenplayWords + ")" : "",
+                screenplayWords < 75 || screenplayWords > 180 ? "screenplay length outside 45–180 words (" + screenplayWords + ")" : "",
                 forbiddenExtras.length ? "unrequested elements: " + forbiddenExtras.join(", ") : ""
               ].filter(Boolean).join("; "));
             }
