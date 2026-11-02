@@ -897,8 +897,12 @@ ${script.trim()}`;
     })[tone] || "warm romantic comedy";
 
     const outputFormatText = language === "fa"
-      ? "عنوان\nقلاب\nصحنه ۱\nصحنه ۲\nپایان بامزه\nپیش‌نمایش قسمت بعد"
-      : "TITLE\nHOOK\nSCENE 1\nSCENE 2\nPAYOFF\nNEXT-EPISODE TEASE";
+      ? (duration === "long"
+        ? "عنوان\nقلاب\nصحنه ۱\nصحنه ۲\nصحنه ۳\nصحنه ۴\nصحنه ۵\nصحنه ۶\nپایان بامزه\nپیش‌نمایش قسمت بعد"
+        : "عنوان\nقلاب\nصحنه ۱\nصحنه ۲\nپایان بامزه\nپیش‌نمایش قسمت بعد")
+      : (duration === "long"
+        ? "TITLE\nHOOK\nSCENE 1\nSCENE 2\nSCENE 3\nSCENE 4\nSCENE 5\nSCENE 6\nPAYOFF\nNEXT-EPISODE TEASE"
+        : "TITLE\nHOOK\nSCENE 1\nSCENE 2\nPAYOFF\nNEXT-EPISODE TEASE");
 
     const prompt = `You are the lead writer for the fictional AI influencer couple LUNA and LEO. Create ONE original, production-ready short-form episode.
 
@@ -1018,8 +1022,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             if (duration === "long") {
               const longWordCount = finalScript.split(/\s+/).filter(Boolean).length;
               const sceneHeadings = (finalScript.match(/^\s*(?:\*\*)?(?:SCENE|صحنه)\s*(?:[0-9۰-۹]+)?/gim) || []).length;
-              if (longWordCount < 250 || longWordCount > 950) {
-                throw new Error("Long-form screenplay length outside 250–950 words (" + longWordCount + ")");
+              if (longWordCount < 300 || longWordCount > 900) {
+                throw new Error("Long-form screenplay length outside 300–900 words (" + longWordCount + ")");
               }
               if (!finalScript.includes(profile.lunaName) || !finalScript.includes(profile.leoName)) {
                 throw new Error("Long-form screenplay is missing one or both saved character names");
