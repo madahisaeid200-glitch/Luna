@@ -1016,8 +1016,8 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
           let finalScript = script.trim();
           if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7" || provider === "murakumo-free" || provider === "murakumo") {
             if (duration === "long") {
-              const longWordCount = finalScript.split(/\\s+/).filter(Boolean).length;
-              const sceneHeadings = (finalScript.match(/^\\s*(?:\\*\\*)?(?:SCENE|صحنه)\\s*(?:[0-9۰-۹]+)?/gim) || []).length;
+              const longWordCount = finalScript.split(/\s+/).filter(Boolean).length;
+              const sceneHeadings = (finalScript.match(/^\s*(?:\*\*)?(?:SCENE|صحنه)\s*(?:[0-9۰-۹]+)?/gim) || []).length;
               if (longWordCount < 250 || longWordCount > 950) {
                 throw new Error("Long-form screenplay length outside 250–950 words (" + longWordCount + ")");
               }
