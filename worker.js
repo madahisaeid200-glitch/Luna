@@ -48,6 +48,24 @@ export default {
         if (typeof content !== "string" || !content.trim()) throw new Error("ovhcloud returned an empty completion");
         return { response: content.trim(), model: data.model || model };
       }
+      if (provider === "llmfaucet") {
+        const model = maxTokens > 1200 ? "auto:smart" : "auto:fast";
+        // Public anonymous aggregator: up to 20 requests/day per IP; send only fictional LUNA material.
+        const response = await fetch("https://api.llmfaucet.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer free" },
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature }),
+          signal: AbortSignal.timeout(45_000)
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("llmfaucet HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("llmfaucet HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("llmfaucet returned an empty completion");
+        const route = response.headers.get("x-routed-via") || data.model || model;
+        return { response: content.trim(), model: "llmfaucet/" + route };
+      }
       if (provider === "qwen3vl") {
         const model = "qwen3-vl-2b-instruct";
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
@@ -458,7 +476,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -546,6 +564,7 @@ ${script.trim()}`;
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
         "__OVH__",
+        "__LLMFAUCET__",
         "__MURAKUMO_FREE__",
         "__MURAKUMO__"
       ];
@@ -837,7 +856,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"]),
+      ...(duration === "long" ? ["__OVH__", "__LLMFAUCET__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
@@ -861,14 +880,14 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
           result = await externalChat(provider, messages, structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
           actualModel = result?.model || model;
@@ -879,17 +898,17 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "ovhcloud") {
+          if (provider === "ovhcloud" || provider === "llmfaucet") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
             if (!structured || !keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
-              throw new Error("OVH screenplay must be valid JSON with all eight dialogue keys");
+              throw new Error("Public-provider screenplay must be valid JSON with all eight dialogue keys");
             }
             const values = keys.map(key => structured[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
-            if (new Set(values).size !== values.length) throw new Error("OVH screenplay repeated dialogue lines");
+            if (new Set(values).size !== values.length) throw new Error("Public-provider screenplay repeated dialogue lines");
             const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
-            if (totalWords < 75 || totalWords > 150) throw new Error("OVH screenplay length outside 75–150 words (" + totalWords + ")");
+            if (totalWords < 75 || totalWords > 150) throw new Error("Public-provider screenplay length outside 75–150 words (" + totalWords + ")");
             if (surnameMixupPremise && language !== "fa") {
               const leo1 = structured.leo1.toLowerCase();
               const luna2 = structured.luna2.toLowerCase();
