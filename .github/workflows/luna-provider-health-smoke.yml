@@ -102,13 +102,10 @@ jobs:
           print("Provider:", data.get("provider"))
           print("Model:", data.get("model"))
           print("Script preview:", (script or "")[:260])
-          if os.environ.get("CODE") != "200" or not isinstance(script,str) or len(script.strip()) < 100:
+          if os.environ.get("CODE") != "200" or not isinstance(script,str) or len(script.strip()) < 100 or data.get("provider") != "murakumo":
               print("Worker error:", json.dumps(data, ensure_ascii=False)[:1800])
               sys.exit("Real episode generation did not return a usable screenplay")
-          if data.get("provider") == "murakumo":
-              print("The deployed Worker generated through the direct Mishima route.")
-          else:
-              print("A configured primary AI provider generated the screenplay.")
+          print("The deployed Worker generated through the direct keyless Mishima route.")
           print("LUNA end-to-end generation: PASS")
           PY
       - name: Verify keyless Qwen3-VL image understanding
