@@ -740,6 +740,20 @@ Keep the story physically continuous and the ending complete. Return only the sc
         if (model.startsWith("__")) {
           provider = model === "__QWEN3VL__" ? "qwen3vl" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, provider === "qwen3vl" ? 0.1 : 0.7);
+          if (provider === "qwen3vl" && result?.response) {
+            const editMessages = [
+              { role: "system", content: "You are a meticulous short-form screenplay editor. Improve clarity, continuity, and humor. Never add characters, props, wardrobe, or locations." },
+              { role: "user", content: "Rewrite this draft as a polished 30–60 second LUNA and LEO romantic-comedy screenplay. Keep the exact premise: LEO mistyped the surname on their anniversary reservation; LUNA sees the wrong surname on the welcome card and thinks the suite was booked for another couple. Keep the entire story in the suite. Use 120–150 spoken words, 6–8 distinct dialogue turns, natural English, one affectionate punchline, and a short relevant next-episode tease. Remove repetitive phrases and circular dialogue. Do not add clothing or extra props. Return only the revised screenplay.\n\nDRAFT:\n" + result.response }
+            ];
+            try {
+              const polished = await externalChat("qwen3vl", editMessages, 512, 0.1);
+              if (typeof polished?.response === "string" && polished.response.trim().length >= 300) {
+                result = { ...result, response: polished.response.trim(), model: polished.model || result.model };
+              }
+            } catch (polishError) {
+              failures.push("Qwen polish pass skipped: " + String(polishError?.message || polishError).slice(0, 180));
+            }
+          }
           actualModel = result.model;
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
