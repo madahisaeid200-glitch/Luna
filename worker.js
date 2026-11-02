@@ -747,7 +747,7 @@ ${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS 
 Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-    // Free-first screenplay routing: Mishima handles text; Qwen3-VL is vision-only.
+    // Cloudflare is primary; OVH anonymous Llama is the stronger no-key short-script fallback, with Mishima/Qwen as later fallbacks.
     const modelsToTry = [
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
@@ -772,15 +772,16 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? "Write concise, faithful screenplays for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? "Write concise, faithful screenplays for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 1600, provider === "qwen3vl" ? 0.35 : 0.45);
+          const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
+          result = await externalChat(provider, messages, structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
           actualModel = result?.model || model;
 
         } else {
@@ -789,7 +790,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "qwen3vl") {
+          if (provider === "qwen3vl" || provider === "ovhcloud") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             const parseStructured = value => {
               const a = value.indexOf("{");
@@ -807,14 +808,14 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
                 if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
-                if (!/(another couple|other couple|someone else|someone else's|other people)/.test(luna2)) return false;
+                if (!/(another couple|other couple|different couple|someone else|somebody else|someone else's|other people|not our booking|not ours)/.test(luna2)) return false;
                 const leo2 = data.leo2.toLowerCase();
                 if (/(not a typo|not a mix-up|not a mistake|you typed|you are the one)/.test(leo2)) return false;
                 if (!/(typo|typed|mistyped|my mistake|i made a mistake)/.test(leo2)) return false;
                 const tease = data.tease.toLowerCase();
                 if (!/(next episode|next time)/.test(tease)) return false;
                 if (!/(surprise|romantic|anniversary|date|gift|plan)/.test(tease)) return false;
-                if (/(wrong suite|not supposed to be here|checking out|new name)/.test(tease)) return false;
+                if (/(wrong suite|not supposed to be here|checking out|new name|hotel manager|receptionist|front desk|phone|candles|champagne|staff)/.test(tease)) return false;
               }
               return true;
             };
@@ -836,17 +837,17 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
                 structured = parseStructured(repaired.response || "");
               } catch (repairError) {
-                failures.push("Qwen structure repair failed: " + String(repairError?.message || repairError).slice(0, 160));
+                failures.push(provider + " structure repair failed: " + String(repairError?.message || repairError).slice(0, 160));
               }
             }
-            if (!isValid(structured)) throw new Error("Qwen draft failed screenplay consistency checks; no low-quality script was accepted.");
+            if (!isValid(structured)) throw new Error(provider + " draft failed screenplay consistency checks; no low-quality script was accepted.");
             finalScript = "**TITLE:** " + title.trim() + "\n\n**HOOK:**\n" + structured.hook.trim() +
               "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() + "\n" + profile.leoName + ": " + structured.leo1.trim() +
               "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
               "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
               "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
           }
-          if (provider !== "qwen3vl" && surnameMixupPremise && language !== "fa") {
+          if (provider !== "qwen3vl" && provider !== "ovhcloud" && surnameMixupPremise && language !== "fa") {
             const lowerScript = finalScript.toLowerCase();
             const teaseMatch = finalScript.match(/(?:next[- ]episode tease|next episode|next time)([\\s\\S]*)/i);
             const teaseText = (teaseMatch?.[1] || "").toLowerCase();
