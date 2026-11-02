@@ -746,17 +746,19 @@ Premise (must remain unchanged): ${premise.trim()}
           let finalScript = script.trim();
           if (provider === "qwen3vl") {
             try {
-              const match = finalScript.match(/\\{[\\s\\S]*\\}/);
-              const data = JSON.parse(match ? match[0] : finalScript);
+              const jsonStart = finalScript.indexOf("{");
+              const jsonEnd = finalScript.lastIndexOf("}");
+              const jsonText = jsonStart >= 0 && jsonEnd > jsonStart ? finalScript.slice(jsonStart, jsonEnd + 1) : finalScript;
+              const data = JSON.parse(jsonText);
               const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
               if (keys.every(key => typeof data[key] === "string" && data[key].trim())) {
-                finalScript = "**TITLE:** " + title.trim() + "\\n\\n**HOOK:**\\n" + data.hook.trim() +
-                  "\\n\\n**SCENE 1**\\nLUNA: " + data.luna1.trim() + "\\nLEO: " + data.leo1.trim() +
-                  "\\n\\n**SCENE 2**\\nLUNA: " + data.luna2.trim() + "\\nLEO: " + data.leo2.trim() +
-                  "\\n\\n**PAYOFF**\\nLUNA: " + data.luna3.trim() + "\\nLEO: " + data.leo3.trim() +
-                  "\\n\\n**NEXT-EPISODE TEASE:**\\n" + data.tease.trim();
+                finalScript = "**TITLE:** " + title.trim() + "\n\n**HOOK:**\n" + data.hook.trim() +
+                  "\n\n**SCENE 1**\nLUNA: " + data.luna1.trim() + "\nLEO: " + data.leo1.trim() +
+                  "\n\n**SCENE 2**\nLUNA: " + data.luna2.trim() + "\nLEO: " + data.leo2.trim() +
+                  "\n\n**PAYOFF**\nLUNA: " + data.luna3.trim() + "\nLEO: " + data.leo3.trim() +
+                  "\n\n**NEXT-EPISODE TEASE:**\n" + data.tease.trim();
               }
-            } catch (_) {
+            }
               // Keep the raw model text if it did not return valid structured JSON.
             }
           }
