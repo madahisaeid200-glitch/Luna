@@ -24,7 +24,7 @@ export default {
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
-    const externalChat = async (provider, messages, maxTokens, temperature) => {
+    const externalChat = async (provider, messages, maxTokens, temperature, timeoutOverride) => {
       if (provider === "ovhcloud") {
         const model = "Meta-Llama-3_3-70B-Instruct";
         // Anonymous OVH AI Endpoints mode: no account key or Authorization header.
@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(maxTokens > 2500 ? 65_000 : 50_000),
+          signal: AbortSignal.timeout(timeoutOverride || (maxTokens > 2500 ? 65_000 : 50_000)),
           body: JSON.stringify({
             model,
             messages,
@@ -78,7 +78,7 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": "Bearer free" },
           body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature }),
-          signal: AbortSignal.timeout(30_000)
+          signal: AbortSignal.timeout(timeoutOverride || 30_000)
         });
         const raw = await response.text();
         let data;
@@ -113,7 +113,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 35_000),
+          signal: AbortSignal.timeout(timeoutOverride || (provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 35_000)),
           body: JSON.stringify({
             model,
             messages,
@@ -656,9 +656,9 @@ ${script.trim()}`;
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
         "__MURAKUMO_FREE__",
-        "__OVH__",
         "__LLMFAUCET__",
-        "__MURAKUMO__"
+        "__MURAKUMO__",
+        "__OVH__"
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -674,7 +674,9 @@ ${script.trim()}`;
           let actualModel = model;
           if (model.startsWith("__")) {
             provider = model === "__OVH__" ? "ovhcloud" : model === "__LLM7__" ? "llm7" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, provider === "ovhcloud" ? 3500 : 2200, provider === "ovhcloud" ? 0.25 : 0.35);
+            // Bound each public free-provider attempt so the complete production request stays within the browser's 150-second limit.
+            const productionProviderTimeout = provider === "ovhcloud" ? 35_000 : 25_000;
+            result = await externalChat(provider, messages, provider === "ovhcloud" ? 3500 : 2200, provider === "ovhcloud" ? 0.25 : 0.35, productionProviderTimeout);
             actualModel = result.model;
           } else {
             result = await env.AI.run(model, { messages, max_tokens: 2200, temperature: 0.35 });
