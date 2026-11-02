@@ -26,13 +26,13 @@ export default {
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
       if (provider === "murakumo") {
-        const model = "murakumo/free";
+        const model = "mishima";
         // Public keyless free lane. LUNA sends fictional story material only.
         // The provider warns that free-lane prompts may be visible to community node operators.
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 1900), temperature })
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 2048), temperature })
         });
         const raw = await response.text();
         let data;
