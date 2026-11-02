@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/luna-tts-ai-probe.yml
+      - worker.js
     branches: [main]
 permissions:
   contents: read
@@ -12,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Probe anonymous Kokoro TTS and verify MP3
+      - name: Probe anonymous Kokoro TTS, multi-chunk MP3 and decode
         env:
           API: https://api.tts.ai
         run: |
@@ -20,55 +21,54 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const sleep = ms => new Promise(r => setTimeout(r, ms));
-          (async () => {
-            const health = await fetch(process.env.API + '/v1/health/');
-            console.log('HEALTH_HTTP:', health.status);
-            console.log('HEALTH_BODY:', (await health.text()).slice(0, 1500));
-            const voicesRes = await fetch(process.env.API + '/v1/voices/?model=kokoro&language=en&gender=female');
-            const voicesText = await voicesRes.text();
-            console.log('VOICES_HTTP:', voicesRes.status);
-            if (!voicesRes.ok) throw new Error('Voice catalogue failed: ' + voicesText.slice(0, 500));
-            const voices = JSON.parse(voicesText).voices || [];
-            const voice = voices.find(v => v.id === 'af_bella') || voices[0];
-            if (!voice?.id) throw new Error('No English female Kokoro voice returned');
-            console.log('SELECTED_VOICE:', voice.id, voice.name);
-            const submit = await fetch(process.env.API + '/v1/tts/', {
-              method: 'POST',
-              headers: {'content-type':'application/json'},
-              body: JSON.stringify({model:'kokoro', text:'Hello. Welcome to LUNA and LEO. Our little luxury adventure is just beginning.', voice:voice.id, format:'mp3', language:'en'})
-            });
-            const submitText = await submit.text();
-            console.log('SUBMIT_HTTP:', submit.status);
-            console.log('SUBMIT_BODY:', submitText.slice(0, 1500));
-            if (!submit.ok) throw new Error('Anonymous TTS submit failed: ' + submitText.slice(0, 600));
-            const job = JSON.parse(submitText);
-            if (!job.uuid) throw new Error('TTS response did not contain uuid');
-            let result;
-            for (let i=0;i<45;i++) {
-              await sleep(2000);
-              const poll = await fetch(process.env.API + '/v1/speech/results/?uuid=' + encodeURIComponent(job.uuid));
-              const body = await poll.text();
-              if (!poll.ok) throw new Error('TTS poll HTTP '+poll.status+': '+body.slice(0,500));
-              result = JSON.parse(body);
-              console.log('POLL', i+1, 'STATUS:', result.status);
-              if (result.status === 'completed') break;
-              if (result.status === 'failed') throw new Error('TTS job failed: '+JSON.stringify(result).slice(0,800));
+          async function speak(text, voice) {
+            const r = await fetch(process.env.API + '/v1/tts/', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'kokoro',text,voice,format:'mp3',language:'en'})});
+            const raw=await r.text();
+            if(!r.ok) throw new Error('submit HTTP '+r.status+': '+raw.slice(0,500));
+            const job=JSON.parse(raw);
+            for(let i=0;i<45;i++){
+              await sleep(1500);
+              const p=await fetch(process.env.API+'/v1/speech/results/?uuid='+encodeURIComponent(job.uuid));
+              const pr=await p.text();
+              if(!p.ok)throw new Error('poll HTTP '+p.status+': '+pr.slice(0,400));
+              const result=JSON.parse(pr);
+              if(result.status==='failed')throw new Error('job failed: '+JSON.stringify(result).slice(0,500));
+              if(result.status==='completed'&&result.result_url){
+                const a=await fetch(result.result_url);const bytes=Buffer.from(await a.arrayBuffer());
+                if(!a.ok||bytes.length<1000)throw new Error('invalid audio download');
+                return bytes;
+              }
             }
-            if (result?.status !== 'completed' || !result.result_url) throw new Error('TTS job timed out: '+JSON.stringify(result));
-            const audio = await fetch(result.result_url);
-            const bytes = Buffer.from(await audio.arrayBuffer());
-            console.log('AUDIO_HTTP:', audio.status, 'CONTENT_TYPE:', audio.headers.get('content-type'), 'BYTES:', bytes.length);
-            if (!audio.ok || bytes.length < 1000) throw new Error('Downloaded audio invalid');
-            if (!(bytes.subarray(0,3).toString() === 'ID3' || (bytes[0]===0xff && (bytes[1]&0xe0)===0xe0))) throw new Error('Audio payload does not look like MP3');
-            fs.writeFileSync('luna-tts-probe.mp3', bytes);
-            fs.writeFileSync('luna-tts-probe.json', JSON.stringify({provider:'tts.ai',model:'kokoro',voice:voice.id,status:result.status,bytes:bytes.length,contentType:audio.headers.get('content-type')},null,2));
-            console.log('KEYLESS_TTS_PROBE: PASS');
-          })().catch(e=>{console.error('KEYLESS_TTS_PROBE: FAIL',e);process.exit(1);});
+            throw new Error('job timeout');
+          }
+          (async()=>{
+            const vr=await fetch(process.env.API+'/v1/voices/?model=kokoro&language=en&gender=female');
+            if(!vr.ok)throw new Error('voices HTTP '+vr.status);
+            const voices=(await vr.json()).voices||[];
+            const voice=voices.find(v=>v.id==='af_bella')||voices[0];
+            if(!voice?.id)throw new Error('no English female voice');
+            console.log('VOICE:',voice.id);
+            const parts=[
+              'Hello. Welcome to LUNA and LEO. Our little luxury adventure is just beginning.',
+              'Tonight, a romantic surprise is waiting in a beautiful hotel suite. But one tiny booking mistake is about to turn everything upside down.'
+            ];
+            const audio=[];
+            for(let i=0;i<parts.length;i++){if(parts[i].length>500)throw new Error('test chunk too long');const b=await speak(parts[i],voice.id);audio.push(b);console.log('CHUNK',i+1,'BYTES',b.length,'HEADER',b.subarray(0,3).toString());}
+            const joined=Buffer.concat(audio);
+            fs.writeFileSync('luna-tts-multichunk.mp3',joined);
+            fs.writeFileSync('luna-tts-multichunk.json',JSON.stringify({provider:'tts.ai',model:'kokoro',voice:voice.id,chunks:audio.length,bytes:joined.length},null,2));
+            console.log('MULTICHUNK_MP3_BYTES:',joined.length);
+            console.log('MULTICHUNK_TTS_PROBE: PASS');
+          })().catch(e=>{console.error('MULTICHUNK_TTS_PROBE: FAIL',e);process.exit(1);});
           NODE
+      - name: Decode concatenated MP3
+        run: |
+          ffmpeg -v error -i luna-tts-multichunk.mp3 -f null -
+          echo "FFMPEG_DECODE: PASS"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: luna-keyless-tts-probe
-          path: luna-tts-probe.*
+          name: luna-keyless-tts-multichunk
+          path: luna-tts-multichunk.*
           if-no-files-found: ignore
           retention-days: 7
