@@ -308,7 +308,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : "openrouter";
+            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -409,7 +409,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : "openrouter";
+            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 2200, 0.35);
             actualModel = result.model;
           } else {
