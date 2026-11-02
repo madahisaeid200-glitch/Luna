@@ -356,6 +356,33 @@ ${script.trim()}`;
       if (duration !== "long") {
         let structured = null;
         try { structured = JSON.parse(script.trim()); } catch {}
+        if (!structured) {
+          const section = (heading, nextHeading) => {
+            const start = script.indexOf(heading);
+            if (start < 0) return "";
+            const from = start + heading.length;
+            const end = nextHeading ? script.indexOf(nextHeading, from) : -1;
+            return script.slice(from, end >= 0 ? end : script.length).trim();
+          };
+          const line = (content, speaker) => {
+            const prefix = speaker + ":";
+            const row = content.split(/\r?\n/).find(value => value.trim().startsWith(prefix));
+            return row ? row.trim().slice(prefix.length).trim() : "";
+          };
+          const scene1 = section("**SCENE 1**", "**SCENE 2**");
+          const scene2 = section("**SCENE 2**", "**PAYOFF**");
+          const payoff = section("**PAYOFF**", "**NEXT-EPISODE TEASE:**");
+          structured = {
+            hook: section("**HOOK:**", "**SCENE 1**"),
+            luna1: line(scene1, profile.lunaName),
+            leo1: line(scene1, profile.leoName),
+            luna2: line(scene2, profile.lunaName),
+            leo2: line(scene2, profile.leoName),
+            luna3: line(payoff, profile.lunaName),
+            leo3: line(payoff, profile.leoName),
+            tease: section("**NEXT-EPISODE TEASE:**", "")
+          };
+        }
         const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
         if (structured && keys.every(key => typeof structured[key] === "string" && structured[key].trim())) {
           const makeShot = (id, shotType, action, emotion, characters, dialogue, camera) => ({
