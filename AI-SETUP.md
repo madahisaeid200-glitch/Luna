@@ -27,3 +27,33 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 - Usage limits and model availability can change; check the Cloudflare dashboard before relying on it for production.
 - This endpoint generates scripts only. Image/video generation is a separate integration and may cost extra.
 - Keep the Worker restricted to the LUNA site origin. Do not publish provider tokens or secrets in GitHub, the browser, or this public repository.
+
+## 6. Automatic free-provider fallback (new)
+
+The Worker now tries providers in this order for episode-script generation:
+
+1. Cloudflare Workers AI (existing primary and secondary models).
+2. Groq, when `GROQ_API_KEY` is configured.
+3. OpenRouter's free-model router, when `OPENROUTER_API_KEY` is configured.
+
+A quota/rate-limit/provider error moves to the next configured provider. The Worker returns the actual provider and model used. It does not claim success when no model returns a real script.
+
+### One-time setup — keys stay private
+
+To activate the free fallback, create an API key from at least one provider:
+- Groq: https://console.groq.com/keys — Free plan limits are per model and are shown in the Groq console.
+- OpenRouter: https://openrouter.ai/settings/keys — use of free models is capped; current free-tier documentation lists 20 requests/minute and 50 requests/day for `:free` models.
+
+Then add the key to the existing Cloudflare Worker as a **Secret**, not as a plain text variable:
+1. Open https://dash.cloudflare.com/ and select Workers & Pages.
+2. Open the existing Worker `orange-firefly-6434`.
+3. Open Settings → Variables and Secrets (wording may vary).
+4. Add a Secret named exactly `GROQ_API_KEY` and paste the Groq key into its value. If using OpenRouter, add another Secret named exactly `OPENROUTER_API_KEY`.
+5. Save/deploy the Worker.
+
+You can add only one provider key; both are not required. No API key should be sent in ChatGPT, pasted into the website, or committed to GitHub. The Worker health response exposes only true/false provider-presence flags, never key values.
+
+Official references:
+- Groq rate limits: https://console.groq.com/docs/rate-limits
+- OpenRouter free models and limits: https://openrouter.ai/collections/free-models
+- Cloudflare Worker Secrets: https://developers.cloudflare.com/workers/configuration/secrets/
