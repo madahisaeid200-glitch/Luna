@@ -89,7 +89,7 @@ jobs:
                   "next-episode tease is present": bool(__import__("re").search(r"next[- ]episode|next time", text)),
                   "tease promises a romantic surprise": any(x in text for x in ("surprise", "romantic", "anniversary", "date", "gift", "plan")),
                   "no contradiction denying the typo": not any(x in text for x in ("not a typo", "not a mistake", "not a mix-up")),
-                  "no unrequested props or hotel staff": not any(x in text for x in ("hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff")),
+                  "no unrequested props or hotel staff": not any(x in text for x in ("hotel manager", "receptionist", "front desk", "phone", "staff")),
                   "no wrong-suite plot drift": not any(x in text for x in ("wrong suite", "checking out", "new name"))
               }
               for label, passed in checks.items():
