@@ -748,14 +748,16 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     // Cloudflare is primary; OVH anonymous Llama is the stronger no-key short-script fallback, with Mishima/Qwen as later fallbacks.
+    // OVH anonymous inference has been confirmed live; prefer it for short scripts.
+    // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
+      ...(duration === "long" ? ["__MURAKUMO__", "__OVH__"] : ["__OVH__", "__MURAKUMO__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-      ...(duration === "long" ? ["__MURAKUMO__"] : ["__OVH__", "__MURAKUMO__", "__QWEN3VL__"])
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
@@ -853,10 +855,10 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
           }
           if (provider !== "qwen3vl" && provider !== "ovhcloud" && surnameMixupPremise && language !== "fa") {
             const lowerScript = finalScript.toLowerCase();
-            const teaseMatch = finalScript.match(/(?:next[- ]episode tease|next episode|next time)([\\s\\S]*)/i);
-            const teaseText = (teaseMatch?.[1] || "").toLowerCase();
+            const teaseParts = finalScript.split(/(?:next[- ]episode tease|next episode|next time)\\s*[:—-]?/i);
+            const teaseText = (teaseParts.length > 1 ? teaseParts.slice(1).join(" ") : finalScript.slice(-420)).toLowerCase();
             const hasLeoAdmission = /(typed|mistyped|typo|wrong surname)/i.test(finalScript);
-            const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people)/i.test(finalScript);
+            const hasOtherCoupleMisunderstanding = /(another couple|wrong couple|other couple|someone else|someone else's|other people|different couple|another pair|different pair|booking belongs to|reservation belongs to|booked for someone|reserved for someone)/i.test(finalScript);
             const hasRomanticTease = /(surprise|romantic|anniversary|date|gift|plan)/i.test(teaseText);
             const deniesMistake = /(not a typo|not a mistake|not a mix-up)/i.test(finalScript);
             const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite"]
