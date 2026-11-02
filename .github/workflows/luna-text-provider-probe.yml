@@ -1,0 +1,37 @@
+name: LUNA live no-key text provider probe
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/luna-text-provider-probe.yml"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe Murakumo model catalogue and minimal chat
+        shell: bash
+        run: |
+          set +e
+          echo "=== MURAKUMO MODELS ==="
+          curl -sS --max-time 20 https://api.murakumo.cloud/v1/models -o /tmp/models.json -w "HTTP=%{http_code} seconds=%{time_total}\\n"
+          python3 - <<'PY'
+          import json
+          try:
+              d=json.load(open('/tmp/models.json'))
+              models=d.get('data', d.get('models', []))
+              print("MODEL_IDS:", [m.get('id') for m in models[:80] if isinstance(m,dict)])
+              print("RAW:", json.dumps(d,ensure_ascii=False)[:3500])
+          except Exception as e: print("MODEL_CATALOG_PARSE:",e)
+          PY
+          echo "=== MURAKUMO FREE MINIMAL ==="
+          curl -sS --max-time 50 https://api.murakumo.cloud/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{"model":"murakumo/free","messages":[{"role":"user","content":"Reply exactly: LUNA-PROBE-OK"}],"max_tokens":32,"temperature":0}' -o /tmp/murakumo.json -w "HTTP=%{http_code} seconds=%{time_total}\\n"
+          cat /tmp/murakumo.json | head -c 3500; echo
+          echo "=== MURAKUMO MISHIMA MINIMAL ==="
+          curl -sS --max-time 50 https://api.murakumo.cloud/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{"model":"mishima","messages":[{"role":"user","content":"Reply exactly: LUNA-PROBE-OK"}],"max_tokens":32,"temperature":0}' -o /tmp/mishima.json -w "HTTP=%{http_code} seconds=%{time_total}\\n"
+          cat /tmp/mishima.json | head -c 2000; echo
+          echo "=== OVH MINIMAL ==="
+          curl -sS --max-time 50 https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{"model":"Meta-Llama-3_3-70B-Instruct","messages":[{"role":"user","content":"Reply exactly: LUNA-PROBE-OK"}],"max_tokens":32,"temperature":0}' -o /tmp/ovh.json -w "HTTP=%{http_code} seconds=%{time_total}\\n"
+          cat /tmp/ovh.json | head -c 2000; echo
