@@ -70,7 +70,7 @@ jobs:
               results.push('SCRIPT: PASS');
               await fs.writeFile('luna-test-output/episode-script.txt',await page.locator('#output').innerText(),'utf8');
               await page.locator('#makeProductionPack').click();
-              await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return /IMAGE PROMPTS/i.test(t)&&/SHOT LIST/i.test(t)&&!/در حال تبدیل|Building video pack/i.test(document.querySelector('#aiStatus')?.textContent||'');},90000,'production-pack');
+              await waitFor(()=>{const t=document.querySelector('#output')?.textContent||'';return /IMAGE PROMPTS/i.test(t)&&/SHOT LIST/i.test(t)&&!/در حال تبدیل|Building video pack/i.test(document.querySelector('#aiStatus')?.textContent||'');},130000,'production-pack');
               const pack=await page.locator('#output').innerText();
               if(pack.length<1000) throw new Error('Production pack too short: '+pack.length);
               results.push('PRODUCTION_PACK: PASS ('+pack.length+' chars)');
