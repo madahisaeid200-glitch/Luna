@@ -1,0 +1,41 @@
+name: LUNA anonymous image provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/luna-image-provider-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test Pollinations legacy endpoint once
+        run: |
+          set -euo pipefail
+          URL="https://image.pollinations.ai/prompt/photorealistic%20luxury%20hotel%20suite%20interior%2C%20cinematic%20still?width=512&height=768&seed=8137&nologo=true"
+          STATUS=$(curl -L --max-time 100 -sS -w '%{http_code}' -o /tmp/luna-probe-image "$URL")
+          TYPE=$(file --mime-type -b /tmp/luna-probe-image)
+          SIZE=$(wc -c < /tmp/luna-probe-image)
+          echo "HTTP_STATUS=$STATUS"
+          echo "CONTENT_TYPE=$TYPE"
+          echo "BYTES=$SIZE"
+          if [ "$STATUS" != "200" ] || [[ "$TYPE" != image/* ]] || [ "$SIZE" -lt 10000 ]; then
+            head -c 1000 /tmp/luna-probe-image || true
+            exit 1
+          fi
+          echo "POLLINATIONS_IMAGE_PROBE=PASS"
+          mkdir -p luna-image-probe
+          cp /tmp/luna-probe-image luna-image-probe/probe-image
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: luna-image-provider-probe
+          path: luna-image-probe/
+          if-no-files-found: ignore
+          retention-days: 3
