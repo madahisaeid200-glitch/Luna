@@ -1,0 +1,45 @@
+name: LUNA Hokusai portrait-size provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/luna-hokusai-portrait-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test Hokusai 512x768 directly (outside Worker)
+        shell: bash
+        run: |
+          set -uo pipefail
+          START=$(date +%s)
+          CODE=$(curl -sS --max-time 90 -X POST 'https://api.murakumo.cloud/v1/images/generations' \
+            -H 'Content-Type: application/json' \
+            --data-binary '{"model":"awai-network/hokusai","prompt":"Photorealistic studio photograph of a single red apple on a plain white background, centered composition, no text.","size":"512x768"}' \
+            -o /tmp/hokusai.json -w '%{http_code}' || true)
+          ELAPSED=$(($(date +%s)-START))
+          echo "HTTP: $CODE"
+          echo "Elapsed seconds: $ELAPSED"
+          python3 - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open('/tmp/hokusai.json'))
+          except Exception as e:
+              print("Non-JSON:",str(e))
+              print(open('/tmp/hokusai.json',errors='replace').read(1200) if os.path.exists('/tmp/hokusai.json') else "No body")
+              sys.exit(1)
+          image=(data.get("data") or [{}])[0].get("b64_json")
+          if isinstance(image,str) and len(image)>1000:
+              print("PASS: portrait image generated directly.")
+              print("Payload characters:",len(image))
+              sys.exit(0)
+          print("FAIL:",json.dumps(data,ensure_ascii=False)[:2000])
+          sys.exit(1)
+          PY
