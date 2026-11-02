@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+          CODE=$(curl -sS --max-time 50 -H "Content-Type: application/json" \
             -d '{"model":"Meta-Llama-3_3-70B-Instruct","messages":[{"role":"system","content":"Return only valid JSON with keys hook, luna1, leo1, luna2, leo2, luna3, leo3, tease."},{"role":"user","content":"Write a short romantic comedy for only LUNA and LEO, already in one luxury hotel suite. LEO admits he typed the wrong surname on their anniversary reservation. LUNA thinks the booking was for another couple. They stay in the suite and resolve it with a sweet joke. Tease a new romantic surprise next episode."}],"max_tokens":512,"temperature":0.3}' \
             "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions" -o /tmp/ovh-anon.json -w '%{http_code}' || true)
           echo "OVH anonymous HTTP: $CODE"
