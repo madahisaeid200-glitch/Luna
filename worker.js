@@ -924,7 +924,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7") {
+          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7" || provider === "murakumo-free" || provider === "murakumo") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
@@ -935,6 +935,10 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             if (new Set(values).size !== values.length) throw new Error("Public-provider screenplay repeated dialogue lines");
             const totalWords = keys.reduce((sum, key) => sum + structured[key].trim().split(/\s+/).length, 0);
             if (totalWords < 75 || totalWords > 150) throw new Error("Public-provider screenplay length outside 75–150 words (" + totalWords + ")");
+            const combinedPublicText = keys.map(key => structured[key]).join(" ").toLowerCase();
+            const unrequestedPublicElements = ["hotel manager", "receptionist", "front desk", "phone", "staff", "rooftop", "restaurant", "street", "lobby", "private performance", "new booking", "wrong suite", "checking out"]
+              .filter(term => !premise.toLowerCase().includes(term) && combinedPublicText.includes(term));
+            if (unrequestedPublicElements.length) throw new Error("Public-provider screenplay introduced unrequested story elements: " + unrequestedPublicElements.join(", "));
             if (surnameMixupPremise && language !== "fa") {
               const leo1 = structured.leo1.toLowerCase();
               const luna2 = structured.luna2.toLowerCase();
