@@ -35,7 +35,9 @@ jobs:
           if not data.get("ok") or "providers" not in data:
               sys.exit("Worker health check failed")
           if not any(data["providers"].get(name) for name in ("mistral", "nvidia", "groq", "gemini", "openrouter")):
-              print("External fallback keys are not configured yet; no generation request was sent.")
+              print("No external API keys are configured.")
           else:
-              print("At least one external fallback provider is configured.")
+              print("At least one external fallback provider key is configured.")
+          print("Keyless public fallback wired:", bool(data.get("publicFallbacks", {}).get("murakumo")))
+          print("No generation request was sent by this health check.")
           PY
