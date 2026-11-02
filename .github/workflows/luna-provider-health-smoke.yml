@@ -39,32 +39,9 @@ jobs:
           else:
               print("At least one external fallback provider key is configured.")
           print("Keyless public fallback wired:", bool(data.get("publicFallbacks", {}).get("murakumo")))
-          print("No generation request was sent by this health check.")
+          print("Worker health GET itself does not consume model quota.")
           PY
-      - name: Probe Murakumo keyless endpoint with a tiny harmless prompt
-        shell: bash
-        run: |
-          set -euo pipefail
-          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
-            -d '{"model":"murakumo/free","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":16,"temperature":0}' \
-            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/murakumo.json -w '%{http_code}' || true)
-          echo "Murakumo HTTP: $CODE"
-          export CODE
-          python3 - <<'PY'
-          import json, os
-          try:
-              data=json.load(open("/tmp/murakumo.json", encoding="utf-8"))
-          except Exception as e:
-              print("Murakumo returned non-JSON:", str(e))
-              raise SystemExit(0)
-          if os.environ.get("CODE") == "200":
-              choice=(data.get("choices") or [{}])[0]
-              print("Murakumo response:", (choice.get("message") or {}).get("content","")[:300])
-              print("Model:", data.get("model"))
-          else:
-              print("Murakumo error:", json.dumps(data, ensure_ascii=False)[:1200])
-          PY
-      - name: Probe Murakumo owned-fleet model
+      - name: Verify keyless Mishima text generation
         shell: bash
         run: |
           set -euo pipefail
@@ -72,5 +49,15 @@ jobs:
             -d '{"model":"mishima","messages":[{"role":"user","content":"Reply exactly: LUNA-OK"}],"max_tokens":512,"temperature":0}' \
             "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/mishima.json -w '%{http_code}' || true)
           echo "Mishima HTTP: $CODE"
-          cat /tmp/mishima.json | head -c 1200 || true
-          echo
+          export CODE
+          python3 - <<'PY'
+          import json, os, sys
+          data=json.load(open("/tmp/mishima.json", encoding="utf-8"))
+          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
+          print("Mishima model:", data.get("model"))
+          print("Completion:", content[:200])
+          if os.environ.get("CODE") != "200" or not content.strip():
+              print("Mishima did not return visible completion text.")
+              sys.exit(1)
+          print("Keyless text generation: PASS")
+          PY
