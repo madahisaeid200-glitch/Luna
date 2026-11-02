@@ -582,7 +582,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__OVH__" ? "ovhcloud" : model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, provider === "ovhcloud" ? 3500 : 2200, provider === "ovhcloud" ? 0.25 : 0.35);
             actualModel = result.model;
           } else {
