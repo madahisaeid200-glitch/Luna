@@ -26,6 +26,20 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: Wait for the matching GitHub Pages build to be published
+        run: |
+          set -e
+          URL='https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=pack-button-fix-20261102b'
+          for attempt in $(seq 1 36); do
+            if curl -fsSL "$URL" | grep -q 'pack-button-fix-20261102b'; then
+              echo 'Matching producer build is live.'
+              exit 0
+            fi
+            echo "Waiting for Pages deployment ($attempt/36)..."
+            sleep 10
+          done
+          echo 'Timed out waiting for the matching Pages build.'
+          exit 1
       - name: Exercise production pack, image, vision, TTS and browser video
         run: |
           node <<'NODE'
@@ -46,7 +60,7 @@ jobs:
               catch(e) { console.log('FAILED_STAGE:',label); console.log('PAGE_STATUS:',await page.locator('#aiStatus').innerText().catch(()=>'')); console.log('VISUAL_STATUS:',await page.locator('#visualStatus').innerText().catch(()=>'')); console.log('VOICE_STATUS:',await page.locator('#voiceStatus').innerText().catch(()=>'')); throw e; }
             };
             try {
-              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html',{waitUntil:'domcontentloaded',timeout:30000});
+              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=pack-button-fix-20261102b',{waitUntil:'domcontentloaded',timeout:30000});
               if(!pageResponse?.ok()) throw new Error('Producer HTTP failure');
               await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
               await page.locator('#premise').fill('HOOK: Luna enters a breathtaking five-star hotel suite, delighted by Leo’s romantic surprise. SCENE 1: Leo proudly reveals that he booked the suite for their anniversary. Luna notices the welcome card says Mr. and Mrs. Thompson. SCENE 2: Leo sheepishly admits he typed the wrong surname. Luna teases him that they are apparently celebrating another couple’s anniversary. Leo tries to defend himself, then realizes the welcome card is the only thing that is wrong. They stay together in the same suite, laugh, hug and share a sweet kiss. PAYOFF: Leo promises an even better surprise next time. Luna asks whether he will remember their names. Final punchline: Leo says, “Of course. I’ve saved them under ‘My Favourite People’.” Only LUNA and LEO; remain inside the same suite; no reception, hotel staff, extra people, phone or new props. Romantic, playful luxury-comedy tone.');
