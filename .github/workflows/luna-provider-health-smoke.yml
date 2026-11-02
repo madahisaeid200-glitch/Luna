@@ -22,7 +22,7 @@ jobs:
           URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
           for attempt in $(seq 1 24); do
             CODE=$(curl -sS --max-time 15 "$URL" -o /tmp/health.json -w '%{http_code}' || true)
-            if [ "$CODE" = "200" ] && python3 -c 'import json; d=json.load(open("/tmp/health.json")); assert "providers" in d and d.get("publicFallbacks", {}).get("mishima")' 2>/dev/null; then
+            if [ "$CODE" = "200" ] && python3 -c 'import json; d=json.load(open("/tmp/health.json")); assert "providers" in d and d.get("publicFallbacks", {}).get("mishima") and d.get("publicFallbacks", {}).get("qwen3vl")' 2>/dev/null; then
               break
             fi
             sleep 5
@@ -32,13 +32,14 @@ jobs:
           data=json.load(open("/tmp/health.json"))
           print("Worker:",data.get("ok"))
           print("Providers:",json.dumps(data.get("providers",{}),sort_keys=True))
-          if not data.get("ok") or "providers" not in data or not data.get("publicFallbacks", {}).get("mishima"):
+          if not data.get("ok") or "providers" not in data or not data.get("publicFallbacks", {}).get("mishima") or not data.get("publicFallbacks", {}).get("qwen3vl"):
               sys.exit("Worker health check failed or direct Mishima fallback is not deployed")
           if not any(data["providers"].get(name) for name in ("mistral", "nvidia", "groq", "gemini", "openrouter")):
               print("No external API keys are configured.")
           else:
               print("At least one external fallback provider key is configured.")
           print("Direct keyless Mishima fallback wired:", bool(data.get("publicFallbacks", {}).get("mishima")))
+          print("Keyless Qwen3-VL vision fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
           print("Worker health GET itself does not consume model quota.")
           PY
       - name: Verify keyless Mishima text generation
@@ -89,4 +90,24 @@ jobs:
           else:
               print("A configured primary AI provider generated the screenplay.")
           print("LUNA end-to-end generation: PASS")
+          PY
+      - name: Verify keyless Qwen3-VL image understanding
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 90 -H "Content-Type: application/json" \
+            -d '{"model":"qwen3-vl-2b-instruct","messages":[{"role":"user","content":[{"type":"text","text":"Describe the main visible color in this image in one word."},{"type":"image_url","image_url":{"url":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAY0lEQVR4nO3PQQ3AIADAQEAhcpCD1IngcVnSU9DOs+/4s6UDXjWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgNaA1oDWgfRv4AehDBBFYAAAAAElFTkSuQmCC"}}]}],"max_tokens":32,"temperature":0}' \
+            "https://api.murakumo.cloud/v1/chat/completions" -o /tmp/qwen-vision.json -w '%{http_code}' || true)
+          echo "Qwen3-VL HTTP: $CODE"
+          export CODE
+          python3 - <<'PY'
+          import json, os, sys
+          data=json.load(open("/tmp/qwen-vision.json", encoding="utf-8"))
+          content=((data.get("choices") or [{}])[0].get("message") or {}).get("content","")
+          print("Qwen3-VL model:", data.get("model"))
+          print("Vision response:", content[:160])
+          if os.environ.get("CODE") != "200" or not content.strip():
+              print("Qwen3-VL did not return a usable vision response.")
+              sys.exit(1)
+          print("Keyless vision analysis: PASS")
           PY
