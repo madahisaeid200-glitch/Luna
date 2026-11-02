@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(maxTokens > 2500 ? 110_000 : 40_000),
+          signal: AbortSignal.timeout(maxTokens > 2500 ? 40_000 : 30_000),
           body: JSON.stringify({
             model,
             messages,
