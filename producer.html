@@ -223,7 +223,12 @@ el('diagnoseBrowser').onclick=async()=>{
  }finally{button.disabled=false;}
 };
 el('generate').onclick=async()=>{
+ lastDraft='';
+ lastDraftIsAi=false;
  lastProductionPack='';
+ el('output').textContent=fa?'در حال تولید سناریوی واقعی با هوش مصنوعی…':'Generating a real AI screenplay…';
+ el('makeDirectorPlan').disabled=true;
+ el('makeProductionPack').disabled=true;
  el('exportProductionJson').disabled=true;
  let title=el('epTitle').value.trim(),premise=el('premise').value.trim();
  if(!title||!premise){
@@ -257,11 +262,15 @@ el('generate').onclick=async()=>{
    el('makeDirectorPlan').disabled=false;
  }catch(error){
    const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۷۵ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
-   lastDraftIsAi=false;updateAiStatus('خطای واقعی تولید: '+errorMessage+' — پیش‌نویس قالبی نمایش داده شد.');
+   lastDraft='';
+   lastDraftIsAi=false;
+   lastProductionPack='';
+   el('output').textContent='تولید سناریوی واقعی ناموفق بود. هیچ متن قالبی به‌عنوان سناریوی موفق نمایش داده نشده است.\n\nعلت: '+errorMessage+'\n\nپس از رفع محدودیت سرویس، دوباره تلاش کن.';
+   el('makeDirectorPlan').disabled=true;
+   el('makeProductionPack').disabled=true;
+   el('exportProductionJson').disabled=true;
+   updateAiStatus('تولید واقعی ناموفق بود: '+errorMessage);
    alert('تولید هوش مصنوعی ناموفق بود. علت: '+errorMessage);
-   lastDraft=(fa?'عنوان: ':'Title: ')+title+'\n\n'+draft(lang,title,premise,el('duration').value,el('tone').value);
-   el('output').textContent=lastDraft;
-   el('makeDirectorPlan').disabled=false;
  }finally{
    button.disabled=false;button.textContent=ui[fa?'fa':'en'].generate;
  }
