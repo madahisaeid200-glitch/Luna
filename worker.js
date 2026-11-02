@@ -309,53 +309,109 @@ export default {
       }
     }
 
-    if (!env.AI && mode === "tts") return json({ error: "Cloudflare Workers AI binding is required for MeloTTS voice generation." }, 503);
-
-    // Generate a real English voice track with Cloudflare Workers AI MeloTTS.
+    // Keyless TTS.ai + Kokoro fallback; no Cloudflare AI quota or user API key required.
     if (mode === "tts") {
-      const text = String(body.text || "").trim();
+      const speech = String(body.text || "").trim();
       const lang = String(body.lang || "en").slice(0, 8);
-      if (!text) return json({ error: "Speech text is required." }, 400);
-      if (text.length > 1200) return json({ error: "Speech text is too long (maximum 1200 characters)." }, 400);
+      if (!speech) return json({ error: "Speech text is required." }, 400);
+      if (speech.length > 1200) return json({ error: "Speech text is too long (maximum 1200 characters)." }, 400);
       if (lang !== "en") return json({ error: "The first LUNA voice test currently supports English only." }, 400);
+
+      const splitSpeech = (input, maxLength = 450) => {
+        const words = input.replace(/\\s+/g, " ").trim().split(" ");
+        const chunks = [];
+        let current = "";
+        for (const word of words) {
+          if (word.length > maxLength) throw new Error("A word exceeds the TTS chunk limit.");
+          const candidate = current ? current + " " + word : word;
+          if (candidate.length <= maxLength) current = candidate;
+          else { if (current) chunks.push(current); current = word; }
+          if (/[.!?]["')\\]]?$/.test(current) && current.length >= 250) {
+            chunks.push(current);
+            current = "";
+          }
+        }
+        if (current) chunks.push(current);
+        return chunks;
+      };
+
       try {
         const startedAt = Date.now();
-        const result = await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: "en" });
-        // Workers AI documents both JSON/base64 and raw audio/mpeg output variants.
-        // Normalize supported binding return shapes to base64 for the browser player.
-        let audio = typeof result === "string" ? result : result?.audio;
-        const toBase64 = (bytes) => {
-          let binary = "";
-          const chunkSize = 0x8000;
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+        const chunks = splitSpeech(speech);
+        const audioParts = [];
+        const apiBase = "https://api.tts.ai";
+
+        for (let index = 0; index < chunks.length; index++) {
+          const submitResponse = await fetch(apiBase + "/v1/tts/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(20_000),
+            body: JSON.stringify({
+              model: "kokoro",
+              text: chunks[index],
+              voice: "af_bella",
+              format: "mp3",
+              language: "en"
+            })
+          });
+          const submitRaw = await submitResponse.text();
+          let job;
+          try { job = JSON.parse(submitRaw); } catch { throw new Error("TTS.ai submit returned non-JSON HTTP " + submitResponse.status); }
+          if (!submitResponse.ok || !job?.uuid) {
+            throw new Error("TTS.ai submit HTTP " + submitResponse.status + ": " + String(job?.detail || job?.message || submitRaw).slice(0, 220));
           }
-          return btoa(binary);
-        };
-        if (audio instanceof ArrayBuffer) audio = toBase64(new Uint8Array(audio));
-        else if (ArrayBuffer.isView(audio)) audio = toBase64(new Uint8Array(audio.buffer, audio.byteOffset, audio.byteLength));
-        else if (audio instanceof Blob) audio = toBase64(new Uint8Array(await audio.arrayBuffer()));
-        else if (result instanceof ArrayBuffer) audio = toBase64(new Uint8Array(result));
-        else if (ArrayBuffer.isView(result)) audio = toBase64(new Uint8Array(result.buffer, result.byteOffset, result.byteLength));
-        else if (result instanceof Blob) audio = toBase64(new Uint8Array(await result.arrayBuffer()));
-        if (typeof audio !== "string" || !audio.length) {
-          return json({
-            error: "MeloTTS returned no usable MP3 audio.",
-            resultType: Object.prototype.toString.call(result),
-            audioType: Object.prototype.toString.call(result?.audio),
-            generationMs: Date.now() - startedAt
-          }, 502);
+
+          let completed = null;
+          for (let attempt = 0; attempt < 24; attempt++) {
+            if (attempt) await new Promise(resolve => setTimeout(resolve, 1250));
+            const pollResponse = await fetch(apiBase + "/v1/speech/results/?uuid=" + encodeURIComponent(job.uuid), {
+              headers: { "Accept": "application/json" },
+              signal: AbortSignal.timeout(12_000)
+            });
+            const pollRaw = await pollResponse.text();
+            let poll;
+            try { poll = JSON.parse(pollRaw); } catch { throw new Error("TTS.ai status returned non-JSON HTTP " + pollResponse.status); }
+            if (!pollResponse.ok) throw new Error("TTS.ai status HTTP " + pollResponse.status);
+            if (poll.status === "failed") throw new Error("TTS.ai generation failed for audio chunk " + (index + 1));
+            if (poll.status === "completed" && poll.result_url) { completed = poll; break; }
+          }
+          if (!completed) throw new Error("TTS.ai timed out on audio chunk " + (index + 1));
+
+          const resultUrl = new URL(completed.result_url);
+          if (resultUrl.protocol !== "https:" || !/(^|\\.)tts\\.ai$/i.test(resultUrl.hostname)) {
+            throw new Error("TTS.ai returned an unexpected audio host.");
+          }
+          const audioResponse = await fetch(resultUrl.toString(), { signal: AbortSignal.timeout(20_000) });
+          if (!audioResponse.ok) throw new Error("TTS.ai audio download HTTP " + audioResponse.status);
+          const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
+          if (audioBytes.length < 1000) throw new Error("TTS.ai returned an empty or invalid audio chunk.");
+          audioParts.push(audioBytes);
+        }
+
+        const totalLength = audioParts.reduce((sum, part) => sum + part.length, 0);
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const part of audioParts) { combined.set(part, offset); offset += part.length; }
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < combined.length; i += chunkSize) {
+          binary += String.fromCharCode(...combined.subarray(i, i + chunkSize));
         }
         return json({
-          audio,
+          audio: btoa(binary),
           mimeType: "audio/mpeg",
-          model: "@cf/myshell-ai/melotts",
+          model: "Kokoro (TTS.ai, anonymous)",
+          provider: "tts.ai",
           mode: "tts",
-          generationMs: Date.now() - startedAt,
-          resultType: Object.prototype.toString.call(result)
+          chunks: audioParts.length,
+          generationMs: Date.now() - startedAt
         });
       } catch (error) {
-        return json({ error: "LUNA voice generation failed.", details: String(error?.message || error || "unknown error").slice(0, 300) }, 502);
+        return json({
+          error: "LUNA voice generation failed.",
+          details: String(error?.message || error || "unknown error").slice(0, 300),
+          provider: "tts.ai"
+        }, 502);
       }
     }
 
