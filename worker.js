@@ -48,6 +48,29 @@ export default {
         if (typeof content !== "string" || !content.trim()) throw new Error("ovhcloud returned an empty completion");
         return { response: content.trim(), model: data.model || model };
       }
+      if (provider === "llm7") {
+        const model = "gpt-oss:20b";
+        // Public LLM7 turbo model. "not-needed" is a placeholder, not a user secret; fictional LUNA text only.
+        const response = await fetch("https://api.llm7.io/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer not-needed" },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: Math.min(maxTokens, 2048),
+            temperature,
+            response_format: { type: "json_object" }
+          }),
+          signal: AbortSignal.timeout(25_000)
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("llm7 HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("llm7 HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("llm7 returned an empty completion");
+        return { response: content.trim(), model: data.model || model };
+      }
       if (provider === "llmfaucet") {
         const model = maxTokens > 2000 ? "auto:smart" : "auto:fast";
         // Public anonymous aggregator: up to 20 requests/day per IP; send only fictional LUNA material.
@@ -477,7 +500,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -565,6 +588,8 @@ ${script.trim()}`;
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
         "__OVH__",
+        "__LLM7__",
+        "__LLM7__",
         "__LLMFAUCET__",
         "__MURAKUMO_FREE__",
         "__MURAKUMO__"
@@ -857,7 +882,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__LLMFAUCET__", "__OVH__"]),
+      ...(duration === "long" ? ["__LLM7__", "__LLMFAUCET__", "__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__LLM7__", "__LLMFAUCET__", "__OVH__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
@@ -881,14 +906,14 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? "Return only valid JSON with exactly these string keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. Write a concise, faithful screenplay for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__OVH__" || model === "__LLMFAUCET__" || model === "__LLM7__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
           result = await externalChat(provider, messages, structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
           actualModel = result?.model || model;
@@ -899,7 +924,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "ovhcloud" || provider === "llmfaucet") {
+          if (provider === "ovhcloud" || provider === "llmfaucet" || provider === "llm7") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             let structured = null;
             try { structured = JSON.parse(finalScript.trim()); } catch {}
