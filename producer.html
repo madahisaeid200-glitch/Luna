@@ -459,8 +459,8 @@ el('generateSceneImage').onclick=async()=>{
      if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX',prompt:prompt,title:el('epTitle').value,profile:readCharacterProfile()});
-     el('visualStatus').textContent='تصویر ساخته شد ('+(data.model||'FLUX')+').' +(stored?' در کتابخانه خصوصی همین مرورگر ذخیره شد.':' ذخیره دائمی مرورگر ناموفق بود؛ تصویر را دانلود کن.')+' می‌توانی کیفیت را ارزیابی کنی.';
-     logLunaDiagnostic('image-generation-success','Image generated',{model:data.model||'FLUX',promptLength:prompt.length,stored});
+     el('visualStatus').textContent='تصویر ساخته شد ('+(data.model||'FLUX')+').' +(data.fallbackUsed?' مسیر جایگزین رایگان استفاده شد.':'')+(stored?' در کتابخانه خصوصی همین مرورگر ذخیره شد.':' ذخیره دائمی مرورگر ناموفق بود؛ تصویر را دانلود کن.')+' می‌توانی کیفیت را ارزیابی کنی.';
+     logLunaDiagnostic('image-generation-success','Image generated',{model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,promptLength:prompt.length,stored});
    }catch(error){const msg=error.name==='AbortError'?'زمان درخواست تمام شد (۹۰ ثانیه).':(error.message||'خطای نامشخص');el('visualStatus').textContent='ساخت تصویر ناموفق بود: '+msg;logLunaDiagnostic('image-generation-error',msg,{prompt:prompt.slice(0,1200),endpoint:(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).replace(/\?.*$/,'')});}
    finally{button.disabled=false;button.textContent='۱. ساخت تصویر واقعی صحنه';}
  };
@@ -489,7 +489,8 @@ el('generateSceneImage').onclick=async()=>{
         generatedSceneImages.push({dataUrl,shot:shot.id,prompt});
         await saveLunaImage(dataUrl,{model:data.model||'FLUX',mode:'story-scene',shot:shot.id,prompt,title:el('epTitle').value,profile});
         el('sceneImagesStatus').textContent='تصاویر مستقل داستان: '+generatedSceneImages.length+' از ۳';
-        logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',imageChars:data.image.length});
+        el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد ('+(data.model||'FLUX')+').'+(data.fallbackUsed?' مسیر جایگزین رایگان استفاده شد.':'');
+        logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,imageChars:data.image.length});
       }
       el('visualStatus').textContent='هر سه تصویر مستقل داستان آماده‌اند. حالا صدای دیالوگ را بساز و ویدئوی صداگذاری‌شده را تدوین کن.';
       button.textContent='تصاویر سه صحنه آماده شد';
