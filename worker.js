@@ -800,28 +800,55 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
               if (a < 0 || b <= a) return null;
               try { return JSON.parse(value.slice(a, b + 1)); } catch (_) { return null; }
             };
+            let validationError = "";
             const isValid = data => {
-              if (!data || !keys.every(key => typeof data[key] === "string" && data[key].trim())) return false;
-              const values = keys.map(key => data[key].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim());
-              if (new Set(values).size !== values.length) return false;
-              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\s+/).length, 0);
-              if (totalWords < 75 || totalWords > 150) return false;
+              validationError = "";
+              if (!data || Object.keys(data).length !== keys.length || !keys.every(key => typeof data[key] === "string" && data[key].trim())) {
+                validationError = "missing or extra JSON keys";
+                return false;
+              }
+              const values = keys.map(key => data[key].toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim());
+              if (new Set(values).size !== values.length) {
+                validationError = "repeated dialogue lines";
+                return false;
+              }
+              const totalWords = keys.reduce((sum, key) => sum + data[key].trim().split(/\\s+/).length, 0);
+              if (totalWords < 75 || totalWords > 150) {
+                validationError = "script length outside 75–150 words";
+                return false;
+              }
               const combinedText = keys.map(key => data[key]).join(" ").toLowerCase();
               const forbiddenExtras = ["hotel manager", "receptionist", "front desk", "phone", "candles", "champagne", "staff", "checking out", "wrong suite", "new name"]
                 .filter(term => !premise.toLowerCase().includes(term) && combinedText.includes(term));
-              if (forbiddenExtras.length) return false;
-              if (/surname|welcome card|anniversary reservation/i.test(premise) && language !== "fa") {
+              if (forbiddenExtras.length) {
+                validationError = "unrequested story elements: " + forbiddenExtras.join(", ");
+                return false;
+              }
+              if (surnameMixupPremise && language !== "fa") {
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
-                if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
-                if (!/(another couple|other couple|different couple|someone else|somebody else|someone else's|other people|not our booking|not ours)/.test(luna2)) return false;
+                if (!/\\b(i|i've|i'm|my)\\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) {
+                  validationError = "LEO's first line must admit in first person that he typed the wrong surname on the reservation";
+                  return false;
+                }
+                if (!/(another couple|other couple|different couple|someone else|somebody else|someone else's|other people|not our booking|not ours|another pair|different pair)/.test(luna2)) {
+                  validationError = "LUNA's second line must show she thinks the booking belongs to another couple";
+                  return false;
+                }
                 const leo2 = data.leo2.toLowerCase();
-                if (/(not a typo|not a mix-up|not a mistake|you typed|you are the one)/.test(leo2)) return false;
-                if (!/(typo|typed|mistyped|my mistake|i made a mistake)/.test(leo2)) return false;
+                if (/(not a typo|not a mix-up|not a mistake|you typed|you are the one)/.test(leo2) || !/(typo|typed|mistyped|my mistake|i made a mistake)/.test(leo2)) {
+                  validationError = "LEO's second line must accept responsibility for the typo without denying it";
+                  return false;
+                }
                 const tease = data.tease.toLowerCase();
-                if (!/(next episode|next time)/.test(tease)) return false;
-                if (!/(surprise|romantic|anniversary|date|gift|plan)/.test(tease)) return false;
-                if (/(wrong suite|not supposed to be here|checking out|new name|hotel manager|receptionist|front desk|phone|candles|champagne|staff)/.test(tease)) return false;
+                if (!/(next episode|next time)/.test(tease) || !/(surprise|romantic|anniversary|date|gift|plan)/.test(tease)) {
+                  validationError = "tease must mention the next episode and promise a new romantic surprise";
+                  return false;
+                }
+                if (/(wrong suite|not supposed to be here|checking out|new name|hotel manager|receptionist|front desk|phone|candles|champagne|staff)/.test(tease)) {
+                  validationError = "tease introduces an unrelated plot or prop";
+                  return false;
+                }
               }
               return true;
             };
@@ -846,7 +873,7 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
                 failures.push(provider + " structure repair failed: " + String(repairError?.message || repairError).slice(0, 160));
               }
             }
-            if (!isValid(structured)) throw new Error(provider + " draft failed screenplay consistency checks; no low-quality script was accepted.");
+            if (!isValid(structured)) throw new Error(provider + " draft failed screenplay consistency checks: " + validationError + "; no low-quality script was accepted.");
             finalScript = "**TITLE:** " + title.trim() + "\n\n**HOOK:**\n" + structured.hook.trim() +
               "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() + "\n" + profile.leoName + ": " + structured.leo1.trim() +
               "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() + "\n" + profile.leoName + ": " + structured.leo2.trim() +
