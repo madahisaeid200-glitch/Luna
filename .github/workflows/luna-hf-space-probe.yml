@@ -29,7 +29,7 @@ jobs:
           import json, time, traceback
           started=time.time()
           print("Connecting to public HF Space without token:", "sloemo/qwen-3.8-27b-uncensored-chat", flush=True)
-          client=Client("sloemo/qwen-3.8-27b-uncensored-chat", verbose=True)
+          client=Client("https://sloemo-qwen-3-8-27b-uncensored-chat.hf.space", verbose=True)
           print("API SCHEMA:", flush=True)
           client.view_api()
           print("SUBMITTING ONE SHORT TEST:", flush=True)
