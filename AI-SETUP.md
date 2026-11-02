@@ -32,13 +32,14 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 
 The Worker uses this order for text generation:
 
-1. Murakumo's public `mishima` model first, directly and without OpenRouter, an account, an API key, or a card.
-2. Cloudflare Workers AI if Mishima is busy or unavailable.
-3. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if both no-key routes fail.
+1. Murakumo's public `murakumo/free` route first. It tries currently available free hosted models and has a documented direct Mishima fallback.
+2. Direct public `mishima` if the free router is busy or unavailable.
+3. Cloudflare Workers AI if both Murakumo routes are unavailable.
+4. Optional provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter) only if all no-key routes fail.
 
-This keeps routine scripts off Cloudflare so its daily neuron allowance can be reserved for images, reference edits, and voice. If Cloudflare itself reports quota exhaustion, the Worker skips its remaining models rather than retrying the exhausted allowance. The direct Mishima route is capped at 2,048 output tokens. The Worker reports the actual provider/model and never treats template text as successful AI output.
+This keeps routine scripts off Cloudflare so its daily neuron allowance can be reserved for images, reference edits, and voice. If Cloudflare itself reports quota exhaustion, the Worker skips its remaining models rather than retrying the exhausted allowance. Both Murakumo routes are keyless and have a 2,048-token public response cap. The Worker reports the actual provider/model and never treats template text as successful AI output.
 
-No new key or manual dashboard change is required to use Mishima. The public API is `https://api.murakumo.cloud/v1/chat/completions`, model `mishima`.
+No new key, account, card, or manual dashboard change is required. The public API is `https://api.murakumo.cloud/v1/chat/completions`; models are `murakumo/free` and `mishima`.
 
 ## 7. Gemini free-tier testing (internal tests only)
 
@@ -105,11 +106,11 @@ Mistral is another existing fallback option. Its official setup documentation sa
 
 ### Text generation
 
-The Worker tries `mishima` first; Cloudflare Workers AI is the fallback if Mishima is busy or unavailable. It bypasses OpenRouter and needs no account, key, card, or Cloudflare Secret. The public Chat Completions route currently caps output at 2,048 tokens. The Worker sets `reasoning_effort: "medium"` and caps each request accordingly.
+The Worker uses `murakumo/free` first, then direct `mishima`, then Cloudflare Workers AI. It bypasses OpenRouter and needs no account, key, card, or Cloudflare Secret. The public Chat Completions route currently caps output at 2,048 tokens. The Worker sets `reasoning_effort: "medium"` and caps each request accordingly.
 
 ### Image quality analysis
 
-The Worker tries `qwen3-vl-2b-instruct` first through the public Murakumo Chat Completions endpoint; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. Qwen3-VL is not used for screenplay text generation because its text-only route timed out in the live test. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
 
 ### Privacy and free limits
 
