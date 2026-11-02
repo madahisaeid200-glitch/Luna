@@ -76,7 +76,7 @@ export default {
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: Math.min(maxTokens, provider === "murakumo-free" ? 512 : 2048),
+            max_tokens: Math.min(maxTokens, 2048),
             temperature: provider === "murakumo-free" ? Math.min(temperature, 0.3) : temperature,
             ...(provider === "murakumo" ? { reasoning_effort: "low" } : {})
           })
@@ -434,8 +434,9 @@ ${script.trim()}`;
       }
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
-        "__MURAKUMO__",
+        "__MURAKUMO_FREE__",
         "__OVH__",
+        "__MURAKUMO__",
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
@@ -457,7 +458,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -545,6 +546,7 @@ ${script.trim()}`;
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
         ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
         "__OVH__",
+        "__MURAKUMO_FREE__",
         "__MURAKUMO__"
       ];
       const productionFailures = [];
@@ -560,7 +562,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__OVH__" ? "ovhcloud" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__OVH__" ? "ovhcloud" : model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, provider === "ovhcloud" ? 3500 : 2200, provider === "ovhcloud" ? 0.25 : 0.35);
             actualModel = result.model;
           } else {
@@ -835,7 +837,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      ...(duration === "long" ? ["__MURAKUMO__", "__OVH__"] : ["__OVH__", "__MURAKUMO__"]),
+      ...(duration === "long" ? ["__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"] : ["__OVH__", "__MURAKUMO_FREE__", "__MURAKUMO__"]),
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
