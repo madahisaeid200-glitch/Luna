@@ -30,7 +30,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature }),
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature, top_p: 0.85, frequency_penalty: 0.8, presence_penalty: 0.2 }),
           signal: AbortSignal.timeout(45000)
         });
         const raw = await response.text();
@@ -694,7 +694,7 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
     const murakumoPrompt = `Write one original, production-ready episode for the fictional couple LUNA and LEO.
-Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding. Do not add people, places, props, wardrobe changes, background guests, or side plots. Use only the suite, the reservation note, and the welcome card; do not describe clothing. Exact story beats in this order: (1) LUNA notices the unfamiliar surname BRAUN on the welcome card, (2) she asks who the Brauns are, (3) LEO admits he accidentally typed the wrong surname on their anniversary reservation, (4) LUNA teases him for booking their romance under a stranger's name, (5) they resolve it with one affectionate punchline and a relevant next-episode tease. Include the phrases welcome card and wrong surname. Use these dialogue anchors naturally: LUNA: Who are the Brauns? LEO: That's us, well, that's the name I accidentally typed on the reservation. LUNA: So our anniversary is booked under someone else's name? LEO: I wanted to surprise you, not give us a second identity. LUNA: Next year, use our real name. LEO: Deal. Tonight, can we at least enjoy being the Brauns? LUNA: Only until dessert. Write 6–8 unique dialogue turns; every line must advance the misunderstanding. Never repeat a sentence, joke, or action. No circular back-and-forth. Add only brief facial-expression directions; no clothing or extra props.
+Only LUNA and LEO may appear or speak. Use exactly these names and preserve their genders. Keep the exact premise, location, objects, and misunderstanding. Do not add people, places, props, wardrobe changes, background guests, or side plots. Use only the suite, the reservation note, and the welcome card; do not describe clothing. Write a concise 30–60 second screenplay, about 120–150 spoken words, in 3 scenes. Follow these beats in order: LUNA reads an unfamiliar surname on the welcome card and asks who the other couple is; LEO admits he typed the wrong surname on their anniversary reservation; LUNA teases him for booking their romance under a stranger's name; LEO makes one brief, clever joke; LUNA gives one affectionate punchline; end with a relevant next-episode tease. Include the phrases welcome card and wrong surname. Use 8–10 short, distinct dialogue lines. Each line must add a new fact or move the joke forward. Do not repeat a sentence, phrase, joke, question, or action. No circular back-and-forth, no filler, no repeated words for emphasis. Only LUNA and LEO speak. Keep the whole story in the hotel suite. Do not describe clothing or add props beyond the reservation note and welcome card.
 Title: ${title.trim()}
 Premise (must remain unchanged): ${premise.trim()}
 Tone: ${toneText}
@@ -735,7 +735,7 @@ Keep the story physically continuous and the ending complete. Return only the sc
         let actualModel = model;
         if (model.startsWith("__")) {
           provider = model === "__QWEN3VL__" ? "qwen3vl" : model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
-          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, provider === "qwen3vl" ? 0.1 : 0.7);
+          result = await externalChat(provider, messages, provider === "qwen3vl" ? 512 : 2048, provider === "qwen3vl" ? 0.4 : 0.7);
 
         } else {
           result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
