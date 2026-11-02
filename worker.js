@@ -965,39 +965,56 @@ ${script.trim()}`;
       } catch (error) {
         cloudflareError = String(error?.message || error || "unknown Cloudflare image error").slice(0, 240);
       }
-      try {
-        // Public no-key image endpoint. The live model catalogue advertises 512x768 portrait.
-        // Only fictional LUNA character/story prompts are sent; the free lane may use community nodes.
-        const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768" }),
-          signal: AbortSignal.timeout(95_000)
-        });
-        const raw = await response.text();
-        let data;
-        try { data = JSON.parse(raw); } catch { throw new Error("Hokusai HTTP " + response.status + ": non-JSON response"); }
-        if (!response.ok) throw new Error("Hokusai HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
-        const image = data?.data?.[0]?.b64_json;
-        if (typeof image !== "string" || !image) throw new Error("Hokusai returned no base64 image data.");
-        return json({
-          image,
-          mimeType: "image/png",
-          model: "awai-network/hokusai",
-          provider: "murakumo",
-          fallbackUsed: true,
-          fallbackReason: cloudflareError,
-          mode: "image",
-          generationMs: Date.now() - generationStartedAt,
-          size: "512x768"
-        });
-      } catch (fallbackError) {
-        return json({
-          error: "Image generation failed on both Cloudflare FLUX and the free Hokusai fallback.",
-          details: "Cloudflare: " + cloudflareError + " | Hokusai: " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 260),
-          generationMs: Date.now() - generationStartedAt
-        }, 502);
+      const hokusaiFailures = [];
+      // Hokusai can return transient 429 no_ready_capacity while community workers are busy.
+      // Retry only transient capacity/server failures; never retry invalid prompts or client errors.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768" }),
+            signal: AbortSignal.timeout(95_000)
+          });
+          const raw = await response.text();
+          let data;
+          try { data = JSON.parse(raw); } catch { throw new Error("Hokusai HTTP " + response.status + ": non-JSON response"); }
+          if (!response.ok) {
+            const detail = String(data?.error?.message || data?.error || data?.message || raw).slice(0, 220);
+            const transient = response.status === 429 || response.status >= 500;
+            hokusaiFailures.push("attempt " + attempt + ": Hokusai HTTP " + response.status + ": " + detail);
+            if (!transient || attempt === 3) break;
+          } else {
+            const image = data?.data?.[0]?.b64_json;
+            if (typeof image !== "string" || !image) throw new Error("Hokusai returned no base64 image data.");
+            return json({
+              image,
+              mimeType: "image/png",
+              model: "awai-network/hokusai",
+              provider: "murakumo",
+              fallbackUsed: true,
+              fallbackReason: cloudflareError,
+              mode: "image",
+              generationMs: Date.now() - generationStartedAt,
+              size: "512x768",
+              hokusaiAttempts: attempt
+            });
+          }
+        } catch (fallbackError) {
+          hokusaiFailures.push("attempt " + attempt + ": " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 220));
+          if (attempt === 3) break;
+          // Do not keep retrying hard client errors; only retry network/timeouts and 5xx/429 above.
+          const message = String(fallbackError?.message || fallbackError || "");
+          if (/Hokusai HTTP 4(?!29)/.test(message)) break;
+        }
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 3500));
       }
+      return json({
+        error: "Image generation failed on Cloudflare FLUX and all Hokusai attempts.",
+        details: "Cloudflare: " + cloudflareError + " | " + hokusaiFailures.join(" | "),
+        generationMs: Date.now() - generationStartedAt,
+        hokusaiAttempts: hokusaiFailures.length
+      }, 502);
     }
 
     if (![title, premise].every(v => typeof v === "string" && v.trim())) return json({ error: "Please provide a title and premise." }, 400);
