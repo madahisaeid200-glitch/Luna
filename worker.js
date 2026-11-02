@@ -537,6 +537,60 @@ ${script.trim()}`;
           }
         }
       }
+      // Explicitly labelled local shot-plan fallback, used only after every live director provider failed.
+      // It is derived from the accepted screenplay and never claims that AI video was rendered.
+      if (duration !== "long") {
+        const dialogueLines = [...script.matchAll(/^\\s*(LUNA|LEO):\\s*(.+)$/gim)]
+          .map(match => ({ speaker: match[1].toUpperCase(), text: match[2].trim() }))
+          .filter(item => item.text.length > 0);
+        if (dialogueLines.length >= 4) {
+          const selected = dialogueLines.slice(0, 6);
+          const shots = selected.map((item, index) => {
+            const name = item.speaker === "LUNA" ? profile.lunaName : profile.leoName;
+            const other = item.speaker === "LUNA" ? profile.leoName : profile.lunaName;
+            const framing = index === 0 ? "medium two-shot" : index % 2 ? "close-up" : "over-shoulder";
+            const action = name + " delivers this exact screenplay line with a natural, restrained expression.";
+            return {
+              id: "S" + String(index + 1).padStart(2, "0"),
+              durationSeconds: 6,
+              location: "The same luxury hotel suite established in the screenplay",
+              shotType: framing,
+              characters: [name, ...(index % 2 === 0 ? [other] : [])],
+              action,
+              emotion: "Natural romantic-comedy reaction",
+              dialogue: [{ speaker: name, text: item.text }],
+              videoPrompt: profile.style + " Continuous live-action vertical 9:16 shot. " + action + " Subtle facial movement, believable eye-line and gentle camera motion. Preserve identity, gender presentation and wardrobe; no extra people or locations.",
+              referenceFramePrompt: profile.style + " Photorealistic vertical 9:16 frame in the same luxury hotel suite. " + action + " Natural skin texture, realistic anatomy and consistent wardrobe; no extra people, text or logos.",
+              audio: { ambience: "Quiet natural hotel-suite ambience", sfx: "Only sounds already implied by the screenplay", musicMood: "Soft romantic comedy" },
+              transition: "cut"
+            };
+          });
+          const plan = {
+            schemaVersion: "luna-video-plan@1.0.0",
+            episode: { title: String(title || "LUNA short episode"), logline: "Six sequential shots mapped from the accepted screenplay dialogue.", targetAspectRatio: "9:16", targetDurationSeconds: 36 },
+            continuityBible: {
+              luna: profile.lunaLook,
+              leo: profile.leoLook,
+              visualStyle: profile.style,
+              continuityRules: ["Use the same hotel suite throughout.", "Keep both character identities and wardrobe consistent.", "Only LUNA and LEO may appear.", "Preserve the exact screenplay dialogue and order."]
+            },
+            shots,
+            captions: [],
+            qualityGates: ["Local fallback built from accepted screenplay dialogue after live providers failed.", "This is a shot manifest only; no reference image or video has been generated."]
+          };
+          return json({
+            ok: true,
+            mode: "director",
+            plan,
+            model: "LUNA local screenplay-to-shot fallback v1",
+            provider: "local-fallback",
+            fallbackUsed: true,
+            providerReady: false,
+            providerFailures: failures.slice(-8),
+            note: "A six-shot manifest was derived from the accepted screenplay after live director providers failed. No AI director success or video rendering is claimed."
+          });
+        }
+      }
       return json({ error: "LUNA director-plan generation failed.", details: failures }, 502);
     }
 
