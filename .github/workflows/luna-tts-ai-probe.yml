@@ -63,6 +63,8 @@ jobs:
           NODE
       - name: Decode concatenated MP3
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
           ffmpeg -v error -i luna-tts-multichunk.mp3 -f null -
           echo "FFMPEG_DECODE: PASS"
       - uses: actions/upload-artifact@v4
