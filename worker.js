@@ -714,7 +714,7 @@ ${finalScript}`;
         const cloudflareQuotaExhausted = !model.startsWith("__") &&
           (/4006/i.test(errorText) ||
            /used up (your )?daily free allocation/i.test(errorText) ||
-           /daily free allocation of [\\d,]+ neurons/i.test(errorText));
+           /daily free allocation of [\d,]+ neurons/i.test(errorText));
         if (cloudflareQuotaExhausted) {
           failures.push("Cloudflare Workers AI daily neuron allowance is exhausted; remaining Cloudflare models were skipped.");
           break;
