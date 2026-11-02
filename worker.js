@@ -306,8 +306,8 @@ SCREENPLAY:
 ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
-        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         "__MURAKUMO__",
+        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
@@ -408,8 +408,8 @@ ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
-        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         "__MURAKUMO__",
+        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
@@ -459,61 +459,71 @@ ${script.trim()}`;
         return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
       }
       const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
-      const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
+      const qwenModel = "qwen3-vl-2b-instruct";
+      let qwenDetails = "";
       try {
-        if (!env.AI) throw new Error("Cloudflare Workers AI binding is not configured");
-        const result = await env.AI.run(visionModel, {
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: analysisPrompt },
-              { type: "image_url", image_url: { url: body.image } }
-            ]
-          }],
-          max_tokens: 450,
-          temperature: 0.2
+        // Keyless vision first to preserve Cloudflare's daily neurons for image generation and voice.
+        // Free inference may log images; LUNA sends generated fictional character images only.
+        const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(35_000),
+          body: JSON.stringify({
+            model: qwenModel,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: analysisPrompt },
+                { type: "image_url", image_url: { url: body.image } }
+              ]
+            }],
+            max_tokens: 450,
+            temperature: 0.2
+          })
         });
-        const analysis = result?.response || result?.description || result?.result?.response || "";
-        if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Vision model returned no analysis.");
-        return json({ analysis: analysis.trim(), model: visionModel, provider: "cloudflare-workers-ai", mode: "analyze_image", fallbackUsed: false });
-      } catch (cloudflareError) {
-        const cloudflareDetails = String(cloudflareError?.message || cloudflareError || "unknown Cloudflare vision error").slice(0, 260);
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("Qwen3-VL HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("Qwen3-VL HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const analysis = data?.choices?.[0]?.message?.content;
+        if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Qwen3-VL returned no analysis.");
+        return json({
+          analysis: analysis.trim(),
+          model: data.model || qwenModel,
+          provider: "murakumo",
+          mode: "analyze_image",
+          fallbackUsed: false
+        });
+      } catch (qwenError) {
+        qwenDetails = String(qwenError?.message || qwenError || "unknown Qwen3-VL error").slice(0, 260);
         try {
-          // Keyless Qwen3-VL fallback. Free inference may log images; LUNA sends generated fictional character images only.
-          const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "qwen3-vl-2b-instruct",
-              messages: [{
-                role: "user",
-                content: [
-                  { type: "text", text: analysisPrompt },
-                  { type: "image_url", image_url: { url: body.image } }
-                ]
-              }],
-              max_tokens: 450,
-              temperature: 0.2
-            })
+          if (!env.AI) throw new Error("Cloudflare Workers AI binding is not configured");
+          const visionModel = "@cf/meta/llama-4-scout-17b-16e-instruct";
+          const result = await env.AI.run(visionModel, {
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: analysisPrompt },
+                { type: "image_url", image_url: { url: body.image } }
+              ]
+            }],
+            max_tokens: 450,
+            temperature: 0.2
           });
-          const raw = await response.text();
-          let data;
-          try { data = JSON.parse(raw); } catch { throw new Error("Qwen3-VL HTTP " + response.status + ": non-JSON response"); }
-          if (!response.ok) throw new Error("Qwen3-VL HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
-          const analysis = data?.choices?.[0]?.message?.content;
-          if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Qwen3-VL returned no analysis.");
+          const analysis = result?.response || result?.description || result?.result?.response || "";
+          if (typeof analysis !== "string" || !analysis.trim()) throw new Error("Cloudflare vision model returned no analysis.");
           return json({
             analysis: analysis.trim(),
-            model: data.model || "qwen3-vl-2b-instruct",
-            provider: "murakumo",
+            model: visionModel,
+            provider: "cloudflare-workers-ai",
             mode: "analyze_image",
             fallbackUsed: true,
-            fallbackReason: cloudflareDetails
+            fallbackReason: qwenDetails
           });
-        } catch (fallbackError) {
+        } catch (cloudflareError) {
           return json({
-            error: "AI image analysis failed on Cloudflare and the keyless Qwen3-VL fallback.",
-            details: "Cloudflare: " + cloudflareDetails + " | Qwen3-VL: " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 260)
+            error: "Image analysis failed on keyless Qwen3-VL and Cloudflare vision.",
+            details: "Qwen3-VL: " + qwenDetails + " | Cloudflare: " + String(cloudflareError?.message || cloudflareError || "unknown error").slice(0, 260)
           }, 502);
         }
       }
@@ -681,8 +691,8 @@ Use headings: ${language === "fa" ? "عنوان، قلاب، صحنه ۱، صح�
 Keep the story physically continuous and the ending complete. Return only the screenplay.`;
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
     const modelsToTry = [
-      ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       "__MURAKUMO__",
+      ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
