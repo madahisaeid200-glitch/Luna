@@ -792,7 +792,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
-          if (provider === "qwen3vl" || provider === "ovhcloud") {
+          if (provider === "qwen3vl") {
             const keys = ["hook", "luna1", "leo1", "luna2", "leo2", "luna3", "leo3", "tease"];
             const parseStructured = value => {
               const a = value.indexOf("{");
@@ -880,7 +880,7 @@ Return only the repaired JSON. ORIGINAL JSON/DRAFT: ${JSON.stringify(structured 
               "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() + "\n" + profile.leoName + ": " + structured.leo3.trim() +
               "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
           }
-          if (provider !== "qwen3vl" && provider !== "ovhcloud" && surnameMixupPremise && language !== "fa") {
+          if (provider !== "qwen3vl" && surnameMixupPremise && language !== "fa") {
             const lowerScript = finalScript.toLowerCase();
             const teaseParts = finalScript.split(/(?:next[- ]episode tease|next episode|next time)\s*[:—-]?/i);
             const teaseText = (teaseParts.length > 1 ? teaseParts.slice(1).join(" ") : finalScript.slice(-420)).toLowerCase();
