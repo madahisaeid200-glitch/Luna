@@ -710,8 +710,7 @@ Keep the story physically continuous and the ending complete. Return only the sc
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
       ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-      ...(duration === "long" ? [] : ["__QWEN3VL__"]),
-      "__MURAKUMO__"
+      ...(duration === "long" ? ["__MURAKUMO__"] : ["__QWEN3VL__"])
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
