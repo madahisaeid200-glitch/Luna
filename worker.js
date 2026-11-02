@@ -23,6 +23,27 @@ export default {
     }
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
+    // Provider-neutral chat fallback for episode writing. API keys are Cloudflare Worker Secrets only.
+    const externalChat = async (provider, messages, maxTokens, temperature) => {
+      const endpoint = provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions";
+      const apiKey = provider === "groq" ? env.GROQ_API_KEY : env.OPENROUTER_API_KEY;
+      const model = provider === "groq" ? (env.GROQ_MODEL || "openai/gpt-oss-20b") : (env.OPENROUTER_MODEL || "openrouter/free");
+      if (!apiKey) throw new Error(provider.toUpperCase() + "_API_KEY is not configured as a Worker Secret");
+      const headers = { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" };
+      if (provider === "openrouter") {
+        headers["HTTP-Referer"] = "https://madahisaeid200-glitch.github.io/Luna/";
+        headers["X-Title"] = "LUNA Studio";
+      }
+      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }) });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { throw new Error(provider + " HTTP " + response.status + ": non-JSON response"); }
+      if (!response.ok) throw new Error(provider + " HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content !== "string" || !content.trim()) throw new Error(provider + " returned an empty completion");
+      return { response: content.trim(), model: data.model || model };
+    };
+
     if (request.method === "GET") {
       return json({
         ok: true,
@@ -153,7 +174,7 @@ export default {
       }
     }
 
-    if (!env.AI) return json({ error: "Workers AI binding is missing. In Cloudflare, add a Workers AI binding named exactly AI, then deploy." }, 503);
+    if (!env.AI && mode === "tts") return json({ error: "Cloudflare Workers AI binding is required for MeloTTS voice generation." }, 503);
 
     // Generate a real English voice track with Cloudflare Workers AI MeloTTS.
     if (mode === "tts") {
@@ -523,18 +544,28 @@ If language is BOTH, output the English version only. The Worker will translate 
 
     const customizedPrompt = customizeCharacterPrompt(prompt);
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-    const modelsToTry = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+    const modelsToTry = [
+      ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+      ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+    ];
     const failures = [];
     for (const model of modelsToTry) {
       try {
-        const result = await env.AI.run(model, {
-          messages: [
-            { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
-            { role: "user", content: customizedPrompt }
-          ],
-          max_tokens: duration === "long" ? 2200 : 1200,
-          temperature: 0.7
-        });
+        const messages = [
+          { role: "system", content: "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "user", content: customizedPrompt }
+        ];
+        let result;
+        let provider = "cloudflare-workers-ai";
+        let actualModel = model;
+        if (model === "__GROQ__" || model === "__OPENROUTER__") {
+          provider = model === "__GROQ__" ? "groq" : "openrouter";
+          result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
+          actualModel = result.model;
+        } else {
+          result = await env.AI.run(model, { messages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.7 });
+        }
         const script = result?.response || result?.result?.response || "";
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
@@ -629,11 +660,11 @@ ${finalScript}`;
               // Translation failure must not discard a successfully generated English episode.
               failures.push(model + ": Persian translation failed; returning the English script.");
               finalScript += "\n\n══════════ نسخه فارسی ══════════\n\nترجمه فارسی این بار آماده نشد. نسخه انگلیسی بالا تولید شده است؛ لطفاً فقط بخش فارسی را دوباره امتحان کنید.";
-              return json({ script: finalScript, model, translationModel: null, translationWarning: true, details: failures.slice(-8), fallbackUsed: model !== primaryModel });
+              return json({ script: finalScript, model: actualModel, provider, translationModel: null, translationWarning: true, details: failures.slice(-8), fallbackUsed: provider !== "cloudflare-workers-ai" || model !== primaryModel });
             }
             finalScript += "\n\n══════════ نسخه فارسی ══════════\n\n" + persian;
           }
-          return json({ script: finalScript, model, translationModel: language === "both" ? translationModelUsed : null, fallbackUsed: model !== primaryModel });
+          return json({ script: finalScript, model: actualModel, provider, translationModel: language === "both" ? translationModelUsed : null, fallbackUsed: provider !== "cloudflare-workers-ai" || model !== primaryModel });
         }
         failures.push(model + ": model returned an empty response");
       } catch (error) {
