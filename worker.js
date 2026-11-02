@@ -31,7 +31,7 @@ export default {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 512), temperature, top_p: 0.85, frequency_penalty: 0.8, presence_penalty: 0.2 }),
-          signal: AbortSignal.timeout(30_000)
+          signal: AbortSignal.timeout(45_000)
         });
         const raw = await response.text();
         let data;
@@ -710,8 +710,9 @@ EXACT PREMISE (must remain unchanged): ${premise.trim()}
 TONE: ${toneText}
 LANGUAGE: ${language === "fa" ? "Natural spoken Iranian Persian. Keep the character names exactly as supplied." : "Natural conversational English."}
 CHARACTER CANON:
-- ${profile.lunaName}: ${profile.lunaLook} Personality: ${profile.lunaPersonality}
-- ${profile.leoName}: ${profile.leoLook} Personality: ${profile.leoPersonality}
+- Use the exact names ${profile.lunaName} and ${profile.leoName}.
+- ${profile.lunaName}'s personality: ${profile.lunaPersonality}
+- ${profile.leoName}'s personality: ${profile.leoPersonality}
 - Only these two characters may appear or speak unless the exact premise explicitly requires another person.
 - Preserve the location, chronology, actions, props and ending in the premise. Invent no side plot, wardrobe change, extra person or new location.
 Return one line for each key in this exact order: hook (opening visual/emotional hook); luna1 (LUNA's first response); leo1 (LEO's first response); luna2 (LUNA advances the misunderstanding); leo2 (LEO responds consistently); luna3 (warm punchline); leo3 (affectionate reply); tease (a relevant next-episode tease that follows naturally from this story).
@@ -744,7 +745,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
       if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
       try {
         const messages = [
-          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? "Write concise, faithful LUNA and LEO screenplays. Use exactly the names LUNA and LEO. Never invent characters, wardrobe changes, props, or locations." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
+          { role: "system", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? "Write concise, faithful screenplays for " + profile.lunaName + " and " + profile.leoName + ". Use exactly these names. Never invent characters, props, locations or events." : "You are a disciplined comedy screenwriter. Preserve character names, premise, continuity, language separation, and requested output structure exactly. Never invent a replacement plot." },
           { role: "user", content: (model === "__MURAKUMO_FREE__" || model === "__MURAKUMO__" || model === "__QWEN3VL__") ? murakumoPrompt : customizedPrompt }
         ];
         let result;
