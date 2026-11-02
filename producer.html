@@ -700,7 +700,9 @@ el('testImageUpload').onclick=async()=>{
        const capture=audio.captureStream||audio.mozCaptureStream;
        if(typeof capture!=='function')throw new Error('این مرورگر امکان ترکیب صدای دیالوگ با فیلم را ندارد؛ کلیپ‌ها همچنان جداگانه قابل دانلودند.');
        audioStream=capture.call(audio);
-       audioStream.getAudioTracks().forEach(track=>stream.addTrack(track));
+       const audioTracks=audioStream.getAudioTracks();
+       if(!audioTracks.length)throw new Error('مسیر ضبط صدای دیالوگ خالی است؛ فایل نهایی را بدون صدا تولید نمی‌کنم.');
+       audioTracks.forEach(track=>stream.addTrack(track));
      }
      const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(type=>MediaRecorder.isTypeSupported(type));
      if(!mime)throw new Error('مرورگر ضبط خروجی WebM را پشتیبانی نمی‌کند.');
