@@ -34,6 +34,7 @@ jobs:
               const result=JSON.parse(pr);
               if(result.status==='failed')throw new Error('job failed: '+JSON.stringify(result).slice(0,500));
               if(result.status==='completed'&&result.result_url){
+                console.log('AUDIO_HOST:',new URL(result.result_url).hostname);
                 const a=await fetch(result.result_url);const bytes=Buffer.from(await a.arrayBuffer());
                 if(!a.ok||bytes.length<1000)throw new Error('invalid audio download');
                 return bytes;
