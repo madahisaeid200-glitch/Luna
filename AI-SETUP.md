@@ -36,7 +36,7 @@ The Worker uses this order for short scripts:
 
 1. Cloudflare Workers AI while its daily neuron allowance is available.
 2. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
-3. Public keyless `qwen3-vl-2b-instruct` as the short-script fallback. It is capped at 30 seconds because its free fleet capacity is degraded and can be inconsistent.
+3. Public keyless `qwen3-vl-2b-instruct` as the short-script fallback. It is capped at 45 seconds because its free fleet capacity is degraded and can be inconsistent.
 
 When Cloudflare returns its daily neuron-quota error, the Worker skips its remaining Cloudflare models rather than retrying the exhausted allowance. Long scripts do not currently use Qwen3-VL as a fallback. The Worker reports the actual provider/model and never treats template text as successful AI output.
 
