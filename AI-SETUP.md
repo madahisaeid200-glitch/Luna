@@ -34,17 +34,19 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 
 The Worker uses this order for short scripts:
 
-1. Cloudflare Workers AI while its daily neuron allowance is available.
-2. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
-3. Public keyless `qwen3-vl-2b-instruct` as the short-script fallback. It is capped at 45 seconds because its free fleet capacity is degraded and can be inconsistent.
+1. Direct public `mishima` through Murakumo (no key); this can be slow, so it has a bounded timeout.
+2. Cloudflare Workers AI while its daily neuron allowance is available.
+3. Optional configured provider keys (Mistral, NVIDIA, Groq, Gemini, or OpenRouter), if present.
+4. OVHcloud AI Endpoints anonymous mode using `Meta-Llama-3_3-70B-Instruct`, with no Authorization header or user key. OVH documents anonymous access at 2 requests/minute per IP and model.
+5. Public keyless `qwen3-vl-2b-instruct` as the final short-script fallback. Its free fleet capacity is degraded and can be inconsistent, so it has a bounded 45-second timeout.
 
-When Cloudflare returns its daily neuron-quota error, the Worker skips its remaining Cloudflare models rather than retrying the exhausted allowance. Long scripts do not currently use Qwen3-VL as a fallback. The Worker reports the actual provider/model and never treats template text as successful AI output.
+When Cloudflare returns its daily neuron-quota error, the Worker skips its remaining Cloudflare models rather than retrying the exhausted allowance. OVH and Qwen are currently short-script fallbacks; long scripts do not use them. Every provider output must pass the premise-specific continuity gate; otherwise the Worker tries the next provider rather than accepting a poor script.
 
 ### Persian translation and correction
 
-For bilingual output, the Worker tries Murakumo's public `murakumo/free` route, then direct `mishima`, before other configured routes. These routes are keyless, but live tests showed that the free router can return HTTP 422 for some prompt shapes and direct Mishima can be slow; they are not the primary English screenplay generator.
+For bilingual output, the Worker tries Murakumo's public `murakumo/free` route, then direct `mishima`, before other configured routes. These routes are keyless, but live tests showed that the free router can return HTTP 422 for some prompt shapes and direct Mishima can be slow; they are not the primary screenplay path.
 
-No new key, account, card, or manual dashboard change is required for the Qwen3-VL short-script fallback. The public API is `https://api.murakumo.cloud/v1/chat/completions`.
+No new key, account, or manual dashboard change is required for OVH anonymous mode or the Qwen fallback. The OVH endpoint is `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions`; the Murakumo endpoint is `https://api.murakumo.cloud/v1/chat/completions`.
 
 ## 7. Gemini free-tier testing (internal tests only)
 
@@ -115,7 +117,7 @@ The Worker uses `murakumo/free` first, then direct `mishima`, then Cloudflare Wo
 
 ### Image quality analysis
 
-The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint first for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. The same model is used as a bounded short-script fallback after the configured providers, but not for long scripts. It has degraded capacity: one live screenplay test succeeded and another timed out, so text attempts are capped at 30 seconds. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
+The Worker tries `qwen3-vl-2b-instruct` through the public Murakumo Chat Completions endpoint first for image analysis; Cloudflare Llama4 Scout is the fallback if Qwen is busy or unavailable. The same model remains the final short-script fallback after OVH anonymous inference, but not for long scripts. It has degraded capacity, so text attempts are capped at 45 seconds. It accepts the generated image as an OpenAI-compatible `image_url` data URL and returns a text assessment. This is a small vision model and the live catalogue has marked its capacity as degraded, so it is a fallback rather than a quality guarantee.
 
 ### Privacy and free limits
 
