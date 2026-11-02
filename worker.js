@@ -745,6 +745,7 @@ Premise (must remain unchanged): ${premise.trim()}
         if (typeof script === "string" && script.trim()) {
           let finalScript = script.trim();
           if (provider === "qwen3vl") {
+            // Normalize the model response into a fixed screenplay layout when JSON is valid.
             try {
               const jsonStart = finalScript.indexOf("{");
               const jsonEnd = finalScript.lastIndexOf("}");
