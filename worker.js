@@ -27,8 +27,8 @@ export default {
     const externalChat = async (provider, messages, maxTokens, temperature) => {
       if (provider === "murakumo") {
         const model = "mishima";
-        // Public keyless free lane. LUNA sends fictional story material only.
-        // The provider warns that free-lane prompts may be visible to community node operators.
+        // Direct keyless Mishima inference; this bypasses OpenRouter entirely.
+        // Free inference may log prompts, so only fictional LUNA story material is sent.
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -97,8 +97,8 @@ export default {
           nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
-        publicFallbacks: { murakumo: true },
-        message: "Worker is reachable. Provider flags show configured keys; publicFallbacks show keyless routes. Health checks do not consume model quota."
+        publicFallbacks: { murakumo: true, mishima: true },
+        message: "Worker is reachable. The keyless Mishima model is routed directly through Murakumo; health checks do not consume model quota."
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -692,7 +692,7 @@ Rules:
 \n\nENGLISH SCRIPT TO TRANSLATE:\n${finalScript}`;
             let persian = "";
             const translationModels = [
-              ...(env.AI ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
+              ...(env.AI && provider === "cloudflare-workers-ai" && !cloudflareQuotaExhausted ? ["@cf/zai-org/glm-4.7-flash", FALLBACK_MODEL, ...(model.startsWith("__") ? [] : [model])] : []),
               ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
