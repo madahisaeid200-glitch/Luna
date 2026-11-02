@@ -1115,14 +1115,14 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
             // Normalize validated public-provider JSON into the canonical screenplay
             // format consumed by downstream continuity, dialogue, and production checks.
             finalScript = "**TITLE:** " + title.trim() +
-              "\\n\\n**HOOK:**\\n" + structured.hook.trim() +
-              "\\n\\n**SCENE 1**\\n" + profile.lunaName + ": " + structured.luna1.trim() +
-              "\\n" + profile.leoName + ": " + structured.leo1.trim() +
-              "\\n\\n**SCENE 2**\\n" + profile.lunaName + ": " + structured.luna2.trim() +
-              "\\n" + profile.leoName + ": " + structured.leo2.trim() +
-              "\\n\\n**PAYOFF**\\n" + profile.lunaName + ": " + structured.luna3.trim() +
-              "\\n" + profile.leoName + ": " + structured.leo3.trim() +
-              "\\n\\n**NEXT-EPISODE TEASE:**\\n" + structured.tease.trim();
+              "\n\n**HOOK:**\n" + structured.hook.trim() +
+              "\n\n**SCENE 1**\n" + profile.lunaName + ": " + structured.luna1.trim() +
+              "\n" + profile.leoName + ": " + structured.leo1.trim() +
+              "\n\n**SCENE 2**\n" + profile.lunaName + ": " + structured.luna2.trim() +
+              "\n" + profile.leoName + ": " + structured.leo2.trim() +
+              "\n\n**PAYOFF**\n" + profile.lunaName + ": " + structured.luna3.trim() +
+              "\n" + profile.leoName + ": " + structured.leo3.trim() +
+              "\n\n**NEXT-EPISODE TEASE:**\n" + structured.tease.trim();
             }
           }
           if (provider === "qwen3vl") {
