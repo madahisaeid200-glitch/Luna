@@ -260,6 +260,7 @@ el('generate').onclick=async()=>{
    }
    el('output').textContent=lastDraft;
    el('makeDirectorPlan').disabled=false;
+   el('makeProductionPack').disabled=false;
  }catch(error){
    const errorMessage=error.name==='AbortError'?'زمان تولید بیش از ۱۲۰ ثانیه شد؛ ممکن است مدل پاسخ نداده باشد.':(error.message||'خطای ناشناخته');
    lastDraft='';
