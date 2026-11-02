@@ -771,7 +771,10 @@ Premise (must remain unchanged): ${premise.trim()}
                 const leo1 = data.leo1.toLowerCase();
                 const luna2 = data.luna2.toLowerCase();
                 if (!/\b(i|i've|i'm|my)\b/.test(leo1) || !/(wrong|typo|mistyped|typed)/.test(leo1) || !/(reservation|booked|surname)/.test(leo1) || /(not me|you typed|you are the one)/.test(leo1)) return false;
-                if (!/(anniversary|another couple|other couple|another name)/.test(luna2)) return false;
+                if (!/(another couple|other couple|someone else|someone else's|other people)/.test(luna2)) return false;
+                const leo2 = data.leo2.toLowerCase();
+                if (/(not a mix-up|not a mistake|you typed|you are the one)/.test(leo2)) return false;
+                if (!/(next episode|next time)/.test(data.tease.toLowerCase())) return false;
               }
               return true;
             };
@@ -779,7 +782,7 @@ Premise (must remain unchanged): ${premise.trim()}
             if (!isValid(structured)) {
               const repairMessages = [
                 { role: "system", content: "You are a strict screenplay continuity editor. Return only valid JSON with the exact required keys. Never swap speakers or contradict the premise." },
-                { role: "user", content: "Repair this short LUNA and LEO screenplay JSON. Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. LEO's line leo1 MUST say in first person that he typed the wrong surname on their anniversary reservation; he must not blame LUNA. LUNA's luna2 line MUST mention their anniversary being booked under another couple's name. Each value must be unique and 12–18 words (hook/tease 10–14). Total 100–130 words. Keep only LUNA and LEO, stay in the hotel suite, no extra props or people. Return only JSON. Original: " + JSON.stringify(structured || { draft: finalScript }) }
+                { role: "user", content: "Repair this short LUNA and LEO screenplay JSON. Required keys: hook, luna1, leo1, luna2, leo2, luna3, leo3, tease. LEO's line leo1 MUST say in first person that he typed the wrong surname on their anniversary reservation; he must not blame LUNA. LUNA's luna2 line MUST say she thinks he booked the suite for another couple or someone else; do not say it is not their anniversary. LEO's leo2 must accept the typo and never deny that it was a mix-up. The tease must hint at a next romantic surprise, not suggest they are in the wrong suite. Each value must be unique and 12–18 words (hook/tease 10–14). Total 100–130 words. Keep only LUNA and LEO, stay in the hotel suite, no extra props or people. Return only JSON. Original: " + JSON.stringify(structured || { draft: finalScript }) }
               ];
               try {
                 const repaired = await externalChat("qwen3vl", repairMessages, 512, 0.35);
