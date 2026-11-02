@@ -25,6 +25,23 @@ export default {
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature) => {
+      if (provider === "murakumo") {
+        const model = "murakumo/free";
+        // Public keyless free lane. LUNA sends fictional story material only.
+        // The provider warns that free-lane prompts may be visible to community node operators.
+        const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, messages, max_tokens: Math.min(maxTokens, 1900), temperature })
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { throw new Error("murakumo HTTP " + response.status + ": non-JSON response"); }
+        if (!response.ok) throw new Error("murakumo HTTP " + response.status + ": " + String(data?.error?.message || data?.message || raw).slice(0, 220));
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("murakumo returned an empty completion");
+        return { response: content.trim(), model: response.headers.get("x-murakumo-served-model") || data.model || model };
+      }
       if (provider === "gemini") {
         const apiKey = env.GEMINI_API_KEY;
         const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
@@ -80,7 +97,8 @@ export default {
           nvidia: Boolean(env.NVIDIA_API_KEY),
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
-        message: "Worker is reachable. Provider flags show configuration presence only; they do not consume model quota."
+        publicFallbacks: { murakumo: true },
+        message: "Worker is reachable. Provider flags show configured keys; publicFallbacks show keyless routes. Health checks do not consume model quota."
       }, env.AI ? 200 : 503);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -293,7 +311,8 @@ ${script.trim()}`;
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
-        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+         "__MURAKUMO__"
       ];
       const failures = [];
       let cloudflareQuotaExhausted = false;
@@ -308,7 +327,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 3500, 0.25);
             actualModel = result.model;
           } else {
@@ -394,7 +413,8 @@ ${script.trim()}`;
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
-        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+         "__MURAKUMO__"
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -409,7 +429,7 @@ ${script.trim()}`;
           let provider = "cloudflare-workers-ai";
           let actualModel = model;
           if (model.startsWith("__")) {
-            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
+            provider = model === "__MURAKUMO__" ? "murakumo" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
             result = await externalChat(provider, messages, 2200, 0.35);
             actualModel = result.model;
           } else {
@@ -619,7 +639,8 @@ If language is BOTH, output the English version only. The Worker will translate 
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
       ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+      ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+         "__MURAKUMO__"
     ];
     const failures = [];
     let cloudflareQuotaExhausted = false;
@@ -643,7 +664,7 @@ If language is BOTH, output the English version only. The Worker will translate 
         let provider = "cloudflare-workers-ai";
         let actualModel = model;
         if (model.startsWith("__")) {
-          provider = model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
+          provider = model === "__MURAKUMO__" ? "murakumo" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           result = await externalChat(provider, messages, duration === "long" ? 2200 : 1200, 0.7);
           actualModel = result.model;
         } else {
@@ -676,7 +697,8 @@ Rules:
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
               ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
-              ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+              ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
+         "__MURAKUMO__"
             ];
             for (const translationModel of translationModels) {
               try {
@@ -685,7 +707,7 @@ Rules:
                   { role: "user", content: translationPrompt }
                 ];
                 const translated = translationModel.startsWith("__")
-                  ? await externalChat(translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
+                  ? await externalChat(translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MURAKUMO__" ? "murakumo" : translationModel === "__MISTRAL__" ? "mistral" : translationModel === "__NVIDIA__" ? "nvidia" : translationModel === "__GROQ__" ? "groq" : translationModel === "__GEMINI__" ? "gemini" : "openrouter", translationMessages, duration === "long" ? 2200 : 1200, 0.2)
                   : await env.AI.run(translationModel, { messages: translationMessages, max_tokens: duration === "long" ? 2200 : 1200, temperature: 0.2 });
                 const candidate = translated?.response || translated?.result?.response || "";
                 if (typeof candidate === "string" && candidate.trim()) {
@@ -771,9 +793,7 @@ ${finalScript}`;
         }
       }
     }
-    const externalProviderConfigured = Boolean(
-      env.MISTRAL_API_KEY || env.NVIDIA_API_KEY || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.OPENROUTER_API_KEY
-    );
+    const externalProviderConfigured = true; // public keyless Murakumo fallback is always appended last
     const quotaExhausted = cloudflareQuotaExhausted && !externalProviderConfigured;
     return json({
       error: quotaExhausted
