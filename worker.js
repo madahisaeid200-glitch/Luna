@@ -286,18 +286,32 @@ Rules:
 SCREENPLAY:
 ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-      const models = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+      const models = [
+        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
+        ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+        ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+      ];
       const failures = [];
+      let cloudflareQuotaExhausted = false;
       for (const model of models) {
+        if (cloudflareQuotaExhausted && !model.startsWith("__")) continue;
         try {
-          const result = await env.AI.run(model, {
-            messages: [
-              { role: "system", content: "You are a film director and generative-video pipeline planner. Return strict JSON only. Never fabricate video-generation success." },
-              { role: "user", content: directorPrompt }
-            ],
-            max_tokens: 3500,
-            temperature: 0.25
-          });
+          const messages = [
+            { role: "system", content: "You are a film director and generative-video pipeline planner. Return strict JSON only. Never fabricate video-generation success." },
+            { role: "user", content: directorPrompt }
+          ];
+          let result;
+          let provider = "cloudflare-workers-ai";
+          let actualModel = model;
+          if (model.startsWith("__")) {
+            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : "openrouter";
+            result = await externalChat(provider, messages, 3500, 0.25);
+            actualModel = result.model;
+          } else {
+            result = await env.AI.run(model, { messages, max_tokens: 3500, temperature: 0.25 });
+          }
           let raw = result?.response || result?.result?.response || "";
           if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
           raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
@@ -320,9 +334,14 @@ ${script.trim()}`;
           plan.continuityBible.visualStyle = profile.style;
           plan.qualityGates = Array.isArray(plan.qualityGates) ? plan.qualityGates : [];
           plan.qualityGates.push("Reject altered identity, wardrobe swaps, extra characters, frozen still frames or broken chronology.");
-          return json({ ok: true, mode: "director", plan, model, providerReady: false, note: "Shot plan generated. Real video rendering still requires a connected generative-video provider; no video has been rendered." });
+          return json({ ok: true, mode: "director", plan, model: actualModel, provider, fallbackUsed: provider !== "cloudflare-workers-ai" || model !== primaryModel, providerReady: false, note: "Shot plan generated. Real video rendering still requires a connected generative-video provider; no video has been rendered." });
         } catch (error) {
-          failures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 180));
+          const errorText = String(error?.message || error || "unknown error");
+          failures.push(model + ": " + errorText.slice(0, 180));
+          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\\d,]+ neurons/i.test(errorText))) {
+            cloudflareQuotaExhausted = true;
+            failures.push("Cloudflare daily quota exhausted; switching to configured external providers.");
+          }
         }
       }
       return json({ error: "LUNA director-plan generation failed.", details: failures }, 502);
@@ -367,23 +386,42 @@ FINISHED EPISODE SCRIPT:
 ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-      const productionModels = primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL];
+      const productionModels = [
+        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
+        ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
+        ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
+      ];
       const productionFailures = [];
+      let productionQuotaExhausted = false;
       for (const model of productionModels) {
+        if (productionQuotaExhausted && !model.startsWith("__")) continue;
         try {
-          const result = await env.AI.run(model, {
-            messages: [
-              { role: "system", content: "You are a precise video production planner. Preserve the source story, character continuity and sequence of events." },
-              { role: "user", content: customizedProductionPrompt }
-            ],
-            max_tokens: 2200,
-            temperature: 0.35
-          });
+          const messages = [
+            { role: "system", content: "You are a precise video production planner. Preserve the source story, character continuity and sequence of events." },
+            { role: "user", content: customizedProductionPrompt }
+          ];
+          let result;
+          let provider = "cloudflare-workers-ai";
+          let actualModel = model;
+          if (model.startsWith("__")) {
+            provider = model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : "openrouter";
+            result = await externalChat(provider, messages, 2200, 0.35);
+            actualModel = result.model;
+          } else {
+            result = await env.AI.run(model, { messages, max_tokens: 2200, temperature: 0.35 });
+          }
           const pack = result?.response || result?.result?.response || "";
-          if (typeof pack === "string" && pack.trim()) return json({ script: pack.trim(), model, mode: "production", fallbackUsed: model !== primaryModel });
+          if (typeof pack === "string" && pack.trim()) return json({ script: pack.trim(), model: actualModel, provider, mode: "production", fallbackUsed: provider !== "cloudflare-workers-ai" || model !== primaryModel });
           productionFailures.push(model + ": empty response");
         } catch (error) {
-          productionFailures.push(model + ": " + String(error?.message || error || "unknown error").slice(0, 180));
+          const errorText = String(error?.message || error || "unknown error");
+          productionFailures.push(model + ": " + errorText.slice(0, 180));
+          if (!model.startsWith("__") && (/4006/i.test(errorText) || /used up (your )?daily free allocation/i.test(errorText) || /daily free allocation of [\\d,]+ neurons/i.test(errorText))) {
+            productionQuotaExhausted = true;
+            productionFailures.push("Cloudflare daily quota exhausted; switching to configured external providers.");
+          }
         }
       }
       return json({ error: "AI production-pack generation failed.", details: productionFailures }, 502);
