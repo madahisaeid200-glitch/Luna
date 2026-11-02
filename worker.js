@@ -915,7 +915,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
         if (model.startsWith("__")) {
           provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
-          result = await externalChat(provider, messages, structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
+          result = await externalChat(provider, messages, provider === "ovhcloud" ? 1000 : structuredProvider ? 512 : 1600, structuredProvider ? 0.3 : 0.45);
           actualModel = result?.model || model;
 
         } else {
