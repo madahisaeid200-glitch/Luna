@@ -517,6 +517,21 @@ ${script.trim()}`;
             shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
             shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.filter(line => line && allowed.has(line.speaker) && typeof line.text === "string") : [];
             shot.characters = Array.isArray(shot.characters) ? shot.characters.filter(name => allowed.has(name)) : [];
+            // Repair incomplete provider JSON into usable prompts before returning a shot plan.
+            const safeAction = typeof shot.action === "string" && shot.action.trim()
+              ? shot.action.trim().slice(0, 700)
+              : (shot.characters.length ? shot.characters.join(" and ") : profile.lunaName + " and " + profile.leoName) + " perform one restrained, continuous action faithful to the screenplay.";
+            shot.action = safeAction;
+            const safeLocation = typeof shot.location === "string" && shot.location.trim()
+              ? shot.location.trim().slice(0, 300)
+              : "The same location established in the screenplay";
+            shot.location = safeLocation;
+            const safeVideoPrompt = profile.style + " Continuous live-action vertical 9:16 cinematic shot at " + safeLocation + ". " + safeAction + " Natural body motion, subtle facial expression, believable eye-line and gentle camera movement. Preserve character identity, gender presentation and wardrobe; no extra people, locations, captions or logos.";
+            const safeReferencePrompt = profile.style + " Photorealistic vertical 9:16 still reference frame at " + safeLocation + ". " + safeAction + " Natural skin texture, realistic anatomy, coherent lighting and consistent character identity and wardrobe. No extra people, text or logos.";
+            shot.videoPrompt = typeof shot.videoPrompt === "string" && shot.videoPrompt.trim().length >= 30 ? shot.videoPrompt.trim().slice(0, 1600) : safeVideoPrompt;
+            shot.referenceFramePrompt = typeof shot.referenceFramePrompt === "string" && shot.referenceFramePrompt.trim().length >= 30 ? shot.referenceFramePrompt.trim().slice(0, 1600) : safeReferencePrompt;
+            shot.audio = shot.audio && typeof shot.audio === "object" ? shot.audio : { ambience: "Natural ambience of the established location", sfx: "Only sounds implied by the screenplay", musicMood: "Soft romantic comedy" };
+            shot.transition = typeof shot.transition === "string" && shot.transition.trim() ? shot.transition.trim().slice(0, 80) : "cut";
           }
           plan.episode = plan.episode || {};
           plan.episode.targetDurationSeconds = plan.shots.reduce((sum, shot) => sum + shot.durationSeconds, 0);
