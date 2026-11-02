@@ -32,7 +32,7 @@ export default {
         const response = await fetch("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(timeoutOverride || (maxTokens > 2500 ? 65_000 : 50_000)),
+          signal: AbortSignal.timeout(timeoutOverride || 65_000),
           body: JSON.stringify({
             model,
             messages,
@@ -113,7 +113,7 @@ export default {
         const response = await fetch("https://api.murakumo.cloud/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(timeoutOverride || (provider === "murakumo-free" ? (maxTokens > 2500 ? 55_000 : 25_000) : 35_000)),
+          signal: AbortSignal.timeout(timeoutOverride || 65_000),
           body: JSON.stringify({
             model,
             messages,
@@ -1175,11 +1175,11 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
+      // Keep only currently verified no-key routes in the hot path.
+      // LLM7 is IP-throttled, Murakumo/free returns 422 model_or_context_mismatch,
+      // and LLMFaucet returned 530 in the latest live probe; skip these until re-verified.
       "__OVH__",
-      "__LLM7__",
-      "__MURAKUMO_FREE__",
       "__MURAKUMO__",
-      "__LLMFAUCET__",
       ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
@@ -1213,7 +1213,7 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
           provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : model === "__GROQ__" ? "groq" : model === "__GEMINI__" ? "gemini" : "openrouter";
           const structuredProvider = provider === "qwen3vl" || provider === "ovhcloud";
           const longScriptTokens = duration === "long" ? (provider === "ovhcloud" ? 3500 : 2048) : null;
-          result = await externalChat(provider, messages, duration === "long" ? longScriptTokens : (provider === "ovhcloud" ? 1800 : structuredProvider ? 900 : 1800), duration === "long" ? 0.45 : (structuredProvider ? 0.3 : 0.45));
+          result = await externalChat(provider, messages, duration === "long" ? longScriptTokens : (provider === "ovhcloud" || provider === "murakumo" ? 1100 : structuredProvider ? 900 : 1800), duration === "long" ? 0.45 : (structuredProvider ? 0.3 : 0.35));
           actualModel = result?.model || model;
 
         } else {
