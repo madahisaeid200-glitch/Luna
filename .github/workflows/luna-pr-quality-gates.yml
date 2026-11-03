@@ -168,7 +168,7 @@ jobs:
             'Wan generation must use approved scene images in shot-number order');
           assert.match(html, /parsed\.shots\|\|\[\]\)\.slice\(\)\.sort\(\(a,b\)=>Number\(a\.id\)-Number\(b\.id\)\)/,
             'Wan motion prompts must follow the same numeric shot order as approved images');
-          assert.match(html, /these three clips.*repeat|these three motions.*repeat|همین سه کلیپ به ترتیب تکرار می‌شوند/,
+          assert.match(html, /these three clips.*repeat|these three motions.*repeat|(?:همین|این) سه کلیپ به ترتیب تکرار می‌شوند/,
             'The final video UI must disclose when the three short clips are repeated to cover longer dialogue');
           assert.match(autoHandler, /if\(!lastDraft&&!quotaBlocked\)/,
             'A valid Worker-provided local-template screenplay must not be rejected just because it is not AI-generated');
