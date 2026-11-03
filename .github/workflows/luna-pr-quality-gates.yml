@@ -45,6 +45,15 @@ jobs:
           const imageEditRoute = worker.slice(imageEditStart, imageEditEnd);
           assert.match(imageEditRoute, /if \(!env\.AI\) return json\([\s\S]*?REFERENCE_EDIT_REQUIRES_WORKERS_AI[\s\S]*?\}, 503\);/,
             'Preview reference-image editing must fail clearly before attempting unavailable Workers AI');
+          const imageAnalysisStart = worker.indexOf('if (mode === "analyze_image")');
+          const imageAnalysisEnd = worker.indexOf('// Mobile-safe reference-image edit', imageAnalysisStart);
+          const imageAnalysisRoute = worker.slice(imageAnalysisStart, imageAnalysisEnd);
+          assert.equal((imageAnalysisRoute.match(/url: referenceImage/g) || []).length, 2,
+            'Both Qwen and Cloudflare vision fallbacks must receive the reference image for identity comparison');
+          assert.ok(worker.includes('body.referenceImage'),
+            'Image analysis must accept a reference image for face continuity checks');
+          assert.ok(worker.includes('url: referenceImage'),
+            'Vision analysis must compare the candidate image against its reference');
           assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
             'Murakumo fallback must use the current documented public model selector');
           const ttsStart = worker.indexOf('if (mode === "tts")');
