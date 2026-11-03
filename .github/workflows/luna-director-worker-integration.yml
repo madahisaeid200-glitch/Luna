@@ -118,6 +118,7 @@ jobs:
           PY
       - name: One real image and one real Wan video smoke test
         id: media-smoke
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: |
           python3 - <<'PY'
@@ -126,8 +127,11 @@ jobs:
           report={'image':None,'wan_health':None,'video':None}
           def post(payload, timeout):
             req=urllib.request.Request(base,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
-            with urllib.request.urlopen(req,timeout=timeout) as r:
-              return r.status,r.headers, r.read()
+            try:
+              with urllib.request.urlopen(req,timeout=timeout) as r:
+                return r.status,r.headers,r.read()
+            except urllib.error.HTTPError as error:
+              return error.code,error.headers,error.read()
           try:
             print('Checking public Wan Space availability without starting GPU generation...')
             status,headers,raw=post({'mode':'video_health'},35)
@@ -149,7 +153,7 @@ jobs:
             pollinations_error=''
             try:
               from urllib.parse import quote
-              image_url='https://image.pollinations.ai/prompt/'+quote(prompt,safe='')+'?width=512&height=768&seed=20261103&nologo=true'
+              image_url='https://image.pollinations.ai/prompt/'+quote(prompt,safe='')+'?model=flux&width=512&height=768&seed=20261103&nologo=true&private=true&enhance=false'
               req=urllib.request.Request(image_url,headers={'Accept':'image/jpeg,image/png,image/webp','User-Agent':'LUNA-Media-Smoke/1.0'})
               with urllib.request.urlopen(req,timeout=150) as response:
                 mime=response.headers.get('Content-Type','image/jpeg').split(';')[0]
