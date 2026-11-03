@@ -47,6 +47,16 @@ jobs:
             'Preview reference-image editing must fail clearly before attempting unavailable Workers AI');
           assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
             'Murakumo fallback must use the current documented public model selector');
+          const ttsStart = worker.indexOf('if (mode === "tts")');
+          const ttsEnd = worker.indexOf('const profile = {', ttsStart);
+          assert.ok(ttsStart >= 0 && ttsEnd > ttsStart, 'Missing TTS route');
+          const ttsRoute = worker.slice(ttsStart, ttsEnd);
+          assert.match(ttsRoute, /speaker:\s*currentSpeaker/);
+          assert.match(ttsRoute, /speaker === "LEO" \? "am_adam" : "af_bella"/);
+          assert.match(ttsRoute, /voice: jobPart\.voice/);
+          assert.match(ttsRoute, /speakerChunks: speakerCounts/);
+          assert.ok(!/voice:\s*"af_bella"/.test(ttsRoute),
+            'TTS route must not force the same female voice for every speaker');
           const directorAndPackFallbacks = worker.split('"__OVH__",\n        "__MURAKUMO_FREE__",').length - 1;
           const screenplayFallback = worker.includes('"__OVH__",\n      "__MURAKUMO_FREE__",');
           assert.ok(directorAndPackFallbacks >= 2 && screenplayFallback,
