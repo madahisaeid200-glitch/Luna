@@ -1024,12 +1024,16 @@ el('autoProduce').onclick=async()=>{
      const aiMessage=el('aiStatus')?.textContent||'';
      if(!lastDraftIsAi||aiMessage.includes('خطای واقعی تولید')){
        const quotaBlocked=/4006|daily free allocation|free allocation of 10,000 neurons/i.test(aiMessage);
-       if(!quotaBlocked)throw new Error('تولید سناریوی هوش مصنوعی ناموفق بود؛ '+aiMessage);
+       if(!lastDraft&&!quotaBlocked)throw new Error('تولید سناریو ناموفق بود و متن جایگزین معتبری دریافت نشد؛ '+aiMessage);
        const title=el('epTitle').value.trim()||'LUNA & LEO — The Five-Star Mix-Up';
        const premise=el('premise').value.trim()||'Leo plans a romantic surprise in a luxury hotel, but a booking mix-up creates a funny misunderstanding.';
-       lastDraft=draft(el('scriptLang').value,title,premise,el('duration').value,el('tone').value);
+       // Keep a valid Worker-provided local-template screenplay. Only synthesize a
+       // browser-side fallback when the Worker returned no script after quota exhaustion.
+       if(!lastDraft){
+         lastDraft=draft(el('scriptLang').value,title,premise,el('duration').value,el('tone').value);
+         clearCurrentEpisodeMedia();
+       }
        lastDraftIsAi=false;
-       clearCurrentEpisodeMedia();
        const fallbackDialogue=syncVoiceTextFromScript(lastDraft);
        if(fallbackDialogue)el('voiceStatus').textContent='دیالوگ‌های سناریوی جایگزین برای صداگذاری آماده شدند.';
        el('output').textContent=lastDraft;
@@ -1049,7 +1053,9 @@ el('autoProduce').onclick=async()=>{
          'FINAL QUALITY CHECK','Only Luna and Leo; no face swaps, no wardrobe changes, no slideshow.'
        ].join('\\n\\n');
        el('output').textContent=lastProductionPack;
-       updateAiStatus('سهمیه رایگان Cloudflare تمام شده است؛ سناریو و بسته جایگزین محلی آماده شد، نه خروجی مدل AI.');
+       updateAiStatus(quotaBlocked
+         ? 'سهمیه رایگان Cloudflare تمام شده است؛ بسته جایگزین محلی آماده شد. این خروجی تولید مدل AI نیست.'
+         : 'Worker یک سناریوی جایگزین محلی برگرداند؛ بسته تولید آماده شد، اما این خروجی تولید مدل AI نیست.');
      }
    }
    if(lastDraftIsAi&&!lastProductionPack){
