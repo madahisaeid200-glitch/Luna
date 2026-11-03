@@ -640,11 +640,38 @@ el('testImageUpload').onclick=async()=>{
        try{data=await response.json();}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+').');}
        if(!response.ok||data.error)throw new Error((data.error||'ویرایش تصویر ناموفق بود')+(data.details?' — '+data.details:'')+' (HTTP '+response.status+')');
        if(!data.image)throw new Error('Worker پاسخ داد اما تصویر نهایی برنگرداند.');
-       generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1}];el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=false;
+       generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
+       // A new first-scene image invalidates all prior visual approvals and downstream clips.
+       firstSceneQaPassed=false;
+       generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];
+       generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];
+       if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}
+       el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳ · تصویر اصلاح‌شده نیازمند کنترل کیفیت';
+       ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','assembleWanClips'].forEach(id=>{if(el(id))el(id).disabled=true;});
+       el('wanClipResults').style.display='none';
+       const oldVideo=el('generatedVideoPreview');if(oldVideo){oldVideo.pause();oldVideo.removeAttribute('src');oldVideo.load();oldVideo.style.display='none';}
+       el('downloadVideoLink').removeAttribute('href');el('downloadVideoLink').style.display='none';el('viewGeneratedVideo').style.display='none';
        el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';
        el('makePreviewVideo').disabled=true;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;
        const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX.2 Klein',mode:'image_edit',prompt:instruction,title:el('epTitle').value,profile:readCharacterProfile()});
-       el('visualStatus').textContent='نسخه اصلاح‌شده ساخته شد ('+(data.model||'FLUX.2 Klein')+'). '+(stored?'در کتابخانه خصوصی مرورگر ذخیره شد. ':'')+'حالا می‌توانی آن را ارزیابی کنی. تصویر قبلی نیز در تاریخچه کتابخانه باقی می‌ماند.';
+       el('visualStatus').textContent='تصویر اصلاح‌شده ساخته شد ('+(data.model||'FLUX.2 Klein')+'). در حال کنترل کیفیت خودکار…';
+       try{
+         const editedQa=await analyzeLunaImageData(generatedImageData);
+         const editedResult=validateLunaImageQa(editedQa.analysis,true);
+         generatedSceneImages[0].qaPassed=editedResult.pass;generatedSceneImages[0].qaReport=editedQa.analysis;
+         firstSceneQaPassed=editedResult.pass;
+         el('imageAnalysisReport').textContent=editedQa.analysis;
+         el('imageAnalysisStatus').textContent=editedResult.pass?'تصویر اصلاح‌شده تأیید شد؛ می‌توانی صحنه‌های بعدی را بسازی.':'تصویر اصلاح‌شده رد شد: '+editedResult.reason;
+         el('generateMoreScenes').disabled=!editedResult.pass;
+         el('makePreviewVideo').disabled=!editedResult.pass;
+         logLunaDiagnostic('image-edit-qa-'+(editedResult.pass?'pass':'fail'),editedResult.reason,{model:editedQa.model,people:editedResult.people,realism:editedResult.realism,anatomy:editedResult.anatomy});
+       }catch(qaError){
+         firstSceneQaPassed=false;generatedSceneImages[0].qaPassed=false;
+         el('imageAnalysisStatus').textContent='تصویر اصلاح شد اما کنترل کیفیت انجام نشد؛ تا زمان تأیید دستی تولید ادامه نمی‌یابد.';
+         el('generateMoreScenes').disabled=true;el('makePreviewVideo').disabled=true;
+         logLunaDiagnostic('image-edit-qa-error',qaError.message||qaError);
+       }
+       el('visualStatus').textContent='نسخه اصلاح‌شده آماده شد. '+(stored?'در کتابخانه خصوصی مرورگر ذخیره شد. ':'ذخیره کتابخانه ناموفق بود. ')+(firstSceneQaPassed?'کنترل کیفیت موفق بود.':'کنترل کیفیت تأیید نشد؛ ادامه تولید قفل است.')+' تصویر قبلی نیز در تاریخچه کتابخانه باقی می‌ماند.';
        logLunaDiagnostic('image-edit-success','Reference image edited',{model:data.model||'FLUX.2 Klein',stored,width,height,generationMs:data.generationMs,attempts:data.attempts});
      }catch(error){
        const msg=error.name==='AbortError'?'ویرایش بیش از ۱۸۰ ثانیه طول کشید و متوقف شد.':(error.message||'خطای نامشخص');
