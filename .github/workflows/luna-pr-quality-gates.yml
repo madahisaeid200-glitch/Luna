@@ -117,13 +117,13 @@ jobs:
             'IDENTITY CONSISTENCY: PASS',
             'LUNA FACE MATCH: YES',
             'LEO FACE MATCH: YES'
-          ].join('\\n');
+          ].join('\n');
           assert.equal(validateLunaIdentityContinuity(validIdentityQa).pass, true);
           assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LEO FACE MATCH: YES', 'LEO FACE MATCH: NO')).pass, false);
           assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LUNA FACE MATCH: YES', 'LUNA FACE MATCH: UNCLEAR')).pass, false);
-          assert.match(html, /analyzeLunaImageData\\(dataUrl,generatedImageData\\)/,
+          assert.match(html, /analyzeLunaImageData\(dataUrl,generatedImageData\)/,
             'Every later scene must be compared against the first approved scene image');
-          assert.match(html, /validateLunaIdentityContinuity\\(sceneQa\\.analysis\\)/,
+          assert.match(html, /validateLunaIdentityContinuity\(sceneQa\\.analysis\)/,
             'Later scenes must fail when either lead face does not match the reference');
 
           assert.doesNotMatch(html, /el\('makePreviewVideo'\)\.disabled\s*=\s*false/,
