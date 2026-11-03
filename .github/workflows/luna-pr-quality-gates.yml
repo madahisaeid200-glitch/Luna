@@ -196,6 +196,14 @@ jobs:
             'Director adapter must emit real newline-separated sections so the existing shot parser can read them');
           assert.ok(html.includes("duration:el('duration').value"),
             'Director plan must use the selected short/long episode duration');
+          assert.match(html, /const LUNA_RENDER_SHOT_COUNT=6/,
+            'The renderer must use six independently generated shots to improve unique motion duration');
+          assert.match(html, /for\\(let i=0;i<LUNA_RENDER_SHOT_COUNT;i\\+\\+\\)/,
+            'Wan must render every approved scene in the six-shot sequence');
+          assert.match(autoHandler, /generatedWanClipUrls\\.length===LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for all six real Wan clips before assembly');
+          assert.match(html, /generatedSceneImages\\.length>=LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for six QA-approved images');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
           assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
