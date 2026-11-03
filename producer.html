@@ -1080,6 +1080,20 @@ el('autoProduce').onclick=async()=>{
      await runButton('generateSceneImage',()=>!!generatedImageData,'ساخت تصویر',120000);
    }
    if(!generatedImageData)throw new Error('تصویر مرجع تولید یا بازیابی نشد.');
+   // A restored image from this browser's private library has no trusted QA approval.
+   // Re-run vision automatically so one-click production does not require a manual extra step.
+   if(!firstSceneQaPassed&&generatedImageData){
+     const analyzeButton=el('analyzeSceneImage');
+     if(!analyzeButton)throw new Error('دکمه کنترل کیفیت تصویر پیدا نشد.');
+     if(analyzeButton.disabled)throw new Error('کنترل کیفیت تصویر دیگری در حال اجراست؛ کمی بعد دوباره تلاش کن.');
+     master.textContent='مرحله ۳/۷ · کنترل کیفیت تصویر بازیابی‌شده…';
+     analyzeButton.click();
+     await waitFor(
+       ()=>firstSceneQaPassed||/تصویر برای تولید ادامه قسمت رد شد|کنترل کیفیت انجام نشد|کنترل کیفیت ناموفق بود/.test(el('imageAnalysisStatus')?.textContent||''),
+       'کنترل کیفیت تصویر بازیابی‌شده',
+       135000
+     );
+   }
    if(!firstSceneQaPassed)throw new Error('تصویر صحنه اول از کنترل کیفیت عبور نکرد یا ارزیابی آن کامل نشد: '+(el('imageAnalysisStatus')?.textContent||''));
    const runAutoStage=async(id,ready,label,timeoutMs)=>{
      if(ready())return;
