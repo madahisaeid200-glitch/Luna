@@ -125,6 +125,10 @@ jobs:
             'Every later scene must be compared against the first approved scene image');
           assert.match(html, /validateLunaIdentityContinuity\(sceneQa\.analysis\)/,
             'Later scenes must fail when either lead face does not match the reference');
+          assert.match(html, /Return these required fields in English, one per line: CAST CHECK:/,
+            'Base visual QA prompt must allow the additional identity continuity fields');
+          assert.match(html, /IDENTITY CONSISTENCY: PASS or FAIL; LUNA FACE MATCH: YES or NO; LEO FACE MATCH: YES or NO/,
+            'Reference-image QA must explicitly request all three identity fields');
 
           assert.doesNotMatch(html, /el\('makePreviewVideo'\)\.disabled\s*=\s*false/,
             'Wan video must never be enabled before a passing visual QA result');
