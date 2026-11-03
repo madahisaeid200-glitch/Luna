@@ -94,6 +94,20 @@ jobs:
             'Automatic production must wait for all three Wan clips');
           assert.match(autoHandler, /assembledWanVideoUrl/,
             'Automatic production must wait for the final stitched film');
+          const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
+          const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
+          assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
+          const clearMedia = html.slice(clearMediaStart, clearMediaEnd);
+          assert.match(clearMedia, /assembledWanVideoUrl=''/,
+            'Starting a new episode must invalidate the previous assembled video URL');
+          assert.match(clearMedia, /assembledWanPreview[\\s\\S]*removeAttribute\\('src'\\)/,
+            'Starting a new episode must clear the previous assembled video preview');
+          assert.match(clearMedia, /downloadAssembledWan[\\s\\S]*removeAttribute\\('href'\\)/,
+            'Starting a new episode must clear the previous assembled download link');
+          assert.match(clearMedia, /voicePreview[\\s\\S]*removeAttribute\\('src'\\)/,
+            'Starting a new episode must clear the previous voice recording');
+          assert.match(clearMedia, /wanClipList[\\s\\S]*replaceChildren\\(\\)/,
+            'Starting a new episode must clear stale Wan clip cards');
           const voicedStart = html.indexOf("el('makeVoicedVideo').onclick=async()=>");
           const voicedEnd = html.indexOf("el('generateVoice').onclick=async()=>", voicedStart);
           assert.ok(voicedStart >= 0 && voicedEnd > voicedStart, 'Missing voiced animatic handler');
