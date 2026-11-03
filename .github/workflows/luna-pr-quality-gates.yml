@@ -88,6 +88,12 @@ jobs:
           const autoStart = html.indexOf("el('autoProduce').onclick=async()=>");
           assert.ok(autoStart >= 0, 'Missing automatic production handler');
           const autoHandler = html.slice(autoStart);
+          assert.match(autoHandler, /if\(!firstSceneQaPassed&&generatedImageData\)/,
+            'One-click production must automatically re-run visual QA for a restored image');
+          assert.match(autoHandler, /analyzeButton\.click\(\)/,
+            'Restored image QA must not require a manual user click');
+          assert.match(autoHandler, /کنترل کیفیت تصویر بازیابی‌شده/,
+            'Restored image QA must have a bounded wait stage');
           for (const stage of ['generateMoreScenes','generateVoice','generateWanClips','assembleWanClips']) {
             assert.ok(autoHandler.includes("runAutoStage('" + stage + "'"),
               'Automatic production must run the complete stage: ' + stage);
