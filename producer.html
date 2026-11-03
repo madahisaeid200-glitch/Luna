@@ -409,7 +409,7 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
     const shots=Array.isArray(plan?.shots)?plan.shots:[];
     const bible=plan?.continuityBible||{};
     const section=(title,body)=>title+'\\n'+body.join('\\n\\n');
-    const shotLabel=shot=>'SHOT '+String(shot.id||'').replace(/\\D/g,'').padStart(2,'0');
+    const shotLabel=shot=>'SHOT '+String(shot.id||'').replace(/\D/g,'').padStart(2,'0');
     const shotList=shots.map(shot=>[
       shotLabel(shot),
       'Duration: '+(Number(shot.durationSeconds)||6)+' seconds',
