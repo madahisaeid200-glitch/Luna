@@ -787,7 +787,7 @@ el('testImageUpload').onclick=async()=>{
      const preview=el('assembledWanPreview');preview.src=assembledWanVideoUrl;preview.style.display='block';preview.load();
      const link=el('downloadAssembledWan');link.href=assembledWanVideoUrl;link.style.display='inline-block';link.textContent='دانلود فیلم شش‌نمای LUNA (WebM)';
      el('visualStatus').textContent='شش کلیپ واقعی به ترتیب نماها در یک فایل WebM متصل شدند. '+(hasVoice?'صدای دیالوگ نیز همراه خروجی ضبط شد.':'خروجی فعلاً بدون صدای دیالوگ است.')+' حجم: '+(blob.size/1024/1024).toFixed(2)+' MB.';
-     logLunaDiagnostic('wan-stitch-success','Three real Wan clips stitched into one WebM',{bytes:blob.size,mime,voiceIncluded:hasVoice});
+     logLunaDiagnostic('wan-stitch-success','Six real Wan clips stitched into one WebM',{bytes:blob.size,mime,voiceIncluded:hasVoice});
    }catch(error){
      if(raf)cancelAnimationFrame(raf);
      if(hasVoice)audio.pause();
@@ -804,16 +804,16 @@ el('testImageUpload').onclick=async()=>{
    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
    const audio=el('voicePreview');
    if(!audio.src||!audio.src.startsWith('data:audio/')){el('visualStatus').textContent='ابتدا صدای دیالوگ را بساز.';return;}
-   const button=el('makeVoicedVideo');if(generatedSceneImages.length<6){el('visualStatus').textContent='برای ساخت پیش‌نمایش تدوین‌شده، ابتدا هر سه تصویر مستقل صحنه را بساز.';return;}button.disabled=true;button.textContent='در حال ساخت پیش‌نمایش تدوین‌شده…';
+   const button=el('makeVoicedVideo');if(generatedSceneImages.length<6){el('visualStatus').textContent='برای ساخت پیش‌نمایش تدوین‌شده، ابتدا هر شش تصویر مستقل صحنه را بساز.';return;}button.disabled=true;button.textContent='در حال ساخت پیش‌نمایش تدوین‌شده…';
    el('visualStatus').textContent='در حال تدوین نماهای متنوع، زیرنویس دیالوگ و صدای واقعی…';
    let audioStream=null,stream=null,frameId=null;
    try{
      const img=el('sceneImage');
      if(!img.complete||!img.naturalWidth)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-     const selectedSceneData=generatedSceneImages.slice(0,3).map(item=>item.dataUrl);
+     const selectedSceneData=generatedSceneImages.slice(0,6).map(item=>item.dataUrl);
      if(!selectedSceneData.length)selectedSceneData.push(generatedImageData);
-     while(selectedSceneData.length<3)selectedSceneData.push(selectedSceneData[selectedSceneData.length-1]);
-     const independentSceneCount=Math.min(3,generatedSceneImages.length);
+     while(selectedSceneData.length<6)selectedSceneData.push(selectedSceneData[selectedSceneData.length-1]);
+     const independentSceneCount=Math.min(6,generatedSceneImages.length);
      const sceneImageElements=await Promise.all(selectedSceneData.map(dataUrl=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('یکی از تصاویر صحنه بارگذاری نشد.'));image.src=dataUrl;})));
      if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
      audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
@@ -832,6 +832,7 @@ el('testImageUpload').onclick=async()=>{
        {name:'LUNA · THE REACTION',x:.34,y:.42,z:1.22},
        {name:'LEO · THE EXPLANATION',x:.68,y:.48,z:1.25},
        {name:'THE MIX-UP',x:.50,y:.62,z:1.12},
+       {name:'THE REVEAL',x:.50,y:.48,z:1.16},
        {name:'HAPPY ENDING',x:.50,y:.48,z:1.04}
      ];
      audio.pause();audio.currentTime=0;
@@ -881,15 +882,15 @@ el('testImageUpload').onclick=async()=>{
      if(generatedImageObjectUrl)URL.revokeObjectURL(generatedImageObjectUrl);
      generatedImageObjectUrl=URL.createObjectURL(blob);
      const preview=el('generatedVideoPreview');preview.src=generatedImageObjectUrl;preview.style.display='block';preview.load();el('viewGeneratedVideo').style.display='block';const link=el('downloadVideoLink');link.href=generatedImageObjectUrl;link.style.display='inline-block';link.download='LUNA-LEO-animatic-preview.webm';link.textContent='دانلود پیش‌نمایش تدوین‌شده (Animatic)';
-     el('visualStatus').textContent='پیش‌نمایش تدوین‌شده (Animatic) ساخته شد ('+Math.round(blob.size/1024)+' KB): حرکت دوربین روی تصاویر ثابت، پنج برش، زیرنویس و صدای واقعی. این فایل ویدئوی مولد Wan نیست و حرکت واقعی بدن یا لب‌خوانی ندارد.';
-     logLunaDiagnostic('animatic-preview-success','Rendered five-shot animatic from still images',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:independentSceneCount,captionCount:captions.length,notGenerativeVideo:true});
+     el('visualStatus').textContent='پیش‌نمایش تدوین‌شده (Animatic) ساخته شد ('+Math.round(blob.size/1024)+' KB): حرکت دوربین روی تصاویر ثابت، شش برش، زیرنویس و صدای واقعی. این فایل ویدئوی مولد Wan نیست و حرکت واقعی بدن یا لب‌خوانی ندارد.';
+     logLunaDiagnostic('animatic-preview-success','Rendered six-shot animatic from still images',{bytes:blob.size,durationSeconds:duration,mime,shotCount:shots.length,independentSceneImages:independentSceneCount,captionCount:captions.length,notGenerativeVideo:true});
    }catch(error){
      const msg=error.message||'خطای نامشخص';el('visualStatus').textContent='ساخت ویدئوی صداگذاری‌شده ناموفق بود: '+msg;
      logLunaDiagnostic('voiced-video-error',msg,{audioDuration:audio.duration,audioReadyState:audio.readyState});
    }finally{
      if(stream)stream.getTracks().forEach(t=>t.stop());
      if(audioStream)audioStream.getTracks().forEach(t=>t.stop());
-     button.disabled=generatedSceneImages.length<6;button.textContent='۴. ساخت پیش‌نمایش تدوین‌شده از سه تصویر منتخب (Animatic)';
+     button.disabled=generatedSceneImages.length<6;button.textContent='۴. ساخت پیش‌نمایش تدوین‌شده از شش تصویر منتخب (Animatic)';
    }
  };
 
