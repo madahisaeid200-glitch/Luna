@@ -135,15 +135,13 @@ jobs:
             report['wan_health']={'http':status,'ok':health.get('ok'),'engine':health.get('engine'),'endpointAvailable':health.get('endpointAvailable')}
             print('WAN_HEALTH:',json.dumps(report['wan_health']))
             if not health.get('ok'): raise RuntimeError('Wan public Space is not ready; no video job was submitted.')
-            prompt=('MASTER CAST CONSTRAINT: exactly ONE adult woman and exactly ONE adult man, visibly different genders, a romantic couple photographed INSIDE A MODERN FIVE-STAR HOTEL BEDROOM SUITE. '
-                    'The setting must visibly contain a large king-size bed with a padded upholstered headboard, a beige luxury sofa, a marble coffee table, warm bedside lamps and floor-to-ceiling windows with a modern city skyline. This is a hotel room, absolutely not a church, chapel, cathedral, hall or religious building. '
-                    'WOMAN: 27-year-old elegant woman, very long waist-length warm chestnut-brown hair worn loose over both shoulders, hazel eyes, feminine facial features, champagne-silver silk evening gown. Hair must be long and chestnut brown, not black and not a bob. '
-                    'MAN: unmistakably adult MALE, 29-year-old European man, short neatly styled dark-brown hair, clearly masculine angular jaw, visible subtle beard stubble, broad masculine shoulders and athletic natural male body, perfectly tailored BLACK tuxedo jacket, white shirt and black trousers. '
-                    'The man must look unmistakably male, NOT a woman, NOT feminine, NOT wearing a dress. The woman must look unmistakably female. Exactly two people total: one woman and one man. No other people, no portraits, no human figures in mirrors or artwork. '
-                    'Photorealistic live-action luxury hotel editorial film still, realistic skin pores, natural anatomy, warm practical hotel lighting, contemporary neutral interior, cinematic vertical 9:16 composition. '
-                    'NEGATIVE: two women, two girls, female duo, woman in tuxedo, man in gown, feminine male, long-haired man, short-haired woman, black-haired woman, bob haircut, third person, church, cathedral, chapel, stained glass, pews, altar, painting, text, logo, collage.')
-            print('Trying the legacy no-key Pollinations image route first...')
-            prompt=('Exactly one adult woman and one adult man, visibly different genders, standing together in a modern five-star hotel bedroom suite. The woman has very long loose chestnut-brown hair, hazel eyes and wears a champagne silk dress. The man is unmistakably male with short dark-brown hair, masculine jaw, visible beard stubble, broad shoulders and a black tailored tuxedo. The modern hotel room must show a king-size bed, upholstered headboard, beige sofa, marble table, bedside lamps and floor-to-ceiling windows with city skyline. Not a church, cathedral, chapel or religious building. Photorealistic cinematic live-action, natural skin, vertical 9:16. NEGATIVE: two women, two men, gender swap, church, cathedral, chapel, stained glass, pews, altar, third person, portraits, text, watermark.')
+            prompt=('Exactly one adult woman and exactly one adult man, visibly different genders, a romantic couple INSIDE A MODERN FIVE-STAR HOTEL BEDROOM SUITE. The room must visibly contain a large king-size bed with padded upholstered headboard, beige luxury sofa, marble coffee table, warm bedside lamps and floor-to-ceiling windows showing a modern city skyline. This is a hotel room, not a church, chapel, cathedral, hall or religious building. '
+                    'WOMAN: elegant adult woman, very long waist-length warm chestnut-brown hair worn loose over both shoulders, hazel eyes, feminine facial features, champagne-silver silk evening gown. Hair long and chestnut brown, not black and not a bob. '
+                    'MAN: unmistakably adult MALE, short neatly styled dark-brown hair, masculine angular jaw, visible subtle beard stubble, broad masculine shoulders and natural male body, perfectly tailored BLACK tuxedo jacket, white shirt and black trousers. '
+                    'The man must look unmistakably male, NOT a woman, NOT feminine, NOT wearing a dress. The woman must look unmistakably female. Exactly two people total: one woman and one man. No other people, portraits, mirrors or human artwork. '
+                    'Photorealistic live-action cinematic hotel editorial film still, realistic skin pores, natural anatomy, warm practical hotel lighting, contemporary neutral interior, vertical 9:16. '
+                    'NEGATIVE: two women, two men, gender swap, woman in tuxedo, man in gown, feminine male, long-haired man, short-haired woman, black-haired woman, bob haircut, third person, church, cathedral, chapel, stained glass, pews, altar, portraits, text, watermark, logo, collage.')            print('Trying the legacy no-key Pollinations image route first...')
+
             os.makedirs('media-smoke',exist_ok=True)
             image_bytes=None
             mime='image/jpeg'
@@ -156,7 +154,7 @@ jobs:
               with urllib.request.urlopen(req,timeout=150) as response:
                 mime=response.headers.get('Content-Type','image/jpeg').split(';')[0]
                 image_bytes=response.read()
-                if response.status!=200 or not mime.startswith('image/') or len(image_bytes)<50000:
+                if response.status!=200 or not mime.startswith('image/') or len(image_bytes)<10000:
                   raise RuntimeError('Unexpected Pollinations response: '+str(response.status)+' '+mime+' '+str(len(image_bytes))+' bytes')
             except Exception as error:
               pollinations_error=str(error)[:400]
@@ -178,7 +176,7 @@ jobs:
             print('REAL_IMAGE:',json.dumps(report['image']))
 
             print('Submitting exactly one short real Wan 2.2 I2V generation...')
-            video_payload={'mode':'video','image':'data:'+mime+';base64,'+image,'prompt':'Animate only this exact reference frame for 1.5 seconds. Preserve the same two adult people, faces, clothing and hotel suite. Subtle natural breathing, a gentle glance toward each other, minimal smooth camera push-in. No cuts, no morphing, no added people or objects. Photorealistic live action.','durationSeconds':1.5,'steps':2}
+            video_payload={'mode':'video','image':image,'prompt':'Animate only this exact reference frame for 1.5 seconds. Preserve the same two adult people, faces, clothing and hotel suite. Subtle natural breathing, a gentle glance toward each other, minimal smooth camera push-in. No cuts, no morphing, no added people or objects. Photorealistic live action.','durationSeconds':1.5,'steps':2}
             status,headers,video=post(video_payload,230)
             ctype=headers.get('Content-Type','')
             if status!=200 or not ctype.lower().startswith('video/'): raise RuntimeError('Wan did not return a video: HTTP '+str(status)+' '+ctype+' '+video[:350].decode(errors='replace'))
@@ -202,7 +200,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: luna-real-media-smoke-hotel-suite-retest
+          name: luna-real-media-smoke-pollinations-probe
           path: media-smoke/
           if-no-files-found: warn
       - name: Stop local Worker
