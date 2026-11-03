@@ -1,0 +1,58 @@
+name: LUNA compact director provider probe
+on:
+  push:
+    branches:
+      - probe/director-ovh-compact
+    paths:
+      - ".github/workflows/luna-director-provider-probe.yml"
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test compact six-shot plan against anonymous OVH inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/request.json <<'JSON'
+          {
+            "model":"Meta-Llama-3_3-70B-Instruct",
+            "messages":[
+              {"role":"system","content":"You are a film director. Return strict compact JSON only. No markdown."},
+              {"role":"user","content":"Convert this screenplay into exactly 6 sequential vertical 9:16 shots. Return JSON with keys schemaVersion (luna-video-plan@1.0.0), episode {title,targetAspectRatio,targetDurationSeconds}, continuityBible {luna,leo,visualStyle,continuityRules}, shots array. Each shot: id, durationSeconds (6), location, shotType, characters (only LUNA/LEO), action, dialogue (speaker and exact text), videoPrompt (under 25 words), referenceFramePrompt (under 25 words), audio, transition. Keep prompts concise, same luxury hotel suite and same wardrobe. Only LUNA and LEO; invent no props, people or events. Preserve the exact dialogue below and order. Total duration 36 seconds. JSON only. SCREENPLAY: The Five-Star Name Mix-Up. LUNA: This welcome card has the wrong names on it, what's going on here exactly now. LEO: I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this. LUNA: You booked this suite for another couple or someone else, that's really quite amusing to me. LEO: I made the typo and I accept it, let's just enjoy our stay and make the most of it together. LUNA: Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury. LEO: I love you too, and I promise to get it right next time, with an even better surprise for you. Tease: Next time, LEO has an even bigger romantic surprise planned for LUNA."}
+            ],
+            "max_tokens":1150,
+            "temperature":0.15
+          }
+          JSON
+          echo "Calling OVH compact director request..."
+          curl --fail-with-body --silent --show-error --max-time 65 \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/request.json \
+            https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions \
+            -o /tmp/response.json -w 'HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
+          python3 - <<'PY'
+          import json,sys
+          data=json.load(open('/tmp/response.json'))
+          content=data.get('choices',[{}])[0].get('message',{}).get('content','')
+          if not isinstance(content,str) or not content.strip():
+              raise SystemExit('FAIL: OVH returned no message content')
+          content=content.strip().removeprefix('```json').removesuffix('```').strip()
+          plan=json.loads(content)
+          assert plan.get('schemaVersion')=='luna-video-plan@1.0.0', 'bad schema'
+          shots=plan.get('shots')
+          assert isinstance(shots,list) and len(shots)==6, f'expected 6 shots, got {len(shots) if isinstance(shots,list) else type(shots)}'
+          allowed={'LUNA','LEO'}
+          for i,shot in enumerate(shots,1):
+              assert shot.get('durationSeconds')==6, f'shot {i} duration'
+              assert shot.get('characters') and set(shot['characters'])<=allowed, f'shot {i} cast'
+              assert len(shot.get('videoPrompt',''))>=30, f'shot {i} video prompt'
+              assert len(shot.get('referenceFramePrompt',''))>=30, f'shot {i} reference prompt'
+          dialogue=' '.join(x.get('text','') for shot in shots for x in shot.get('dialogue',[]))
+          assert 'wrong surname' in dialogue.lower(), 'key story dialogue missing'
+          print('PASS: compact OVH director plan parsed and validated')
+          print('Model:',data.get('model'))
+          print('Shots:',len(shots),'JSON chars:',len(content))
+          print('First action:',shots[0].get('action','')[:180])
+          PY
