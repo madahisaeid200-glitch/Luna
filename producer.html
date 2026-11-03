@@ -1019,7 +1019,7 @@ el('autoProduce').onclick=async()=>{
    localStorage.setItem('lunaAiEndpoint',endpoint);
    if(!lastDraft||!lastDraftIsAi){
      lastDraft='';lastProductionPack='';
-     master.textContent='مرحله ۱/۴ · سناریو…';
+     master.textContent='مرحله ۱/۷ · سناریو…';
      await runButton('generate',()=>!!lastDraft,'ساخت سناریو',90000);
      const aiMessage=el('aiStatus')?.textContent||'';
      if(!lastDraftIsAi||aiMessage.includes('خطای واقعی تولید')){
@@ -1053,11 +1053,11 @@ el('autoProduce').onclick=async()=>{
      }
    }
    if(lastDraftIsAi&&!lastProductionPack){
-     master.textContent='مرحله ۲/۴ · بسته تولید سینمایی…';
+     master.textContent='مرحله ۲/۷ · بسته تولید سینمایی…';
      await runButton('makeProductionPack',()=>!!lastProductionPack,'ساخت بسته تولید سینمایی',150000);
    }
    if(!generatedImageData){
-     master.textContent='مرحله ۳/۴ · تصویر صحنه…';
+     master.textContent='مرحله ۳/۷ · تصویر صحنه…';
      await runButton('generateSceneImage',()=>!!generatedImageData,'ساخت تصویر',120000);
    }
    if(!generatedImageData)throw new Error('تصویر مرجع تولید یا بازیابی نشد.');
