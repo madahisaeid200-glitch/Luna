@@ -5,6 +5,8 @@ on:
       - probe/director-ovh-compact
     paths:
       - worker.js
+      - producer.html
+      - scripts/test-luna-director-ui.cjs
       - .github/workflows/luna-director-worker-integration.yml
   workflow_dispatch:
 
@@ -20,8 +22,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Wrangler
-        run: npm install --no-save wrangler
+      - name: Install Wrangler and Playwright
+        run: |
+          npm install --no-save wrangler playwright
+          npx playwright install --with-deps chromium
+      - name: Check Producer inline JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          html=open('producer.html',encoding='utf-8').read()
+          scripts=re.findall(r'<script\\b[^>]*>(.*?)</script>',html,re.S|re.I)
+          if not scripts: raise SystemExit('No inline scripts found')
+          for index,script in enumerate(scripts):
+              path=f'/tmp/producer-inline-{index}.js'
+              open(path,'w',encoding='utf-8').write(script)
+              print('Checking',path)
+              import subprocess
+              subprocess.run(['node','--check',path],check=True)
+          PY
+      - name: Start local Producer static server
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/luna-http.log 2>&1 &
+          echo $! > /tmp/luna-http.pid
+          for attempt in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/producer.html >/dev/null && exit 0; sleep 1; done
+          cat /tmp/luna-http.log
+          exit 1
+      - name: Test Producer Director-to-media UI integration
+        run: node scripts/test-luna-director-ui.cjs
       - name: Start the exact branch Worker locally
         run: |
           npx wrangler dev worker.js --local --ip 127.0.0.1 --port 8787 --log-level warn > /tmp/luna-wrangler.log 2>&1 &
@@ -89,3 +116,4 @@ jobs:
         if: always()
         run: |
           if [ -f /tmp/luna-wrangler.pid ]; then kill "$(cat /tmp/luna-wrangler.pid)" 2>/dev/null || true; fi
+          if [ -f /tmp/luna-http.pid ]; then kill "$(cat /tmp/luna-http.pid)" 2>/dev/null || true; fi
