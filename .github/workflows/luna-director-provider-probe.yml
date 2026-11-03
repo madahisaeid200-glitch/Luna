@@ -10,7 +10,7 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 7
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
             "temperature":0.15
           }
           JSON
-          curl --fail-with-body --silent --show-error --max-time 65 -H 'Content-Type: application/json' --data-binary @/tmp/request.json https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions -o /tmp/response.json -w 'HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
+          curl --fail-with-body --silent --show-error --retry 1 --retry-all-errors --retry-delay 5 --max-time 150 -H 'Content-Type: application/json' --data-binary @/tmp/request.json https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions -o /tmp/response.json -w 'HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
           python3 - <<'PY'
           import json
           data=json.load(open('/tmp/response.json'))
