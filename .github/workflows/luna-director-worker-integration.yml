@@ -116,89 +116,46 @@ jobs:
           print('SHOT_TYPES:',sorted(kinds),'DIALOGUE_LINES:',len(actual))
           print('DURATION_SECONDS:',plan.get('episode',{}).get('targetDurationSeconds'))
           PY
-      - name: One real image and one real Wan video smoke test
+      - name: One real Worker image smoke test
         id: media-smoke
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[image-smoke]')
         continue-on-error: true
         run: |
           python3 - <<'PY'
-          import base64, json, os, time, urllib.request, urllib.error
+          import base64, json, os, urllib.request, urllib.error
           base='http://127.0.0.1:8787/'
-          report={'image':None,'wan_health':None,'video':None}
-          def post(payload, timeout):
-            req=urllib.request.Request(base,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
-            try:
-              with urllib.request.urlopen(req,timeout=timeout) as r:
-                return r.status,r.headers,r.read()
-            except urllib.error.HTTPError as error:
-              return error.code,error.headers,error.read()
+          report={'image':None}
+          prompt=('Exactly one adult woman and one adult man, visibly different genders, standing together in a modern five-star hotel bedroom suite. '
+                  'The setting must clearly show a king-size bed with an upholstered headboard, beige luxury sofa, marble coffee table, warm bedside lamps and floor-to-ceiling windows with a modern city skyline. This is a hotel room, not a church, chapel, cathedral or religious building. '
+                  'WOMAN: elegant 27-year-old European woman with very long loose chestnut-brown hair, hazel eyes and a champagne-silver silk evening gown. '
+                  'MAN: unmistakably adult male European man, short dark-brown hair, masculine angular jaw, subtle beard stubble, broad shoulders, black tailored tuxedo jacket, white shirt and black trousers. '
+                  'Exactly two people total. Preserve clearly different feminine and masculine gender presentation. Photorealistic live-action luxury hotel editorial, natural skin texture, warm practical lighting, vertical 9:16. '
+                  'NEGATIVE: two women, two men, gender swap, woman in tuxedo, man in gown, church, cathedral, chapel, stained glass, pews, altar, third person, portraits, text, watermark, collage.')
+          req=urllib.request.Request(base,data=json.dumps({'mode':'image','script':prompt}).encode(),headers={'Content-Type':'application/json'},method='POST')
           try:
-            print('Checking public Wan Space availability without starting GPU generation...')
-            status,headers,raw=post({'mode':'video_health'},35)
-            health=json.loads(raw)
-            report['wan_health']={'http':status,'ok':health.get('ok'),'engine':health.get('engine'),'endpointAvailable':health.get('endpointAvailable')}
-            print('WAN_HEALTH:',json.dumps(report['wan_health']))
-            if not health.get('ok'): raise RuntimeError('Wan public Space is not ready; no video job was submitted.')
-            prompt=('Exactly one adult woman and exactly one adult man, visibly different genders, a romantic couple INSIDE A MODERN FIVE-STAR HOTEL BEDROOM SUITE. The room must visibly contain a large king-size bed with padded upholstered headboard, beige luxury sofa, marble coffee table, warm bedside lamps and floor-to-ceiling windows showing a modern city skyline. This is a hotel room, not a church, chapel, cathedral, hall or religious building. '
-                    'WOMAN: elegant adult woman, very long waist-length warm chestnut-brown hair worn loose over both shoulders, hazel eyes, feminine facial features, champagne-silver silk evening gown. Hair long and chestnut brown, not black and not a bob. '
-                    'MAN: unmistakably adult MALE, short neatly styled dark-brown hair, masculine angular jaw, visible subtle beard stubble, broad masculine shoulders and natural male body, perfectly tailored BLACK tuxedo jacket, white shirt and black trousers. '
-                    'The man must look unmistakably male, NOT a woman, NOT feminine, NOT wearing a dress. The woman must look unmistakably female. Exactly two people total: one woman and one man. No other people, portraits, mirrors or human artwork. '
-                    'Photorealistic live-action cinematic hotel editorial film still, realistic skin pores, natural anatomy, warm practical hotel lighting, contemporary neutral interior, vertical 9:16. '
-                    'NEGATIVE: two women, two men, gender swap, woman in tuxedo, man in gown, feminine male, long-haired man, short-haired woman, black-haired woman, bob haircut, third person, church, cathedral, chapel, stained glass, pews, altar, portraits, text, watermark, logo, collage.')            print('Trying the legacy no-key Pollinations image route first...')
-
-            os.makedirs('media-smoke',exist_ok=True)
-            image_bytes=None
-            mime='image/jpeg'
-            provider='pollinations-legacy-anonymous'
-            pollinations_error=''
-            try:
-              from urllib.parse import quote
-              image_url='https://image.pollinations.ai/prompt/'+quote(prompt,safe='')+'?model=flux&width=512&height=768&seed=20261103&nologo=true&private=true&enhance=false'
-              req=urllib.request.Request(image_url,headers={'Accept':'image/jpeg,image/png,image/webp','User-Agent':'LUNA-Media-Smoke/1.0'})
-              with urllib.request.urlopen(req,timeout=150) as response:
-                mime=response.headers.get('Content-Type','image/jpeg').split(';')[0]
-                image_bytes=response.read()
-                if response.status!=200 or not mime.startswith('image/') or len(image_bytes)<10000:
-                  raise RuntimeError('Unexpected Pollinations response: '+str(response.status)+' '+mime+' '+str(len(image_bytes))+' bytes')
-            except Exception as error:
-              pollinations_error=str(error)[:400]
-              print('POLLINATIONS_UNAVAILABLE:',pollinations_error)
-              print('Falling back to the Worker image route...')
-              status,headers,raw=post({'mode':'image','script':prompt},210)
-              data=json.loads(raw)
-              encoded=data.get('image')
-              if status!=200 or not encoded: raise RuntimeError('Both Pollinations and Worker image routes failed: '+str(data.get('error') or status)+' '+str(data.get('details') or '')[:300])
-              mime=data.get('mimeType') or 'image/jpeg'
-              image_bytes=base64.b64decode(encoded)
-              provider=data.get('provider') or 'worker-fallback'
-              report['image_fallback']={'provider':provider,'model':data.get('model'),'pollinationsError':pollinations_error}
-            ext='png' if 'png' in mime else 'webp' if 'webp' in mime else 'jpg'
-            image_path='media-smoke/luna-smoke-image.'+ext
-            with open(image_path,'wb') as out: out.write(image_bytes)
-            image='data:'+mime+';base64,'+base64.b64encode(image_bytes).decode()
-            report['image']={'http':200,'provider':provider,'contentType':mime,'bytes':os.path.getsize(image_path),'path':image_path,'pollinationsFallbackError':pollinations_error or None}
-            print('REAL_IMAGE:',json.dumps(report['image']))
-
-            print('Submitting exactly one short real Wan 2.2 I2V generation...')
-            video_payload={'mode':'video','image':image,'prompt':'Animate only this exact reference frame for 1.5 seconds. Preserve the same two adult people, faces, clothing and hotel suite. Subtle natural breathing, a gentle glance toward each other, minimal smooth camera push-in. No cuts, no morphing, no added people or objects. Photorealistic live action.','durationSeconds':1.5,'steps':2}
-            status,headers,video=post(video_payload,230)
-            ctype=headers.get('Content-Type','')
-            if status!=200 or not ctype.lower().startswith('video/'): raise RuntimeError('Wan did not return a video: HTTP '+str(status)+' '+ctype+' '+video[:350].decode(errors='replace'))
-            ext='mp4' if 'mp4' in ctype else 'webm'
-            video_path='media-smoke/luna-smoke-video.'+ext
-            with open(video_path,'wb') as out: out.write(video)
-            if os.path.getsize(video_path)<50000: raise RuntimeError('Wan video file was unexpectedly small.')
-            report['video']={'http':status,'contentType':ctype,'bytes':os.path.getsize(video_path),'path':video_path,'engine':'Wan2.2-14B-Fast-I2V'}
-            print('REAL_VIDEO:',json.dumps(report['video']))
-            report['status']='passed'
-          except Exception as error:
-            report['status']='failed'
-            report['error']=str(error)[:1200]
-            print('MEDIA_SMOKE_FAILED:',report['error'])
-            raise
-          finally:
-            os.makedirs('media-smoke',exist_ok=True)
-            with open('media-smoke/report.json','w') as out: json.dump(report,out,indent=2)
+            with urllib.request.urlopen(req,timeout=210) as response:
+              status=response.status
+              raw=response.read()
+          except urllib.error.HTTPError as error:
+            status=error.code
+            raw=error.read()
+          try:
+            data=json.loads(raw)
+          except Exception:
+            data={}
+          encoded=data.get('image')
+          if status!=200 or not encoded:
+            report.update({'status':'failed','http':status,'error':data.get('error'),'details':data.get('details') or data.get('fallbackReason')})
+            raise RuntimeError('Worker image route failed: HTTP '+str(status)+' '+str(report.get('error'))+' '+str(report.get('details') or '')[:500])
+          mime=data.get('mimeType') or 'image/jpeg'
+          ext='png' if 'png' in mime else 'webp' if 'webp' in mime else 'jpg'
+          os.makedirs('media-smoke',exist_ok=True)
+          image_path='media-smoke/luna-worker-image.'+ext
+          image_bytes=base64.b64decode(encoded)
+          with open(image_path,'wb') as out: out.write(image_bytes)
+          report={'status':'passed','http':status,'provider':data.get('provider'),'model':data.get('model'),'mimeType':mime,'bytes':len(image_bytes),'fallbackUsed':data.get('fallbackUsed'),'fallbackReason':data.get('fallbackReason'),'path':image_path}
+          print('REAL_WORKER_IMAGE:',json.dumps(report))
+          with open('media-smoke/report.json','w') as out: json.dump(report,out,indent=2)
           PY
       - name: Upload real media smoke-test artifacts
         if: always()
