@@ -115,7 +115,7 @@ const plan = {
     await page.locator("#generateMoreScenes").click();
     await page.waitForFunction(() => window.eval("generatedSceneImages.length") === 6, null, { timeout: 15000 });
     if (imageRequests !== 1 || imageEditRequests !== 5) throw new Error("Expected one initial image plus five reference edits; got image=" + imageRequests + " edits=" + imageEditRequests);
-    if (document.querySelector("#generateWanClips")?.disabled) throw new Error("Wan generation did not enable after six images");
+    if (await page.locator("#generateWanClips").isDisabled()) throw new Error("Wan generation did not enable after six images");
     await page.locator("#generateWanClips").click();
     await page.waitForFunction(() => window.eval("generatedWanClipUrls.length") === 6, null, { timeout: 15000 });
     const mediaState = await page.evaluate(() => ({
