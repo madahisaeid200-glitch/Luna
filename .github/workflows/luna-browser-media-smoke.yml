@@ -2,19 +2,19 @@ name: LUNA real browser media pipeline smoke test
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "producer.html"
-      - "worker.js"
-      - ".github/workflows/luna-browser-media-smoke.yml"
+    inputs:
+      confirm_resource_usage:
+        description: "Confirm that this test may consume image, voice and video provider quotas"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   media-smoke:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,9 +29,11 @@ jobs:
       - name: Wait for the matching GitHub Pages build to be published
         run: |
           set -e
-          URL='https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=all-scenes-artwork-lock-20261102e'
+          BUILD_MARKER=$(grep -o 'name="luna-build" content="[^"]*"' producer.html | sed -E 's/.*content="([^"]+)".*/\1/')
+          if [ -z "$BUILD_MARKER" ]; then echo 'Missing LUNA build marker'; exit 1; fi
+          URL="https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=$BUILD_MARKER"
           for attempt in $(seq 1 36); do
-            if curl -fsSL "$URL" | grep -q 'all-scenes-artwork-lock-20261102e'; then
+            if curl -fsSL "$URL" | grep -q "$BUILD_MARKER"; then
               echo 'Matching producer build is live.'
               exit 0
             fi
@@ -86,8 +88,8 @@ jobs:
               results.push('FIRST_SCENE_VISUAL_QA: PASS');
               await fs.writeFile('luna-test-output/vision-report.txt',firstQa,'utf8');
               await page.locator('#generateMoreScenes').click();
-              await waitFor(()=>/3\s*از\s*[۳3]/.test(document.querySelector('#sceneImagesStatus')?.textContent||'')||/هر سه تصویر مستقل داستان آماده‌اند/.test(document.querySelector('#visualStatus')?.textContent||''),480000,'independent-scene-images-and-qa');
-              results.push('INDEPENDENT_SCENE_IMAGES_AND_QA: PASS (3 distinct generated images passed visual QA)');
+              await waitFor(()=>/6\s*از\s*[۶6]/.test(document.querySelector('#sceneImagesStatus')?.textContent||'')||/هر شش تصویر مستقل داستان آماده‌اند/.test(document.querySelector('#visualStatus')?.textContent||''),720000,'independent-scene-images-and-qa');
+              results.push('INDEPENDENT_SCENE_IMAGES_AND_QA: PASS (6 distinct generated images passed visual QA)');
               const syncedVoiceText=await page.locator('#voiceTestText').inputValue();
               if(!syncedVoiceText.includes('LUNA:')||!syncedVoiceText.includes('LEO:')) throw new Error('Voiceover field was not synchronized from the generated screenplay: '+syncedVoiceText);
               results.push('SCREENPLAY_TO_VOICE_SYNC: PASS');
