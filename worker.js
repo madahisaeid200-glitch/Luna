@@ -720,16 +720,14 @@ ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
-        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        // Try the verified no-key provider first; skip public endpoints with recent 422/530/throttle failures.
+        "__OVH__",
+        ...(env.AI ? [primaryModel, ...(primaryModel === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])] : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
-        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-        "__MURAKUMO_FREE__",
-        "__LLMFAUCET__",
-        "__MURAKUMO__",
-        "__OVH__"
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -1175,12 +1173,10 @@ Do not put speaker names inside the JSON values; the key identifies the speaker.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      // Keep only currently verified no-key routes in the hot path.
-      // LLM7 is IP-throttled, Murakumo/free returns 422 model_or_context_mismatch,
-      // and LLMFaucet returned 530 in the latest live probe; skip these until re-verified.
+      // OVH is the only currently verified no-key text route.
+      // Skip Murakumo (422), LLMFaucet (530), and LLM7 (IP throttling) until re-verified.
       "__OVH__",
-      "__MURAKUMO__",
-      ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+      ...(env.AI ? [primaryModel, ...(primaryModel === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])] : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
