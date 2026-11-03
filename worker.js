@@ -1020,7 +1020,7 @@ ${script.trim()}`;
       try {
         const seed = Array.from(prompt).reduce((hash, ch) => ((hash * 31) + ch.charCodeAt(0)) >>> 0, 8137);
         const imageUrl = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
-        imageUrl.searchParams.set("model", "flux");
+        // The legacy endpoint defaults to its FLUX image model; omit model to avoid selector drift.
         imageUrl.searchParams.set("width", "512");
         imageUrl.searchParams.set("height", "768");
         imageUrl.searchParams.set("seed", String(seed));
@@ -1095,7 +1095,7 @@ ${script.trim()}`;
               model: "awai-network/hokusai",
               provider: "murakumo",
               fallbackUsed: true,
-              fallbackReason: cloudflareError,
+              fallbackReason: cloudflareError + " | Pollinations FLUX: " + pollinationsFailures.join(" | "),
               mode: "image",
               generationMs: Date.now() - generationStartedAt,
               size: "512x768",
