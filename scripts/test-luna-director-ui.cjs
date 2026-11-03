@@ -68,6 +68,7 @@ const plan = {
     await page.locator("#makeDirectorPlan").click();
     await page.waitForFunction(() =>
       (document.querySelector("#aiStatus")?.textContent || "").includes("نقشه کارگردانی به بسته تولید متصل شد"),
+      null,
       { timeout: 15000 }
     );
     const result = await page.evaluate(() => ({
