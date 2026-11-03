@@ -1138,7 +1138,7 @@ el('autoProduce').onclick=async()=>{
      const analyzeButton=el('analyzeSceneImage');
      if(!analyzeButton)throw new Error('دکمه کنترل کیفیت تصویر پیدا نشد.');
      if(analyzeButton.disabled)throw new Error('کنترل کیفیت تصویر دیگری در حال اجراست؛ کمی بعد دوباره تلاش کن.');
-     master.textContent='مرحله ۳/۷ · کنترل کیفیت تصویر بازیابی‌شده…';
+     master.textContent='مرحله ۴/۸ · کنترل کیفیت تصویر بازیابی‌شده…';
      analyzeButton.click();
      await waitFor(
        ()=>firstSceneQaPassed||/تصویر برای تولید ادامه قسمت رد شد|کنترل کیفیت انجام نشد|کنترل کیفیت ناموفق بود/.test(el('imageAnalysisStatus')?.textContent||''),
