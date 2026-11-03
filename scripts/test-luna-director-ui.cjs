@@ -1,7 +1,23 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const producerSource = fs.readFileSync("producer.html", "utf8");
-for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6"]) {
+function jpegDimensions(dataUrl) {
+  const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) { offset++; continue; }
+    const marker = bytes[offset + 1];
+    const length = bytes.readUInt16BE(offset + 2);
+    if ([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)) {
+      return { width: bytes.readUInt16BE(offset + 7), height: bytes.readUInt16BE(offset + 5) };
+    }
+    if (length < 2) break;
+    offset += 2 + length;
+  }
+  return null;
+}
+for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6", "prepareLunaReferenceImage(generatedImageData,480,0.88)"]) {
   if (!producerSource.includes(required)) throw new Error("Six-shot production guard missing: " + required);
 }
 
@@ -47,6 +63,7 @@ const plan = {
   const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
   const errors = [];
   let imageRequests = 0, imageEditRequests = 0, videoRequests = 0;
+  const editImageDimensions = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.route("https://orange-firefly-6434.madahisaeid200.workers.dev/**", async route => {
     if (route.request().method() === "OPTIONS") {
@@ -66,7 +83,7 @@ const plan = {
       });
     }
     if (payload.mode === "image" || payload.mode === "image_edit") {
-      if (payload.mode === "image") imageRequests++; else imageEditRequests++;
+      if (payload.mode === "image") imageRequests++; else { imageEditRequests++; editImageDimensions.push(jpegDimensions(payload.image)); }
       const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/XioAAAAASUVORK5CYII=";
       return route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ image: png, mimeType: "image/png", model: "test-fixture" }) });
     }
@@ -115,6 +132,7 @@ const plan = {
     await page.locator("#generateMoreScenes").click();
     await page.waitForFunction(() => window.eval("generatedSceneImages.length") === 6, null, { timeout: 15000 });
     if (imageRequests !== 1 || imageEditRequests !== 5) throw new Error("Expected one initial image plus five reference edits; got image=" + imageRequests + " edits=" + imageEditRequests);
+    if (editImageDimensions.some(size => !size || size.width !== 480 || size.height !== 480)) throw new Error("Reference images must be normalized to 480x480 before FLUX.2 Klein: " + JSON.stringify(editImageDimensions));
     if (await page.locator("#generateWanClips").isDisabled()) throw new Error("Wan generation did not enable after six images");
     await page.locator("#generateWanClips").click();
     await page.waitForFunction(() => window.eval("generatedWanClipUrls.length") === 6, null, { timeout: 15000 });
@@ -130,6 +148,7 @@ const plan = {
     console.log("PASS: all six image prompts and six motion prompts mapped");
     console.log("PASS: exact six dialogue lines mapped to voice text");
     console.log("PASS: one initial image + five reference-image scene generations");
+    console.log("PASS: all five reference images normalized to 480x480 for FLUX.2 Klein");
     console.log("PASS: six Wan clip requests, six clip cards and assembly enabled");
   } finally {
     await browser.close();
