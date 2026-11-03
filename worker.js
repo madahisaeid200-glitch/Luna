@@ -615,7 +615,7 @@ ${script.trim()}`;
               const source = sourceDialogue[sourceIndex];
               if (speaker && allowed.has(speaker) && speaker.toLowerCase() !== source.speaker.toLowerCase()) return null;
               return { speaker: source.speaker, text: source.text };
-            }).filter(Boolean) : [];
+            }).filter(Boolean);
             shot.characters = Array.isArray(shot.characters) ? shot.characters.filter(name => allowed.has(name)) : [];
             // Repair incomplete provider JSON into usable prompts before returning a shot plan.
             const safeAction = typeof shot.action === "string" && shot.action.trim()
