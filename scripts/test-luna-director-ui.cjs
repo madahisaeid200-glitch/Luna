@@ -65,6 +65,7 @@ const plan = {
     await page.evaluate((draft) => {
       localStorage.setItem("lunaAiEndpoint", "https://orange-firefly-6434.madahisaeid200.workers.dev");
       window.eval("lastDraft = " + JSON.stringify(draft) + ";");
+      document.querySelector("#makeDirectorPlan").disabled = false;
     }, draftText);
     await page.locator("#makeDirectorPlan").click();
     await page.waitForFunction(() =>
