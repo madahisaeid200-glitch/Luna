@@ -15,6 +15,9 @@ const pollinationsBlock = workerSource.slice(workerSource.indexOf("const pollina
 if (!pollinationsBlock.includes("if (!response.ok)")) {
   throw new Error("Pollinations HTTP error placeholders must never be returned as real images");
 }
+if (!workerSource.includes("const pollinationsPrompt =") || !workerSource.includes("Exactly two adult people, one woman and one man")) {
+  throw new Error("The no-key FLUX fallback must use the concise two-character hotel prompt");
+}
 function jpegDimensions(dataUrl) {
   const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
