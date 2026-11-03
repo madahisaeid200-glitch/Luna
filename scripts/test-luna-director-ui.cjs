@@ -63,6 +63,7 @@ const plan = {
   const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
   const errors = [];
   let imageRequests = 0, imageEditRequests = 0, videoRequests = 0;
+  const imagePrompts = [], editPrompts = [];
   const editImageDimensions = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.route("https://orange-firefly-6434.madahisaeid200.workers.dev/**", async route => {
@@ -132,6 +133,8 @@ const plan = {
     await page.locator("#generateMoreScenes").click();
     await page.waitForFunction(() => window.eval("generatedSceneImages.length") === 6, null, { timeout: 15000 });
     if (imageRequests !== 1 || imageEditRequests !== 5) throw new Error("Expected one initial image plus five reference edits; got image=" + imageRequests + " edits=" + imageEditRequests);
+    if (!imagePrompts[0].includes("IS THE MAN") || !imagePrompts[0].includes("modern five-star hotel suite")) throw new Error("Initial image prompt lost LEO gender or hotel-location lock: " + imagePrompts[0].slice(0,700));
+    if (editPrompts.some(prompt => !prompt.includes("is the MAN") || !prompt.includes("never female"))) throw new Error("A reference-edit prompt lost LEO gender continuity.");
     if (editImageDimensions.some(size => !size || size.width !== 480 || size.height !== 480)) throw new Error("Reference images must be normalized to 480x480 before FLUX.2 Klein: " + JSON.stringify(editImageDimensions));
     if (await page.locator("#generateWanClips").isDisabled()) throw new Error("Wan generation did not enable after six images");
     await page.locator("#generateWanClips").click();
