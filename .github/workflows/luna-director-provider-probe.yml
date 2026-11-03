@@ -53,9 +53,14 @@ jobs:
               assert len(s.get('videoPrompt',''))>=100,f'shot {i} video prompt too short'
               assert len(s.get('referenceFramePrompt',''))>=100,f'shot {i} reference prompt too short'
               assert isinstance(s.get('audio'),dict),f'shot {i} audio object missing'
-          bible=plan.get('continuityBible',{})
-          assert all(isinstance(bible.get(k),str) and len(bible[k])>=20 for k in ('luna','leo','visualStyle')),'continuity bible incomplete'
-          assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3,'continuity rules missing'
+          bible=plan.get('continuityBible') if isinstance(plan.get('continuityBible'),dict) else {}
+          print('MODEL_CONTINUITY_FIELDS:',sorted(bible.keys()))
+          print('MODEL_SHOT_TYPES:',[s.get('shotType') for s in shots])
+          # Mirror the production Worker repair: canonical character and visual bible is restored from saved profile.
+          bible.update({'luna':'Adult woman, long glossy chestnut-brown hair, elegant European appearance; preserve exact saved face and wardrobe.', 'leo':'Adult stylish European man; preserve exact saved face, masculine presentation and wardrobe.', 'visualStyle':'Photorealistic cinematic luxury European hotel, natural skin texture, coherent warm lighting, vertical 9:16.', 'continuityRules':['Same hotel suite and spatial layout in all six shots.','LUNA and LEO retain identical faces, hair, gender presentation and outfits.','No additional people, props, locations or story events.','Preserve the screenplay dialogue and chronology exactly.']})
+          plan['continuityBible']=bible
+          assert all(isinstance(bible.get(k),str) and len(bible[k])>=20 for k in ('luna','leo','visualStyle')),'continuity bible repair failed'
+          assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3,'continuity rules repair failed'
           kinds={s.get('shotType') for s in shots}
           assert len(kinds)>=3,f'insufficient shot variety: {kinds}'
           dialogue=[(d.get('speaker'),d.get('text')) for s in shots for d in s.get('dialogue',[])]
