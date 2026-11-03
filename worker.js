@@ -187,7 +187,7 @@ export default {
         },
         publicFallbacks: { murakumo: true, murakumoFree: true, mishima: true, qwen3vl: true },
         message: "Worker is reachable. Keyless Qwen3-VL text, Mishima text, and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
-      }, env.AI ? 200 : 503);
+      }, 200);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
 
