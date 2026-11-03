@@ -80,7 +80,9 @@ jobs:
           ]
           dialogue=[]
           for shot in shots:
-              for item in shot.get('dialogue',[]):
+              items=shot.get('dialogue',[])
+              if isinstance(items,str): items=[items]
+              for item in items:
                   if isinstance(item,str):
                       if ':' in item:
                           speaker,text=item.split(':',1); dialogue.append((speaker.strip(),text.strip()))
