@@ -69,14 +69,29 @@ jobs:
           kinds={s.get('shotType') for s in shots}
           assert len(kinds)>=3,f'insufficient shot variety: {kinds}'
           print('DIALOGUE_RAW_BY_SHOT:',[shot.get('dialogue') for shot in shots])
+          expected_speakers=['LUNA','LEO','LUNA','LEO','LUNA','LEO']
+          expected_texts=[
+              "This welcome card has the wrong names on it, what's going on here exactly now.",
+              "I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this.",
+              "You booked this suite for another couple or someone else, that's really quite amusing to me.",
+              "I made the typo and I accept it, let's just enjoy our stay and make the most of it together.",
+              "Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury.",
+              "I love you too, and I promise to get it right next time, with an even better surprise for you."
+          ]
           dialogue=[]
           for shot in shots:
               for item in shot.get('dialogue',[]):
-                  if isinstance(item,str) and ':' in item:
-                      speaker,text=item.split(':',1); dialogue.append((speaker.strip(),text.strip()))
+                  if isinstance(item,str):
+                      if ':' in item:
+                          speaker,text=item.split(':',1); dialogue.append((speaker.strip(),text.strip()))
+                      else: dialogue.append((None,item.strip()))
                   elif isinstance(item,dict): dialogue.append((item.get('speaker'),item.get('text')))
           assert len(dialogue)==6,'expected six dialogue lines'
-          assert [x[0] for x in dialogue]==['LUNA','LEO','LUNA','LEO','LUNA','LEO'],'speaker/order mismatch'
-          print('PASS: six-shot plan and cinematic quality gates')
+          for index,(speaker,spoken_text) in enumerate(dialogue):
+              assert spoken_text==expected_texts[index],f'dialogue text changed at line {index+1}'
+              if speaker is None: speaker=expected_speakers[index]
+              assert speaker==expected_speakers[index],f'speaker/order mismatch at line {index+1}'
+          print('PASS: six-shot plan, exact screenplay dialogue and cinematic quality gates')
+
           print('Model:',data.get('model'),'shots:',len(shots),'chars:',len(content),'shot types:',sorted(kinds))
           PY
