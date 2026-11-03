@@ -631,6 +631,10 @@ ${script.trim()}`;
             shot.audio = shot.audio && typeof shot.audio === "object" ? shot.audio : { ambience: "Natural ambience of the established location", sfx: "Only sounds implied by the screenplay", musicMood: "Soft romantic comedy" };
             shot.transition = typeof shot.transition === "string" && shot.transition.trim() ? shot.transition.trim().slice(0, 80) : "cut";
           }
+          const recoveredDialogue = plan.shots.flatMap(shot => shot.dialogue || []);
+          if (sourceDialogue.length && recoveredDialogue.length !== sourceDialogue.length) {
+            throw new Error("director omitted or altered screenplay dialogue (" + recoveredDialogue.length + "/" + sourceDialogue.length + ")");
+          }
           plan.episode = plan.episode || {};
           plan.episode.targetDurationSeconds = plan.shots.reduce((sum, shot) => sum + shot.durationSeconds, 0);
           plan.episode.targetAspectRatio = "9:16";
