@@ -1,6 +1,13 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const producerSource = fs.readFileSync("producer.html", "utf8");
+const workerSource = fs.readFileSync("worker.js", "utf8");
+if (workerSource.indexOf("const pollinationsFailures = [];") < 0 || workerSource.indexOf("const pollinationsFailures = [];") > workerSource.indexOf("const hokusaiFailures = [];")) {
+  throw new Error("Worker must attempt the no-key FLUX route before the Hokusai fallback");
+}
+if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
+  throw new Error("Do not force a model selector on the verified anonymous legacy Pollinations endpoint");
+}
 function jpegDimensions(dataUrl) {
   const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
@@ -17,7 +24,7 @@ function jpegDimensions(dataUrl) {
   }
   return null;
 }
-for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6", "prepareLunaReferenceImage(generatedImageData,480,0.88)", "generatedSceneImages.slice(0,6).map(item=>item.dataUrl)", "independentSceneCount=Math.min(6,generatedSceneImages.length)", "{name:'THE REVEAL'", "{name:'HAPPY ENDING'"]) {
+for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6", "prepareLunaReferenceImage(generatedImageData,480,0.88)", "generatedSceneImages.slice(0,6).map(item=>item.dataUrl)", "independentSceneCount=Math.min(6,generatedSceneImages.length)", "{name:'THE REVEAL'", "{name:'HAPPY ENDING'", "شش برش، زیرنویس و صدای واقعی."]) {
   if (!producerSource.includes(required)) throw new Error("Six-shot production guard missing: " + required);
 }
 
