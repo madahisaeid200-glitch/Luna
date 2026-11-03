@@ -125,12 +125,11 @@ jobs:
           import base64, json, os, urllib.request, urllib.error
           base='http://127.0.0.1:8787/'
           report={'image':None}
-          prompt=('Exactly one adult woman and one adult man, visibly different genders, standing together in a modern five-star hotel bedroom suite. '
-                  'The setting must clearly show a king-size bed with an upholstered headboard, beige luxury sofa, marble coffee table, warm bedside lamps and floor-to-ceiling windows with a modern city skyline. This is a hotel room, not a church, chapel, cathedral or religious building. '
-                  'WOMAN: elegant 27-year-old European woman with very long loose chestnut-brown hair, hazel eyes and a champagne-silver silk evening gown. '
-                  'MAN: unmistakably adult male European man, short dark-brown hair, masculine angular jaw, subtle beard stubble, broad shoulders, black tailored tuxedo jacket, white shirt and black trousers. '
-                  'Exactly two people total. Preserve clearly different feminine and masculine gender presentation. Photorealistic live-action luxury hotel editorial, natural skin texture, warm practical lighting, vertical 9:16. '
-                  'NEGATIVE: two women, two men, gender swap, woman in tuxedo, man in gown, church, cathedral, chapel, stained glass, pews, altar, third person, portraits, text, watermark, collage.')
+          prompt=('Photorealistic vertical 9:16 live-action editorial photograph in a modern five-star hotel suite at night. '
+                  'An elegant adult European woman with very long chestnut-brown hair and hazel eyes wears a champagne silk evening gown. '
+                  'Beside her stands an adult European man with short dark-brown hair, subtle beard stubble and a black tailored tuxedo with a white shirt. '
+                  'Clearly one woman and one man, both naturally posed in the same frame. Warm hotel lamps, floor-to-ceiling windows with a city skyline, tasteful luxury interior, natural skin texture, candid romantic-comedy mood. '
+                  'No text, watermark, collage or extra people.')
           req=urllib.request.Request(base,data=json.dumps({'mode':'image','script':prompt}).encode(),headers={'Content-Type':'application/json'},method='POST')
           try:
             with urllib.request.urlopen(req,timeout=210) as response:
