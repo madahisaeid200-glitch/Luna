@@ -1003,6 +1003,11 @@ ${script.trim()}`;
     if (mode === "image") {
       if (typeof script !== "string" || !script.trim()) return json({ error: "Create the video production pack first." }, 400);
       const prompt = script.trim().slice(0, 2000);
+      const sceneMatch = prompt.match(/SCENE:\\s*([\\s\\S]*?)(?:\\.\\s*Preserve|\\s+Photorealistic|\\s+NEGATIVE:|$)/i);
+      const sceneForPublicModel = String(sceneMatch?.[1] || "A romantic moment in the same modern five-star European hotel suite.").slice(0, 260);
+      const lunaForPublicModel = String(characterProfile?.lunaLook || "adult elegant European woman with long glossy chestnut-brown hair").replace(/[\\r\\n]+/g, " ").slice(0, 160);
+      const leoForPublicModel = String(characterProfile?.leoLook || "adult European man with short dark-brown hair and masculine tailored luxury styling").replace(/[\\r\\n]+/g, " ").slice(0, 160);
+      const pollinationsPrompt = ("Photorealistic live-action cinematic vertical 9:16 photograph. Exactly two adult people, one woman and one man, a romantic European couple. LUNA: adult woman, " + lunaForPublicModel + ". LEO: adult man, " + leoForPublicModel + ". Scene: " + sceneForPublicModel + ". Modern five-star hotel suite, warm natural practical lighting, realistic skin texture, premium tailored clothing.").slice(0, 900);
       const generationStartedAt = Date.now();
       let cloudflareError = "";
       try {
@@ -1019,7 +1024,7 @@ ${script.trim()}`;
       const pollinationsFailures = [];
       try {
         const seed = Array.from(prompt).reduce((hash, ch) => ((hash * 31) + ch.charCodeAt(0)) >>> 0, 8137);
-        const imageUrl = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
+        const imageUrl = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(pollinationsPrompt));
         // The legacy endpoint defaults to its FLUX image model; omit model to avoid selector drift.
         imageUrl.searchParams.set("width", "512");
         imageUrl.searchParams.set("height", "768");
