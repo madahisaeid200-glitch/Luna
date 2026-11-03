@@ -415,9 +415,12 @@ function clearCurrentEpisodeMedia(){
   if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}
   generatedImageData='';generatedSceneImages=[];firstSceneQaPassed=false;
   const image=el('sceneImage');if(image)image.removeAttribute('src');
-  const audio=el('voicePreview');if(audio){audio.pause();audio.removeAttribute('src');audio.load();}
+  const audio=el('voicePreview');if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio.style.display='none';}
   const video=el('generatedVideoPreview');if(video){video.pause();video.removeAttribute('src');video.load();video.style.display='none';}
+  const assembled=el('assembledWanPreview');if(assembled){assembled.pause();assembled.removeAttribute('src');assembled.load();assembled.style.display='none';}
+  const assembledLink=el('downloadAssembledWan');if(assembledLink){assembledLink.removeAttribute('href');assembledLink.style.display='none';}
   const link=el('downloadVideoLink');if(link){link.removeAttribute('href');link.style.display='none';}
+  const clipList=el('wanClipList');if(clipList)clipList.replaceChildren();
   el('viewGeneratedVideo').style.display='none';
   el('sceneImageWrap').style.display='none';el('wanClipResults').style.display='none';
   el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۰ از ۳';
@@ -425,7 +428,7 @@ function clearCurrentEpisodeMedia(){
   el('imageAnalysisStatus').textContent='پس از تولید تصویر، کنترل کیفیت بصری اجرا می‌شود.';
   el('voiceTestText').value='';
   el('voiceStatus').textContent='متن صدای قسمت جدید پس از تولید سناریو آماده می‌شود.';
-  ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','editSceneImage','testImageUpload','downloadSceneImage','analyzeSceneImage'].forEach(id=>{if(el(id))el(id).disabled=true;});
+  ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','editSceneImage','testImageUpload','downloadSceneImage','analyzeSceneImage','assembleWanClips'].forEach(id=>{if(el(id))el(id).disabled=true;});
   el('visualStatus').textContent='رسانه‌های قسمت قبلی پاک شدند؛ آماده تولید قسمت جدید.';
 }
 
