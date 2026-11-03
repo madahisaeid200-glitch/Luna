@@ -9,8 +9,8 @@ if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-sm
 if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-smoke]')")) {
   throw new Error("Wan smoke marker must be explicitly opt-in");
 }
-if (workerSource.indexOf("const pollinationsFailures = [];") < 0 || workerSource.indexOf("const pollinationsFailures = [];") > workerSource.indexOf("const hokusaiFailures = [];")) {
-  throw new Error("Worker must attempt the no-key FLUX route before the Hokusai fallback");
+if (workerSource.indexOf("const hokusaiFailures = [];") < 0 || workerSource.indexOf("const hokusaiFailures = [];") > workerSource.indexOf("const pollinationsFailures = [];")) {
+  throw new Error("Worker must prefer the sharper no-key Hokusai route before anonymous Pollinations FLUX");
 }
 if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
   throw new Error("Do not force a model selector on the verified anonymous legacy Pollinations endpoint");
