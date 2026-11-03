@@ -589,7 +589,7 @@ ${script.trim()}`;
             shot.shotType = cinematicFraming[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
             shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
-            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.filter(line => line && allowed.has(line.speaker) && typeof line.text === "string") : [];
+            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.map(line => { if (typeof line === "string") { const match = line.match(/^\s*([^:]+):\s*(.+)$/); return match ? { speaker: match[1].trim(), text: match[2].trim() } : null; } return line && typeof line === "object" ? line : null; }).filter(line => line && allowed.has(line.speaker) && typeof line.text === "string" && line.text.trim()) : [];
             shot.characters = Array.isArray(shot.characters) ? shot.characters.filter(name => allowed.has(name)) : [];
             // Repair incomplete provider JSON into usable prompts before returning a shot plan.
             const safeAction = typeof shot.action === "string" && shot.action.trim()
