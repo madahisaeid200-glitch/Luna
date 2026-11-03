@@ -754,9 +754,9 @@ el('testImageUpload').onclick=async()=>{
    if(!endpoint){el('visualStatus').textContent='آدرس Worker تنظیم نشده است.';return;}
    const profile=saveCharacterProfile(false)||readCharacterProfile();
    const parsed=lastProductionPack?parseProductionPack(lastProductionPack):{shots:[]};
-   const shots=(parsed.shots||[]).slice(0,3);
+   const shots=(parsed.shots||[]).slice().sort((a,b)=>Number(a.id)-Number(b.id)).slice(0,3);
    if(shots.length<3){el('visualStatus').textContent='برای سه کلیپ، بسته تولید باید سه دستور نمای مستقل داشته باشد.';return;}
-   const selected=generatedSceneImages.slice(0,3);
+   const selected=generatedSceneImages.slice(0,3).sort((a,b)=>Number(a.shot)-Number(b.shot));
    button.disabled=true;button.textContent='در حال تولید سه کلیپ واقعی…';
    const results=el('wanClipResults'),list=el('wanClipList');
    list.replaceChildren();results.style.display='block';
@@ -797,7 +797,7 @@ el('testImageUpload').onclick=async()=>{
        list.appendChild(card);completed++;
        logLunaDiagnostic('wan-shot-video-success','Wan generated an independent scene clip',{shot:shot.id||i+1,bytes:blob.size,type});
      }
-     el('assembleWanClips').disabled=generatedWanClipUrls.length!==3;el('visualStatus').textContent='هر سه کلیپ مستقل Wan 2.2 تولید شدند. می‌توانی آن‌ها را جداگانه دانلود کنی یا با دکمه اتصال، به یک فایل WebM تبدیل کنی.';
+     el('assembleWanClips').disabled=generatedWanClipUrls.length!==3;el('visualStatus').textContent='هر سه کلیپ مستقل Wan 2.2 آماده‌اند (حدود ۱۰٫۵ ثانیه حرکت منحصربه‌فرد). در صورت طولانی‌تر بودن دیالوگ، این سه کلیپ به ترتیب تکرار می‌شوند؛ صحنهٔ حرکتی تازه‌ای ساخته نمی‌شود.';
    }catch(error){
      const message=error.name==='AbortError'?'زمان انتظار یکی از کلیپ‌ها تمام شد؛ صف رایگان ممکن است شلوغ باشد.':(error.message||'خطای نامشخص');
      el('visualStatus').textContent='تولید چندکلیپی در '+completed+' از ۳ کلیپ متوقف شد: '+message+'؛ خروجی‌های موفق در همین صفحه باقی مانده‌اند.';
@@ -814,7 +814,7 @@ el('testImageUpload').onclick=async()=>{
    const hasVoice=!!(audio.src&&audio.src.startsWith('data:audio/'));
    let audioStream=null,stream=null,raf=0;
    button.disabled=true;button.textContent='در حال اتصال کلیپ‌های واقعی…';
-   el('visualStatus').textContent='در حال پخش سه کلیپ پشت سر هم و ضبط یک فایل واحد؛ لطفاً صفحه را باز نگه دار.';
+   el('visualStatus').textContent='در حال ضبط سه کلیپ پشت سر هم. اگر دیالوگ از حدود ۱۰٫۵ ثانیه طولانی‌تر باشد، همین سه حرکت به ترتیب تکرار می‌شوند؛ صفحه را باز نگه دار.';
    try{
      const canvas=document.createElement('canvas');canvas.width=720;canvas.height=1280;
      const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان ساخت تصویر ویدئو را ندارد.');
@@ -875,8 +875,8 @@ el('testImageUpload').onclick=async()=>{
      if(assembledWanVideoUrl)URL.revokeObjectURL(assembledWanVideoUrl);
      assembledWanVideoUrl=URL.createObjectURL(blob);
      const preview=el('assembledWanPreview');preview.src=assembledWanVideoUrl;preview.style.display='block';preview.load();
-     const link=el('downloadAssembledWan');link.href=assembledWanVideoUrl;link.style.display='inline-block';link.textContent='دانلود فیلم واحد LUNA (WebM)';
-     el('visualStatus').textContent='سه کلیپ واقعی به ترتیب صحنه‌ها در یک فایل WebM متصل شدند. '+(hasVoice?'صدای دیالوگ نیز همراه خروجی ضبط شد.':'خروجی فعلاً بدون صدای دیالوگ است.')+' حجم: '+(blob.size/1024/1024).toFixed(2)+' MB.';
+     const link=el('downloadAssembledWan');link.href=assembledWanVideoUrl;link.style.display='inline-block';link.textContent='دانلود ویدئوی تدوین‌شده LUNA + صدا (WebM)';
+     el('visualStatus').textContent='سه کلیپ واقعی به ترتیب نماها در یک فایل WebM ضبط شدند. '+(hasVoice?'صدای دیالوگ نیز همراه خروجی ضبط شد. ':'خروجی فعلاً بدون صدای دیالوگ است. ')+'توجه: برای پوشش دیالوگ طولانی‌تر از حدود ۱۰٫۵ ثانیه، همین سه کلیپ تکرار شده‌اند و حرکت جدیدی به آن‌ها اضافه نشده است. حجم: '+(blob.size/1024/1024).toFixed(2)+' MB.';
      logLunaDiagnostic('wan-stitch-success','Three real Wan clips stitched into one WebM',{bytes:blob.size,mime,voiceIncluded:hasVoice});
    }catch(error){
      if(raf)cancelAnimationFrame(raf);
