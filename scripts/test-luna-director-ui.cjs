@@ -11,6 +11,10 @@ if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
 if (!workerSource.includes("upstreamHttpStatus: response.status") || !workerSource.includes("bytes.length < 10_000")) {
   throw new Error("Pollinations fallback must validate image MIME and byte size while preserving upstream status");
 }
+const pollinationsBlock = workerSource.slice(workerSource.indexOf("const pollinationsFailures = [];"), workerSource.indexOf("const hokusaiFailures = [];"));
+if (!pollinationsBlock.includes("if (!response.ok)")) {
+  throw new Error("Pollinations HTTP error placeholders must never be returned as real images");
+}
 function jpegDimensions(dataUrl) {
   const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
