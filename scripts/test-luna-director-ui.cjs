@@ -18,6 +18,9 @@ if (!pollinationsBlock.includes("if (!response.ok)")) {
 if (!workerSource.includes("const pollinationsPrompt =") || !workerSource.includes("Exactly two adult people, one woman and one man")) {
   throw new Error("The no-key FLUX fallback must use the concise two-character hotel prompt");
 }
+if (!workerSource.includes('prompt: pollinationsPrompt, size: "512x768"')) {
+  throw new Error("Hokusai must receive the same concise scene-and-character prompt instead of the verbose raw prompt");
+}
 function jpegDimensions(dataUrl) {
   const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
