@@ -118,7 +118,7 @@ jobs:
           PY
       - name: One real Worker image smoke test
         id: media-smoke
-        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[image-smoke]')
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[image-smoke]') || contains(github.event.head_commit.message, '[wan-smoke]')
         continue-on-error: true
         run: |
           python3 - <<'PY'
