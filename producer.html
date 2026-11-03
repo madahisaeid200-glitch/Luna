@@ -455,7 +455,7 @@ function clearCurrentEpisodeMedia(){
  function logLunaDiagnostic(kind,message,extra={}){const item={time:new Date().toISOString(),kind,message:String(message||'').slice(0,1200),extra};lunaDiagnostics.push(item);try{localStorage.setItem('lunaDiagnostics',JSON.stringify(lunaDiagnostics.slice(-30)))}catch(e){}}
  function openLunaImageDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('luna-image-library',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('images'))db.createObjectStore('images',{keyPath:'id',autoIncrement:true})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
  async function saveLunaImage(dataUrl,meta={}){try{const db=await openLunaImageDb();await new Promise((resolve,reject)=>{const tx=db.transaction('images','readwrite');tx.objectStore('images').add({dataUrl,meta,createdAt:new Date().toISOString()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){logLunaDiagnostic('image-storage-error',e.message||e);return false}}
- async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;const baseRows=rows.filter(x=>x.meta?.mode!=='story-scene');if(!baseRows.length)return false;baseRows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=baseRows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳ · نیازمند کنترل کیفیت';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=true;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
+ async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;const baseRows=rows.filter(x=>x.meta?.mode!=='story-scene');if(!baseRows.length)return false;baseRows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=baseRows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۶ · نیازمند کنترل کیفیت';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=true;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
 function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{profile:readCharacterProfile(),title:el('epTitle').value,worker:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,'')});}
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
  async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
@@ -548,7 +548,7 @@ el('generateSceneImage').onclick=async()=>{
      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
      try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
      const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
-     if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}el('assembleWanClips').disabled=true;el('wanClipResults').style.display='none';el('wanClipList').replaceChildren();const oldAssembled=el('assembledWanPreview');oldAssembled.pause();oldAssembled.removeAttribute('src');oldAssembled.load();oldAssembled.style.display='none';const oldPreview=el('generatedVideoPreview');oldPreview.pause();oldPreview.removeAttribute('src');oldPreview.load();oldPreview.style.display='none';el('downloadAssembledWan').removeAttribute('href');el('downloadAssembledWan').style.display='none';el('viewGeneratedVideo').style.display='none';el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('makeVoicedVideo').disabled=true;
+     if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}el('assembleWanClips').disabled=true;el('wanClipResults').style.display='none';el('wanClipList').replaceChildren();const oldAssembled=el('assembledWanPreview');oldAssembled.pause();oldAssembled.removeAttribute('src');oldAssembled.load();oldAssembled.style.display='none';const oldPreview=el('generatedVideoPreview');oldPreview.pause();oldPreview.removeAttribute('src');oldPreview.load();oldPreview.style.display='none';el('downloadAssembledWan').removeAttribute('href');el('downloadAssembledWan').style.display='none';el('viewGeneratedVideo').style.display='none';el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۶';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('makeVoicedVideo').disabled=true;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=true;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX',prompt:prompt,title:el('epTitle').value,profile:readCharacterProfile()});
      try{
@@ -579,7 +579,7 @@ el('generateSceneImage').onclick=async()=>{
     const neededSceneCount=Math.max(0,Math.min(LUNA_RENDER_SHOT_COUNT,parsed.shots.length)-generatedSceneImages.length);
     const existingShotIds=new Set(generatedSceneImages.map(x=>Number(x.shot)).filter(Number.isFinite));
     const remaining=(parsed.shots||[]).filter(x=>x.id>1&&!existingShotIds.has(Number(x.id))).slice(0,neededSceneCount);
-    if(remaining.length<neededSceneCount){el('visualStatus').textContent='در بسته تولید برای تکمیل سه صحنه مستقل، دستور کافی پیدا نشد. بسته تولید را دوباره بساز.';return;}
+    if(remaining.length<neededSceneCount){el('visualStatus').textContent='در بسته تولید برای تکمیل شش صحنه مستقل، دستور کافی پیدا نشد. بسته تولید را دوباره بساز.';return;}
     const button=el('generateMoreScenes'),profile=saveCharacterProfile(false)||readCharacterProfile();
     const endpoint=(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).trim();
     const castLock='CAST LOCK: exactly two adult leads only, '+profile.lunaName+' and '+profile.leoName+'. No other humans or human-like figures anywhere. Absolutely no faces or people in paintings, framed art, photos, posters, screens, mirrors, reflections, sculptures, statues or mannequins. Walls must be blank or show abstract geometric art only. No staff, guests, silhouettes or background figures.';
@@ -623,8 +623,8 @@ el('generateSceneImage').onclick=async()=>{
         logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,referenceEditUsed,referenceEditError,imageChars:data.image.length});
       }
       el('makeVoicedVideo').disabled=!(el('voicePreview').src||'').startsWith('data:audio/')||generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT||!generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed);el('generateWanClips').disabled=generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT||!generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed);
-       el('visualStatus').textContent='هر سه تصویر مستقل داستان آماده‌اند. در صورت موفقیت ویرایش مرجع، هویت شخصیت‌ها بهتر حفظ می‌شود؛ در مسیر جایگزین متنی ثبات چهره تضمین‌شده نیست.';
-      button.textContent='تصاویر سه صحنه آماده شد';
+       el('visualStatus').textContent='هر شش تصویر مستقل داستان آماده‌اند. در صورت موفقیت ویرایش مرجع، هویت شخصیت‌ها بهتر حفظ می‌شود؛ در مسیر جایگزین متنی ثبات چهره تضمین‌شده نیست.';
+      button.textContent='شش تصویر مستقل آماده شد';
     }catch(error){
       const msg=error.name==='AbortError'?'تولید تصویر بیش از ۱۱۰ ثانیه طول کشید.':(error.message||'خطای نامشخص');
       el('visualStatus').textContent='تولید تصاویر مستقل متوقف شد: '+msg+'؛ تصاویر موفق قبلی حفظ شده‌اند.';
@@ -683,7 +683,7 @@ el('testImageUpload').onclick=async()=>{
        generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];
        generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];
        if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}
-       el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳ · تصویر اصلاح‌شده نیازمند کنترل کیفیت';
+       el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۶ · تصویر اصلاح‌شده نیازمند کنترل کیفیت';
        ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','assembleWanClips'].forEach(id=>{if(el(id))el(id).disabled=true;});
        el('wanClipResults').style.display='none';
        const oldVideo=el('generatedVideoPreview');if(oldVideo){oldVideo.pause();oldVideo.removeAttribute('src');oldVideo.load();oldVideo.style.display='none';}
@@ -768,7 +768,7 @@ el('testImageUpload').onclick=async()=>{
  el('generateWanClips').onclick=async()=>{
    const button=el('generateWanClips');
    if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT||!generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed)){el('visualStatus').textContent='هر شش تصویر باید پیش از تولید Wan از کنترل کیفیت عبور کنند.';return;}
-   if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای ساخت سه کلیپ واقعی، ابتدا سه تصویر مستقل صحنه را کامل کن.';return;}
+   if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای ساخت شش کلیپ واقعی، ابتدا شش تصویر مستقل صحنه را کامل کن.';return;}
    const endpoint=(localStorage.getItem('lunaAiEndpoint')||el('aiEndpoint').value||'').trim().replace(/\/$/,'');
    if(!endpoint){el('visualStatus').textContent='آدرس Worker تنظیم نشده است.';return;}
    const profile=saveCharacterProfile(false)||readCharacterProfile();
@@ -816,24 +816,24 @@ el('testImageUpload').onclick=async()=>{
        list.appendChild(card);completed++;
        logLunaDiagnostic('wan-shot-video-success','Wan generated an independent scene clip',{shot:shot.id||i+1,bytes:blob.size,type});
      }
-     el('assembleWanClips').disabled=generatedWanClipUrls.length!==LUNA_RENDER_SHOT_COUNT;el('visualStatus').textContent='هر سه کلیپ مستقل Wan 2.2 آماده‌اند (حدود ۲۱ ثانیه حرکت منحصربه‌فرد). در صورت طولانی‌تر بودن دیالوگ، این سه کلیپ به ترتیب تکرار می‌شوند؛ صحنهٔ حرکتی تازه‌ای ساخته نمی‌شود.';
+     el('assembleWanClips').disabled=generatedWanClipUrls.length!==LUNA_RENDER_SHOT_COUNT;el('visualStatus').textContent='هر شش کلیپ مستقل Wan 2.2 آماده‌اند (حدود ۲۱ ثانیه حرکت منحصربه‌فرد). در صورت طولانی‌تر بودن دیالوگ، این شش کلیپ به ترتیب تکرار می‌شوند؛ صحنهٔ حرکتی تازه‌ای ساخته نمی‌شود.';
    }catch(error){
      const message=error.name==='AbortError'?'زمان انتظار یکی از کلیپ‌ها تمام شد؛ صف رایگان ممکن است شلوغ باشد.':(error.message||'خطای نامشخص');
      el('visualStatus').textContent='تولید چندکلیپی در '+completed+' از '+LUNA_RENDER_SHOT_COUNT+' کلیپ متوقف شد: '+message+'؛ خروجی‌های موفق در همین صفحه باقی مانده‌اند.';
      logLunaDiagnostic('wan-multishot-error',message,{completed,total:LUNA_RENDER_SHOT_COUNT});
    }finally{
-     button.disabled=generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT;button.textContent='تلاش/تولید سه کلیپ واقعی Wan 2.2';
+     button.disabled=generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT;button.textContent='تلاش/تولید شش کلیپ واقعی Wan 2.2';
    }
  };
 
  el('assembleWanClips').onclick=async()=>{
    const button=el('assembleWanClips');
-   if(generatedWanClipUrls.length!==LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای اتصال، هر سه کلیپ واقعی باید آماده باشند.';return;}
+   if(generatedWanClipUrls.length!==LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای اتصال، هر شش کلیپ واقعی باید آماده باشند.';return;}
    const audio=el('voicePreview');
    const hasVoice=!!(audio.src&&audio.src.startsWith('data:audio/'));
    let audioStream=null,stream=null,raf=0;
    button.disabled=true;button.textContent='در حال اتصال کلیپ‌های واقعی…';
-   el('visualStatus').textContent='در حال ضبط سه کلیپ پشت سر هم. اگر دیالوگ از حدود ۲۱ ثانیه طولانی‌تر باشد، همین شش حرکت به ترتیب تکرار می‌شوند؛ صفحه را باز نگه دار.';
+   el('visualStatus').textContent='در حال ضبط شش کلیپ پشت سر هم. اگر دیالوگ از حدود ۲۱ ثانیه طولانی‌تر باشد، همین شش حرکت به ترتیب تکرار می‌شوند؛ صفحه را باز نگه دار.';
    try{
      const canvas=document.createElement('canvas');canvas.width=720;canvas.height=1280;
      const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان ساخت تصویر ویدئو را ندارد.');
@@ -914,16 +914,16 @@ el('testImageUpload').onclick=async()=>{
    if(!generatedImageData){el('visualStatus').textContent='ابتدا تصویر صحنه را بساز.';return;}
    const audio=el('voicePreview');
    if(!audio.src||!audio.src.startsWith('data:audio/')){el('visualStatus').textContent='ابتدا صدای دیالوگ را بساز.';return;}
-   const button=el('makeVoicedVideo');if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای ساخت پیش‌نمایش تدوین‌شده، ابتدا هر سه تصویر مستقل صحنه را بساز.';return;}button.disabled=true;button.textContent='در حال ساخت پیش‌نمایش تدوین‌شده…';
+   const button=el('makeVoicedVideo');if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT){el('visualStatus').textContent='برای ساخت پیش‌نمایش تدوین‌شده، ابتدا هر شش تصویر مستقل صحنه را بساز.';return;}button.disabled=true;button.textContent='در حال ساخت پیش‌نمایش تدوین‌شده…';
    el('visualStatus').textContent='در حال تدوین نماهای متنوع، زیرنویس دیالوگ و صدای واقعی…';
    let audioStream=null,stream=null,frameId=null;
    try{
      const img=el('sceneImage');
      if(!img.complete||!img.naturalWidth)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-     const selectedSceneData=generatedSceneImages.slice(0,3).map(item=>item.dataUrl);
+     const selectedSceneData=generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).map(item=>item.dataUrl);
      if(!selectedSceneData.length)selectedSceneData.push(generatedImageData);
-     while(selectedSceneData.length<3)selectedSceneData.push(selectedSceneData[selectedSceneData.length-1]);
-     const independentSceneCount=Math.min(3,generatedSceneImages.length);
+     while(selectedSceneData.length<LUNA_RENDER_SHOT_COUNT)selectedSceneData.push(selectedSceneData[selectedSceneData.length-1]);
+     const independentSceneCount=Math.min(LUNA_RENDER_SHOT_COUNT,generatedSceneImages.length);
      const sceneImageElements=await Promise.all(selectedSceneData.map(dataUrl=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('یکی از تصاویر صحنه بارگذاری نشد.'));image.src=dataUrl;})));
      if(typeof audio.captureStream!=='function'&&typeof audio.mozCaptureStream!=='function')throw new Error('این مرورگر امکان ضبط صدای پخش‌شده را ندارد.');
      audioStream=(audio.captureStream||audio.mozCaptureStream).call(audio);
@@ -1016,7 +1016,7 @@ el('testImageUpload').onclick=async()=>{
    }finally{
      if(stream)stream.getTracks().forEach(t=>t.stop());
      if(audioStream)audioStream.getTracks().forEach(t=>t.stop());
-     button.disabled=generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT;button.textContent='۴. ساخت پیش‌نمایش تدوین‌شده از سه تصویر (Animatic)';
+     button.disabled=generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT;button.textContent='۴. ساخت پیش‌نمایش تدوین‌شده از شش تصویر (Animatic)';
    }
  };
 
@@ -1158,7 +1158,7 @@ el('autoProduce').onclick=async()=>{
    };
    if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT){
      master.textContent='مرحله ۵/۸ · ساخت شش تصویر مستقل…';
-     await runAutoStage('generateMoreScenes',()=>generatedSceneImages.length>=LUNA_RENDER_SHOT_COUNT&&generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed),'ساخت و کنترل کیفیت سه صحنه',420000);
+     await runAutoStage('generateMoreScenes',()=>generatedSceneImages.length>=LUNA_RENDER_SHOT_COUNT&&generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed),'ساخت و کنترل کیفیت شش صحنه',420000);
    }
    if(generatedSceneImages.length<LUNA_RENDER_SHOT_COUNT||!generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed))throw new Error('هر شش تصویر مستقل باید کنترل کیفیت را بگذرانند.');
    master.textContent='مرحله ۶/۸ · ساخت صدای دیالوگ…';
@@ -1167,7 +1167,7 @@ el('autoProduce').onclick=async()=>{
    master.textContent='مرحله ۷/۸ · تولید شش کلیپ واقعی Wan 2.2…';
    await runAutoStage('generateWanClips',()=>generatedWanClipUrls.length===LUNA_RENDER_SHOT_COUNT,'تولید شش کلیپ واقعی Wan',780000);
    master.textContent='مرحله ۸/۸ · اتصال کلیپ‌ها و صدای دیالوگ…';
-   await runAutoStage('assembleWanClips',()=>!!assembledWanVideoUrl,'اتصال سه کلیپ و صدا',240000);
+   await runAutoStage('assembleWanClips',()=>!!assembledWanVideoUrl,'اتصال شش کلیپ و صدا',240000);
    const finalPreview=el('assembledWanPreview');
    el('visualStatus').textContent+=' · زنجیرهٔ کامل شامل شش تصویر تأییدشده، صدای دیالوگ، شش کلیپ واقعی Wan و فایل واحد WebM آماده شد.';
    master.textContent='تولید کامل شد — مشاهده فیلم واحد';
