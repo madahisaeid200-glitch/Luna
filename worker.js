@@ -451,9 +451,9 @@ export default {
       if (script.length > 14000) return json({ error: "The episode script is too long for one director-plan request." }, 400);
       const directorPrompt = `Convert this finished screenplay into a production-ready multi-shot generative-video plan.
 Return ONLY compact valid JSON, no markdown. Keep every field concise and output exactly 6 shots for a short episode. Use this schema:
-{"schemaVersion":"luna-video-plan@1.0.0","episode":{"title":"...","logline":"...","targetAspectRatio":"9:16","targetDurationSeconds":36},"continuityBible":{"luna":"...","leo":"...","visualStyle":"...","continuityRules":["..."]},"shots":[{"id":"S01","durationSeconds":6,"location":"...","shotType":"wide|medium|close-up|over-shoulder|insert","characters":["LUNA"],"action":"one visible action","emotion":"...","dialogue":[{"speaker":"LUNA","text":"exact source line"}],"videoPrompt":"concise motion and camera prompt","referenceFramePrompt":"concise still-image prompt","audio":{"ambience":"...","sfx":"...","musicMood":"..."},"transition":"cut"}],"captions":[{"shotId":"S01","text":"..."}],"qualityGates":["..."]}
+{"schemaVersion":"luna-video-plan@1.0.0","episode":{"title":"...","logline":"...","targetAspectRatio":"9:16","targetDurationSeconds":30},"continuityBible":{"luna":"...","leo":"...","visualStyle":"...","continuityRules":["..."]},"shots":[{"id":"S01","durationSeconds":5,"location":"...","shotType":"wide|medium|close-up|over-shoulder|insert","characters":["LUNA"],"action":"one visible action","emotion":"...","dialogue":[{"speaker":"LUNA","text":"exact source line"}],"videoPrompt":"concise motion and camera prompt","referenceFramePrompt":"concise still-image prompt","audio":{"ambience":"...","sfx":"...","musicMood":"..."},"transition":"cut"}],"captions":[{"shotId":"S01","text":"..."}],"qualityGates":["..."]}
 Rules:
-- Exactly 6 shots for a short episode; 10-12 for a longer episode. Each shot is ONE coherent action, suitable for a separate 4-10 second video generation. Keep each prompt under 35 words and JSON compact.
+- Exactly 6 shots for a short episode; 10-12 for a longer episode. Each short-episode shot is exactly 5 seconds (30 seconds total); long-episode shots may be 6-10 seconds. Keep each prompt under 35 words and JSON compact.
 - Preserve exact story, chronology, punchline and ending. Invent no events, people, props or locations.
 - Main couple only: ${profile.lunaName} and ${profile.leoName}.
 - Fixed character bible: ${profile.lunaName}: ${profile.lunaLook} Personality: ${profile.lunaPersonality}. ${profile.leoName}: ${profile.leoLook} Personality: ${profile.leoPersonality}. Style: ${profile.style}.
@@ -500,7 +500,7 @@ ${script.trim()}`;
         if (false && structured && keys.every(key => typeof structured[key] === "string" && structured[key].trim())) { // Keep the deterministic plan builder dormant: always try a live AI director provider first.
           const makeShot = (id, shotType, action, emotion, characters, dialogue, camera) => ({
             id,
-            durationSeconds: 6,
+            durationSeconds: 5,
             location: "Use only the location already established in the screenplay",
             shotType,
             characters,
@@ -522,7 +522,7 @@ ${script.trim()}`;
           ];
           const plan = {
             schemaVersion: "luna-video-plan@1.0.0",
-            episode: { title: String(title || "LUNA short episode"), logline: "A short episode planned directly from the accepted screenplay.", targetAspectRatio: "9:16", targetDurationSeconds: 36 },
+            episode: { title: String(title || "LUNA short episode"), logline: "A short episode planned directly from the accepted screenplay.", targetAspectRatio: "9:16", targetDurationSeconds: 30 },
             continuityBible: {
               luna: profile.lunaLook,
               leo: profile.leoLook,
@@ -600,7 +600,7 @@ ${script.trim()}`;
             // Enforce deliberate cinematic coverage even when the model repeats one framing.
             shot.shotType = cinematicFraming[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
-            shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
+            shot.durationSeconds = Math.max(4, Math.min(duration === "long" ? 10 : 5, Number(shot.durationSeconds) || (duration === "long" ? 6 : 5)));
             shot.dialogue = (Array.isArray(shot.dialogue) ? shot.dialogue : typeof shot.dialogue === "string" ? [shot.dialogue] : []).map(line => {
               let candidate = typeof line === "string" ? line.trim() : line && typeof line === "object" ? String(line.text || "").trim() : "";
               let speaker = line && typeof line === "object" ? String(line.speaker || "").trim() : "";
@@ -672,7 +672,7 @@ ${script.trim()}`;
             const action = name + " delivers this exact screenplay line with a natural, restrained expression.";
             return {
               id: "S" + String(index + 1).padStart(2, "0"),
-              durationSeconds: 6,
+              durationSeconds: 5,
               location: "The same location established in the screenplay",
               shotType: framing,
               characters: [name, ...(index % 2 === 0 ? [other] : [])],
@@ -687,7 +687,7 @@ ${script.trim()}`;
           });
           const plan = {
             schemaVersion: "luna-video-plan@1.0.0",
-            episode: { title: String(title || "LUNA short episode"), logline: "Six sequential shots mapped from the accepted screenplay dialogue.", targetAspectRatio: "9:16", targetDurationSeconds: 36 },
+            episode: { title: String(title || "LUNA short episode"), logline: "Six sequential shots mapped from the accepted screenplay dialogue.", targetAspectRatio: "9:16", targetDurationSeconds: 30 },
             continuityBible: {
               luna: profile.lunaLook,
               leo: profile.leoLook,
