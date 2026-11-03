@@ -31,7 +31,7 @@ jobs:
           python3 - <<'PY'
           import re
           html=open('producer.html',encoding='utf-8').read()
-          scripts=re.findall(r'<script\\b[^>]*>(.*?)</script>',html,re.S|re.I)
+          scripts=re.findall(r'<script\b[^>]*>(.*?)</script>',html,re.S|re.I)
           if not scripts: raise SystemExit('No inline scripts found')
           for index,script in enumerate(scripts):
               path=f'/tmp/producer-inline-{index}.js'
