@@ -1,15 +1,17 @@
 name: LUNA deployed Worker TTS proof
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - worker.js
-      - .github/workflows/luna-worker-tts-smoke.yml
+    inputs:
+      confirm_resource_usage:
+        description: "Confirm that this test may consume live TTS provider quota"
+        required: true
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   deployed-worker-tts:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
