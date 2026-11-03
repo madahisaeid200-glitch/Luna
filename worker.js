@@ -547,7 +547,7 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
         // Director plans are compact; use the verified OVH no-key route first.
-        // Skip the two Murakumo chat selectors that failed live probes (422 / timeout).
+        // Use the current documented murakumo/free selector next; the retired Qwen chat selector returned 422.
         "__OVH__",
         "__MURAKUMO_FREE__",
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel, FALLBACK_MODEL] : [primaryModel, FALLBACK_MODEL]) : []),
@@ -721,7 +721,7 @@ ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
-        // Try the verified no-key provider first; skip public endpoints with recent 422/530/throttle failures.
+        // Try verified OVH first, then the current documented keyless murakumo/free route.
         "__OVH__",
         "__MURAKUMO_FREE__",
         ...(env.AI ? [primaryModel, ...(primaryModel === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])] : []),
@@ -1171,7 +1171,7 @@ ${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS 
 Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-    // Cloudflare is primary; OVH anonymous Llama is the stronger no-key short-script fallback, with Mishima/Qwen as later fallbacks.
+    // Cloudflare is primary; OVH is the verified no-key fallback, followed by the documented murakumo/free selector.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
