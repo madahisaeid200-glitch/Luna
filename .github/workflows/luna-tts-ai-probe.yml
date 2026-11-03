@@ -1,15 +1,17 @@
 name: LUNA keyless TTS provider probe
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - .github/workflows/luna-tts-ai-probe.yml
-      - worker.js
-    branches: [main]
+    inputs:
+      confirm_resource_usage:
+        description: "Confirm that this test may consume live TTS provider quota"
+        required: true
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   probe:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
