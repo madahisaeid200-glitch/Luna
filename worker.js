@@ -1019,8 +1019,53 @@ ${script.trim()}`;
       } catch (error) {
         cloudflareError = String(error?.message || error || "unknown Cloudflare image error").slice(0, 240);
       }
-      // Prefer the legacy no-key Pollinations FLUX route before Hokusai.
-      // It is best-effort and may be rate-limited; validate actual image bytes before accepting it.
+      const hokusaiFailures = [];
+      // Prefer Hokusai as the first no-key fallback: the smoke test produced sharper, more natural faces than anonymous FLUX.
+      // Retry only transient capacity/server failures; never retry invalid prompts or client errors.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "awai-network/hokusai", prompt: pollinationsPrompt, size: "512x768" }),
+            signal: AbortSignal.timeout(95_000)
+          });
+          const raw = await response.text();
+          let data;
+          try { data = JSON.parse(raw); } catch { throw new Error("Hokusai HTTP " + response.status + ": non-JSON response"); }
+          if (!response.ok) {
+            const detail = String(data?.error?.message || data?.error || data?.message || raw).slice(0, 220);
+            const transient = response.status === 429 || response.status >= 500;
+            hokusaiFailures.push("attempt " + attempt + ": Hokusai HTTP " + response.status + ": " + detail);
+            if (!transient || attempt === 3) break;
+          } else {
+            const image = data?.data?.[0]?.b64_json;
+            if (typeof image !== "string" || !image) throw new Error("Hokusai returned no base64 image data.");
+            return json({
+              image,
+              mimeType: "image/png",
+              model: "awai-network/hokusai",
+              provider: "murakumo",
+              fallbackUsed: true,
+              fallbackReason: cloudflareError,
+              mode: "image",
+              generationMs: Date.now() - generationStartedAt,
+              size: "512x768",
+              hokusaiAttempts: attempt
+            });
+          }
+        } catch (fallbackError) {
+          hokusaiFailures.push("attempt " + attempt + ": " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 220));
+          if (attempt === 3) break;
+          // Do not keep retrying hard client errors; only retry network/timeouts and 5xx/429 above.
+          const message = String(fallbackError?.message || fallbackError || "");
+          if (/Hokusai HTTP 4(?!29)/.test(message)) break;
+        }
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 3500));
+      }
+
+      // Final no-key FLUX fallback after the sharper Hokusai route is unavailable.
+      // Never accept non-2xx refusal placeholders, even if the gateway labels them as images.
       const pollinationsFailures = [];
       try {
         const seed = Array.from(prompt).reduce((hash, ch) => ((hash * 31) + ch.charCodeAt(0)) >>> 0, 8137);
@@ -1069,50 +1114,6 @@ ${script.trim()}`;
         pollinationsFailures.push(String(error?.message || error || "unknown Pollinations FLUX error").slice(0, 260));
       }
 
-      const hokusaiFailures = [];
-      // Hokusai remains the final no-key fallback if Pollinations FLUX is unavailable.
-      // Retry only transient capacity/server failures; never retry invalid prompts or client errors.
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "awai-network/hokusai", prompt: pollinationsPrompt, size: "512x768" }),
-            signal: AbortSignal.timeout(95_000)
-          });
-          const raw = await response.text();
-          let data;
-          try { data = JSON.parse(raw); } catch { throw new Error("Hokusai HTTP " + response.status + ": non-JSON response"); }
-          if (!response.ok) {
-            const detail = String(data?.error?.message || data?.error || data?.message || raw).slice(0, 220);
-            const transient = response.status === 429 || response.status >= 500;
-            hokusaiFailures.push("attempt " + attempt + ": Hokusai HTTP " + response.status + ": " + detail);
-            if (!transient || attempt === 3) break;
-          } else {
-            const image = data?.data?.[0]?.b64_json;
-            if (typeof image !== "string" || !image) throw new Error("Hokusai returned no base64 image data.");
-            return json({
-              image,
-              mimeType: "image/png",
-              model: "awai-network/hokusai",
-              provider: "murakumo",
-              fallbackUsed: true,
-              fallbackReason: cloudflareError + " | Pollinations FLUX: " + pollinationsFailures.join(" | "),
-              mode: "image",
-              generationMs: Date.now() - generationStartedAt,
-              size: "512x768",
-              hokusaiAttempts: attempt
-            });
-          }
-        } catch (fallbackError) {
-          hokusaiFailures.push("attempt " + attempt + ": " + String(fallbackError?.message || fallbackError || "unknown error").slice(0, 220));
-          if (attempt === 3) break;
-          // Do not keep retrying hard client errors; only retry network/timeouts and 5xx/429 above.
-          const message = String(fallbackError?.message || fallbackError || "");
-          if (/Hokusai HTTP 4(?!29)/.test(message)) break;
-        }
-        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 3500));
-      }
       return json({
         error: "Image generation failed on Cloudflare FLUX, Hokusai and Pollinations.",
         details: "Cloudflare: " + cloudflareError + " | Pollinations: " + pollinationsFailures.join(" | ") + " | Hokusai: " + hokusaiFailures.join(" | "),
