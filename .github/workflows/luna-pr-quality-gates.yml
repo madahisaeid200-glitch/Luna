@@ -94,6 +94,12 @@ jobs:
             'Automatic production must wait for all three Wan clips');
           assert.match(autoHandler, /assembledWanVideoUrl/,
             'Automatic production must wait for the final stitched film');
+          assert.match(autoHandler, /if\(!lastDraft&&!quotaBlocked\)/,
+            'A valid Worker-provided local-template screenplay must not be rejected just because it is not AI-generated');
+          assert.match(autoHandler, /if\(!lastDraft\)\{[\s\S]*lastDraft=draft\(/,
+            'Browser-side fallback screenplay may only be synthesized when no valid Worker screenplay exists');
+          assert.match(autoHandler, /Worker یک سناریوی جایگزین محلی برگرداند/,
+            'Local-template fallback must be clearly labelled as non-AI output');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
           assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
