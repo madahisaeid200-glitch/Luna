@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - name: Syntax-check Worker JavaScript
+        run: node --check worker.js
       - name: Test six-shot OVH director output
         shell: bash
         run: |
