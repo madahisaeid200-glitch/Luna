@@ -968,6 +968,9 @@ el('autoProduce').onclick=async()=>{
        const premise=el('premise').value.trim()||'Leo plans a romantic surprise in a luxury hotel, but a booking mix-up creates a funny misunderstanding.';
        lastDraft=draft(el('scriptLang').value,title,premise,el('duration').value,el('tone').value);
        lastDraftIsAi=false;
+       clearCurrentEpisodeMedia();
+       const fallbackDialogue=syncVoiceTextFromScript(lastDraft);
+       if(fallbackDialogue)el('voiceStatus').textContent='دیالوگ‌های سناریوی جایگزین برای صداگذاری آماده شدند.';
        el('output').textContent=lastDraft;
        const profile=saveCharacterProfile(false)||readCharacterProfile();
        const localPrompt='Photorealistic cinematic luxury European hotel scene. '+profile.lunaName+': '+profile.lunaLook+' '+profile.leoName+': '+profile.leoLook+' '+premise+' Preserve both identities, faces and outfits. Vertical 9:16, warm natural lighting, no text.';
