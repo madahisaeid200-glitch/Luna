@@ -1,0 +1,42 @@
+name: LUNA MP4 conversion capability probe
+on:
+  push:
+    branches:
+      - probe/director-ovh-compact
+    paths:
+      - .github/workflows/luna-mp4-conversion-probe.yml
+  workflow_dispatch:
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Generate a short WebM sample and convert to MP4
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=720x1280:rate=24 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 5 -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -c:a libopus /tmp/luna-probe.webm
+          ffmpeg -hide_banner -loglevel error -i /tmp/luna-probe.webm -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart /tmp/luna-probe.mp4
+          ffprobe -v error -show_entries format=format_name,duration,size -show_entries stream=codec_type,codec_name,width,height -of json /tmp/luna-probe.mp4 | tee /tmp/luna-mp4-report.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/luna-mp4-report.json'))
+          streams=data.get('streams',[])
+          video=next((s for s in streams if s.get('codec_type')=='video'),{})
+          audio=next((s for s in streams if s.get('codec_type')=='audio'),{})
+          assert video.get('codec_name')=='h264',f"Expected H.264, got {video}"
+          assert audio.get('codec_name')=='aac',f"Expected AAC, got {audio}"
+          assert video.get('width')==720 and video.get('height')==1280,f"Unexpected dimensions: {video}"
+          assert 'mp4' in data.get('format',{}).get('format_name',''),f"Not MP4: {data.get('format')}"
+          print('PASS: real MP4 container with H.264 video and AAC audio')
+          PY
+      - name: Upload verified MP4 probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-mp4-conversion-probe
+          path: |
+            /tmp/luna-probe.mp4
+            /tmp/luna-mp4-report.json
