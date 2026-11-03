@@ -340,11 +340,38 @@ export default {
         if (current) chunks.push(current);
         return chunks;
       };
+      // Keep the speaker label attached to each audio job so LUNA and LEO
+      // receive distinct Kokoro voices while preserving screenplay order.
+      const dialogueLines = speech.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+      const hasSpeakerLabels = dialogueLines.some(line => /^(LUNA|LEO)\\s*:/i.test(line));
+      const utterances = [];
+      if (hasSpeakerLabels) {
+        let currentSpeaker = "LUNA";
+        for (const line of dialogueLines) {
+          const match = line.match(/^(LUNA|LEO)\\s*:\\s*(.*)$/i);
+          if (match) {
+            currentSpeaker = match[1].toUpperCase();
+            if (match[2].trim()) utterances.push({ speaker: currentSpeaker, text: match[2].trim() });
+          } else if (utterances.length) {
+            utterances[utterances.length - 1].text += " " + line;
+          } else {
+            utterances.push({ speaker: currentSpeaker, text: line });
+          }
+        }
+      } else {
+        utterances.push({ speaker: "LUNA", text: speech });
+      }
+      const speechJobs = utterances.flatMap(item => splitSpeech(item.text).map(text => ({
+        speaker: item.speaker,
+        text,
+        voice: item.speaker === "LEO" ? "am_adam" : "af_bella"
+      })));
+      if (!speechJobs.length) return json({ error: "No dialogue text was found." }, 400);
 
       try {
         const startedAt = Date.now();
-        const chunks = splitSpeech(speech);
         const audioParts = [];
+        const speakerCounts = { LUNA: 0, LEO: 0 };
         const apiBase = "https://api.tts.ai";
         // Bound the complete request so a slow anonymous queue cannot leave the browser
         // waiting longer than the Producer's 150-second request budget.
@@ -356,15 +383,17 @@ export default {
           return Math.min(cap, remaining);
         };
 
-        for (let index = 0; index < chunks.length; index++) {
+        for (let index = 0; index < speechJobs.length; index++) {
+          const jobPart = speechJobs[index];
+          speakerCounts[jobPart.speaker]++;
           const submitResponse = await fetch(apiBase + "/v1/tts/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             signal: AbortSignal.timeout(boundedTimeout(20_000)),
             body: JSON.stringify({
               model: "kokoro",
-              text: chunks[index],
-              voice: "af_bella",
+              text: jobPart.text,
+              voice: jobPart.voice,
               format: "mp3",
               language: "en"
             })
@@ -387,10 +416,10 @@ export default {
             let poll;
             try { poll = JSON.parse(pollRaw); } catch { throw new Error("TTS.ai status returned non-JSON HTTP " + pollResponse.status); }
             if (!pollResponse.ok) throw new Error("TTS.ai status HTTP " + pollResponse.status);
-            if (poll.status === "failed") throw new Error("TTS.ai generation failed for audio chunk " + (index + 1));
+            if (poll.status === "failed") throw new Error("TTS.ai generation failed for " + jobPart.speaker + " audio chunk " + (index + 1));
             if (poll.status === "completed" && poll.result_url) { completed = poll; break; }
           }
-          if (!completed) throw new Error("TTS.ai timed out or reached the total time budget on audio chunk " + (index + 1));
+          if (!completed) throw new Error("TTS.ai timed out or reached the total time budget on " + jobPart.speaker + " audio chunk " + (index + 1));
 
           const resultUrl = new URL(completed.result_url);
           if (resultUrl.protocol !== "https:" || !/(^|\.)tts\.ai$/i.test(resultUrl.hostname)) {
@@ -418,6 +447,8 @@ export default {
           model: "Kokoro (TTS.ai, anonymous)",
           provider: "tts.ai",
           mode: "tts",
+          voices: { LUNA: "af_bella", LEO: "am_adam" },
+          speakerChunks: speakerCounts,
           chunks: audioParts.length,
           generationMs: Date.now() - startedAt
         });
