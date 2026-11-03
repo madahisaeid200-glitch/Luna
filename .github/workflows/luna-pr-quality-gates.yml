@@ -81,6 +81,20 @@ jobs:
           assert.match(html, /const qa=validateLunaImageQa\(analysis,true\)/,
             'First scene QA must require both LUNA and LEO');
 
+          const voicedStart = html.indexOf("el('makeVoicedVideo').onclick=async()=>");
+          const voicedEnd = html.indexOf("el('generateVoice').onclick=async()=>", voicedStart);
+          assert.ok(voicedStart >= 0 && voicedEnd > voicedStart, 'Missing voiced animatic handler');
+          const voicedHandler = html.slice(voicedStart, voicedEnd);
+          assert.match(voicedHandler, /captionWeights/,
+            'Dialogue captions must use weighted durations rather than equal time slices');
+          assert.match(voicedHandler, /captionEnds\.findIndex/,
+            'Caption selection must follow cumulative weighted timing');
+          assert.match(voicedHandler, /caption\.replace\(\/\^\(LUNA\|LEO\|LUNA & LEO\)\\s\*:/,
+            'Speaker labels must be stripped from rendered captions');
+          assert.match(voicedHandler, /audio\.readyState<1/,
+            'Audio metadata must be ready before reading its duration');
+          assert.match(voicedHandler, /if\(!duration\)/,
+            'Animatic must reject unknown audio duration rather than silently assume 30 seconds');
           const generationStart = html.indexOf("el('generateSceneImage').onclick=async()=>");
           const generationEnd = html.indexOf("el('generateMoreScenes').onclick=async()=>", generationStart);
           assert.ok(generationStart >= 0 && generationEnd > generationStart, 'Missing first-scene generation handler');
