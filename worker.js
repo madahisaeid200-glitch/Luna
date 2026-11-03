@@ -907,6 +907,11 @@ ${script.trim()}`;
               role: "user",
               content: [
                 { type: "text", text: analysisPrompt },
+                ...(referenceImage ? [
+                  { type: "text", text: "REFERENCE IMAGE (first): use it only as the identity baseline." },
+                  { type: "image_url", image_url: { url: referenceImage } },
+                  { type: "text", text: "CANDIDATE IMAGE (second): compare the same two lead faces against the reference." }
+                ] : []),
                 { type: "image_url", image_url: { url: body.image } }
               ]
             }],
