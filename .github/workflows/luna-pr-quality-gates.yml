@@ -81,6 +81,20 @@ jobs:
           assert.match(html, /const qa=validateLunaImageQa\(analysis,true\)/,
             'First scene QA must require both LUNA and LEO');
 
+          const editStart = html.indexOf("el('editSceneImage').onclick=async()=>");
+          const editEnd = html.indexOf("el('downloadSceneImage').onclick=", editStart);
+          assert.ok(editStart >= 0 && editEnd > editStart, 'Missing image-edit handler');
+          const editHandler = html.slice(editStart, editEnd);
+          assert.match(editHandler, /firstSceneQaPassed=false/,
+            'Editing the first image must invalidate its previous approval');
+          assert.match(editHandler, /qaPassed:false/,
+            'Edited first image must start unapproved');
+          assert.match(editHandler, /validateLunaImageQa\\(editedQa.analysis,true\\)/,
+            'Edited first image must pass fresh two-person visual QA');
+          for (const id of ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','assembleWanClips']) {
+            assert.ok(editHandler.includes("'" + id + "'"),
+              'Editing the first image must lock downstream action: ' + id);
+          }
           console.log('INLINE_SCRIPT_SYNTAX: PASS (' + scripts.length + ' scripts)');
           console.log('SCREENPLAY_TO_VOICE_SYNC: PASS');
           console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
