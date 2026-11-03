@@ -37,6 +37,10 @@ jobs:
             'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
           assert.ok(!healthBlock.includes('env.AI ? 200 : 503'),
             'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
+          assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
+            'Murakumo fallback must use the current documented public model selector');
+          assert.equal((worker.match(/^\\s*"__MURAKUMO_FREE__",\\s*$/gm) || []).length, 3,
+            'Keyless Murakumo fallback must be wired into screenplay, director, and production-pack routes');
 
           const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
             .map(match => match[1]).filter(source => source.trim());
