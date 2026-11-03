@@ -230,8 +230,8 @@ jobs:
           ]) assert.ok(localPack.includes(phrase), 'Local fallback is missing a distinct per-shot direction: ' + phrase);
           assert.match(html, /shot\.motionPrompt\|\|shot\.action\|\|shot\.raw/,
             'Each Wan clip must consume its matching shot-specific motion prompt');
-          assert.ok(html.includes('This is shot '+"'"+'+(i+1)+"'"+' of the same episode'),
-            'Wan prompts must retain episode chronology per shot');
+          assert.match(html, /Shot direction: '\+shotPrompt/,
+            'Wan prompts must include the matching shot-specific motion direction');
           assert.ok(autoHandler.includes("if(el('duration').value==='long')"),
             'Automatic production must block 3–5 minute episodes until the renderer supports all planned shots');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
