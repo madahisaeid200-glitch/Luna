@@ -1014,8 +1014,61 @@ ${script.trim()}`;
       } catch (error) {
         cloudflareError = String(error?.message || error || "unknown Cloudflare image error").slice(0, 240);
       }
+      // Prefer the legacy no-key Pollinations FLUX route before Hokusai.
+      // It is best-effort and may be rate-limited; validate actual image bytes before accepting it.
+      const pollinationsFailures = [];
+      try {
+        const seed = Array.from(prompt).reduce((hash, ch) => ((hash * 31) + ch.charCodeAt(0)) >>> 0, 8137);
+        const imageUrl = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
+        imageUrl.searchParams.set("model", "flux");
+        imageUrl.searchParams.set("width", "512");
+        imageUrl.searchParams.set("height", "768");
+        imageUrl.searchParams.set("seed", String(seed));
+        imageUrl.searchParams.set("nologo", "true");
+        imageUrl.searchParams.set("private", "true");
+        imageUrl.searchParams.set("enhance", "false");
+        const response = await fetch(imageUrl.toString(), {
+          method: "GET",
+          headers: { "Accept": "image/jpeg,image/png,image/webp" },
+          signal: AbortSignal.timeout(75_000)
+        });
+        if (!response.ok) {
+          const detail = (await response.text()).slice(0, 260);
+          pollinationsFailures.push("Pollinations FLUX HTTP " + response.status + ": " + detail);
+        } else {
+          const mimeType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+          if (!mimeType.startsWith("image/")) {
+            pollinationsFailures.push("Pollinations FLUX returned non-image content: " + mimeType);
+          } else {
+            const bytes = new Uint8Array(await response.arrayBuffer());
+            if (bytes.length < 10_000 || bytes.length > 8_000_000) {
+              pollinationsFailures.push("Pollinations FLUX image size outside safe bounds: " + bytes.length + " bytes");
+            } else {
+              let binary = "";
+              for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+                binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+              }
+              return json({
+                image: btoa(binary),
+                mimeType,
+                model: "flux",
+                provider: "pollinations",
+                fallbackUsed: true,
+                fallbackReason: cloudflareError,
+                mode: "image",
+                generationMs: Date.now() - generationStartedAt,
+                size: "512x768",
+                imageBytes: bytes.length
+              });
+            }
+          }
+        }
+      } catch (error) {
+        pollinationsFailures.push(String(error?.message || error || "unknown Pollinations FLUX error").slice(0, 260));
+      }
+
       const hokusaiFailures = [];
-      // Hokusai can return transient 429 no_ready_capacity while community workers are busy.
+      // Hokusai remains the final no-key fallback if Pollinations FLUX is unavailable.
       // Retry only transient capacity/server failures; never retry invalid prompts or client errors.
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -1058,59 +1111,9 @@ ${script.trim()}`;
         }
         if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 3500));
       }
-      // Last-resort anonymous image route. The legacy Pollinations endpoint was
-      // verified with a real JPEG response (HTTP 200, >10 KB) on 2026-11-02.
-      // It is best-effort and rate-limited; never treat a text/error response as an image.
-      const pollinationsFailures = [];
-      try {
-        const seed = Array.from(prompt).reduce((hash, ch) => ((hash * 31) + ch.charCodeAt(0)) >>> 0, 8137);
-        const imageUrl = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
-        imageUrl.searchParams.set("width", "512");
-        imageUrl.searchParams.set("height", "768");
-        imageUrl.searchParams.set("seed", String(seed));
-        imageUrl.searchParams.set("nologo", "true");
-        const response = await fetch(imageUrl.toString(), {
-          method: "GET",
-          headers: { "Accept": "image/jpeg,image/png,image/webp" },
-          signal: AbortSignal.timeout(75_000)
-        });
-        if (!response.ok) {
-          const detail = (await response.text()).slice(0, 260);
-          pollinationsFailures.push("Pollinations HTTP " + response.status + ": " + detail);
-        } else {
-          const mimeType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-          if (!mimeType.startsWith("image/")) {
-            pollinationsFailures.push("Pollinations returned non-image content: " + mimeType);
-          } else {
-            const bytes = new Uint8Array(await response.arrayBuffer());
-            if (bytes.length < 10_000 || bytes.length > 8_000_000) {
-              pollinationsFailures.push("Pollinations image size outside safe bounds: " + bytes.length + " bytes");
-            } else {
-              let binary = "";
-              for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-                binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
-              }
-              return json({
-                image: btoa(binary),
-                mimeType,
-                model: "pollinations-legacy",
-                provider: "pollinations",
-                fallbackUsed: true,
-                fallbackReason: cloudflareError + " | " + hokusaiFailures.join(" | "),
-                mode: "image",
-                generationMs: Date.now() - generationStartedAt,
-                size: "512x768",
-                imageBytes: bytes.length
-              });
-            }
-          }
-        }
-      } catch (error) {
-        pollinationsFailures.push(String(error?.message || error || "unknown Pollinations error").slice(0, 260));
-      }
       return json({
         error: "Image generation failed on Cloudflare FLUX, Hokusai and Pollinations.",
-        details: "Cloudflare: " + cloudflareError + " | " + hokusaiFailures.join(" | ") + " | " + pollinationsFailures.join(" | "),
+        details: "Cloudflare: " + cloudflareError + " | Pollinations: " + pollinationsFailures.join(" | ") + " | Hokusai: " + hokusaiFailures.join(" | "),
         generationMs: Date.now() - generationStartedAt,
         hokusaiAttempts: hokusaiFailures.length
       }, 502);
