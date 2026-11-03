@@ -1,11 +1,13 @@
 name: LUNA real AI script generation smoke test
 
 on:
-  workflow_run:
-    workflows: ["Deploy LUNA AI Worker"]
-    types: [completed]
-    branches: ["main"]
   workflow_dispatch:
+    inputs:
+      confirm_resource_usage:
+        description: "Confirm that this test may consume live AI provider quota"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,7 +18,7 @@ concurrency:
 
 jobs:
   generate:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

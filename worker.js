@@ -186,8 +186,8 @@ export default {
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
         publicFallbacks: { murakumo: true, murakumoFree: true, mishima: true, qwen3vl: true },
-        message: "Worker is reachable. Keyless Qwen3-VL text, Mishima text, and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
-      }, env.AI ? 200 : 503);
+        message: "Worker is reachable. Keyless OVH and Murakumo text fallbacks plus Murakumo Qwen3-VL vision analysis are wired. Identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding; health checks do not consume model quota."
+      }, 200);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
 
@@ -340,11 +340,38 @@ export default {
         if (current) chunks.push(current);
         return chunks;
       };
+      // Keep the speaker label attached to each audio job so LUNA and LEO
+      // receive distinct Kokoro voices while preserving screenplay order.
+      const dialogueLines = speech.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const hasSpeakerLabels = dialogueLines.some(line => /^(LUNA|LEO)\s*:/i.test(line));
+      const utterances = [];
+      if (hasSpeakerLabels) {
+        let currentSpeaker = "LUNA";
+        for (const line of dialogueLines) {
+          const match = line.match(/^(LUNA|LEO)\s*:\s*(.*)$/i);
+          if (match) {
+            currentSpeaker = match[1].toUpperCase();
+            if (match[2].trim()) utterances.push({ speaker: currentSpeaker, text: match[2].trim() });
+          } else if (utterances.length) {
+            utterances[utterances.length - 1].text += " " + line;
+          } else {
+            utterances.push({ speaker: currentSpeaker, text: line });
+          }
+        }
+      } else {
+        utterances.push({ speaker: "LUNA", text: speech });
+      }
+      const speechJobs = utterances.flatMap(item => splitSpeech(item.text).map(text => ({
+        speaker: item.speaker,
+        text,
+        voice: item.speaker === "LEO" ? "am_adam" : "af_bella"
+      })));
+      if (!speechJobs.length) return json({ error: "No dialogue text was found." }, 400);
 
       try {
         const startedAt = Date.now();
-        const chunks = splitSpeech(speech);
         const audioParts = [];
+        const speakerCounts = { LUNA: 0, LEO: 0 };
         const apiBase = "https://api.tts.ai";
         // Bound the complete request so a slow anonymous queue cannot leave the browser
         // waiting longer than the Producer's 150-second request budget.
@@ -356,15 +383,17 @@ export default {
           return Math.min(cap, remaining);
         };
 
-        for (let index = 0; index < chunks.length; index++) {
+        for (let index = 0; index < speechJobs.length; index++) {
+          const jobPart = speechJobs[index];
+          speakerCounts[jobPart.speaker]++;
           const submitResponse = await fetch(apiBase + "/v1/tts/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             signal: AbortSignal.timeout(boundedTimeout(20_000)),
             body: JSON.stringify({
               model: "kokoro",
-              text: chunks[index],
-              voice: "af_bella",
+              text: jobPart.text,
+              voice: jobPart.voice,
               format: "mp3",
               language: "en"
             })
@@ -387,10 +416,10 @@ export default {
             let poll;
             try { poll = JSON.parse(pollRaw); } catch { throw new Error("TTS.ai status returned non-JSON HTTP " + pollResponse.status); }
             if (!pollResponse.ok) throw new Error("TTS.ai status HTTP " + pollResponse.status);
-            if (poll.status === "failed") throw new Error("TTS.ai generation failed for audio chunk " + (index + 1));
+            if (poll.status === "failed") throw new Error("TTS.ai generation failed for " + jobPart.speaker + " audio chunk " + (index + 1));
             if (poll.status === "completed" && poll.result_url) { completed = poll; break; }
           }
-          if (!completed) throw new Error("TTS.ai timed out or reached the total time budget on audio chunk " + (index + 1));
+          if (!completed) throw new Error("TTS.ai timed out or reached the total time budget on " + jobPart.speaker + " audio chunk " + (index + 1));
 
           const resultUrl = new URL(completed.result_url);
           if (resultUrl.protocol !== "https:" || !/(^|\.)tts\.ai$/i.test(resultUrl.hostname)) {
@@ -418,6 +447,8 @@ export default {
           model: "Kokoro (TTS.ai, anonymous)",
           provider: "tts.ai",
           mode: "tts",
+          voices: { LUNA: "af_bella", LEO: "am_adam" },
+          speakerChunks: speakerCounts,
           chunks: audioParts.length,
           generationMs: Date.now() - startedAt
         });
@@ -547,8 +578,9 @@ ${script.trim()}`;
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const models = [
         // Director plans are compact; use the verified OVH no-key route first.
-        // Skip the two Murakumo chat selectors that failed live probes (422 / timeout).
+        // Use the current documented murakumo/free selector next; the retired Qwen chat selector returned 422.
         "__OVH__",
+        "__MURAKUMO_FREE__",
         ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel, FALLBACK_MODEL] : [primaryModel, FALLBACK_MODEL]) : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
@@ -720,16 +752,15 @@ ${script.trim()}`;
       const customizedProductionPrompt = customizeCharacterPrompt(productionPrompt);
       const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
       const productionModels = [
-        ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+        // Try verified OVH first, then the current documented keyless murakumo/free route.
+        "__OVH__",
+        "__MURAKUMO_FREE__",
+        ...(env.AI ? [primaryModel, ...(primaryModel === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])] : []),
         ...(env.GEMINI_API_KEY ? ["__GEMINI__"] : []),
         ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),
         ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
         ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
-        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : []),
-        "__MURAKUMO_FREE__",
-        "__LLMFAUCET__",
-        "__MURAKUMO__",
-        "__OVH__"
+        ...(env.OPENROUTER_API_KEY ? ["__OPENROUTER__"] : [])
       ];
       const productionFailures = [];
       let productionQuotaExhausted = false;
@@ -821,7 +852,11 @@ ${script.trim()}`;
       if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
         return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
       }
-      const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
+      const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 2200);
+      const referenceImage = typeof body.referenceImage === "string" ? body.referenceImage : "";
+      if (referenceImage && (!referenceImage.startsWith("data:image/") || referenceImage.length > 7_000_000 || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(referenceImage))) {
+        return json({ error: "Reference image data is invalid or too large." }, 400);
+      }
       const qwenModel = "qwen3-vl-2b-instruct";
       let qwenDetails = "";
       try {
@@ -837,6 +872,11 @@ ${script.trim()}`;
               role: "user",
               content: [
                 { type: "text", text: analysisPrompt },
+                ...(referenceImage ? [
+                  { type: "text", text: "REFERENCE IMAGE (first): use it only as the identity baseline." },
+                  { type: "image_url", image_url: { url: referenceImage } },
+                  { type: "text", text: "CANDIDATE IMAGE (second): compare the same two lead faces against the reference." }
+                ] : []),
                 { type: "image_url", image_url: { url: body.image } }
               ]
             }],
@@ -867,6 +907,11 @@ ${script.trim()}`;
               role: "user",
               content: [
                 { type: "text", text: analysisPrompt },
+                ...(referenceImage ? [
+                  { type: "text", text: "REFERENCE IMAGE (first): use it only as the identity baseline." },
+                  { type: "image_url", image_url: { url: referenceImage } },
+                  { type: "text", text: "CANDIDATE IMAGE (second): compare the same two lead faces against the reference." }
+                ] : []),
                 { type: "image_url", image_url: { url: body.image } }
               ]
             }],
@@ -895,6 +940,12 @@ ${script.trim()}`;
     // Mobile-safe reference-image edit: use a normal JSON response rather than a
     // ReadableStream. Some Android/Chrome network paths stall before exposing stream headers.
     if (mode === "image_edit") {
+      if (!env.AI) return json({
+        error: "Reference-image editing is unavailable on this Preview because its Cloudflare Workers AI binding is intentionally disabled.",
+        code: "REFERENCE_EDIT_REQUIRES_WORKERS_AI",
+        retryable: false,
+        details: "No keyless provider is currently configured for identity-preserving image-to-image editing. The app will not substitute a new unrelated text-to-image image."
+      }, 503);
       const startedAt = Date.now();
       if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image) || body.image.length > 4500000) {
         return json({ error: "Reference image is missing, unsupported, or too large." }, 400);
@@ -1171,16 +1222,15 @@ ${surnameMixupPremise && language !== "fa" ? "SPECIAL CONTINUITY RULES FOR THIS 
 Do not put speaker names inside the JSON values; the key identifies the speaker. Return valid JSON only.`;
 
     const primaryModel = env.AI_MODEL || DEFAULT_MODEL;
-    // Cloudflare is primary; OVH anonymous Llama is the stronger no-key short-script fallback, with Mishima/Qwen as later fallbacks.
+    // Cloudflare is primary; OVH is the verified no-key fallback, followed by the documented murakumo/free selector.
     // OVH anonymous inference has been confirmed live; prefer it for short scripts.
     // Keep Qwen3-VL out of text generation (it is reserved for vision analysis).
     const modelsToTry = [
-      // Keep only currently verified no-key routes in the hot path.
-      // LLM7 is IP-throttled, Murakumo/free returns 422 model_or_context_mismatch,
-      // and LLMFaucet returned 530 in the latest live probe; skip these until re-verified.
+      // OVH is the only currently verified no-key text route.
+      // Use the current documented murakumo/free selector after OVH; the retired Qwen chat selector previously returned 422. LLMFaucet and LLM7 remain disabled after prior failures.
       "__OVH__",
-      "__MURAKUMO__",
-      ...(env.AI ? (primaryModel === FALLBACK_MODEL ? [primaryModel] : [primaryModel, FALLBACK_MODEL]) : []),
+      "__MURAKUMO_FREE__",
+      ...(env.AI ? [primaryModel, ...(primaryModel === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])] : []),
       ...(env.MISTRAL_API_KEY ? ["__MISTRAL__"] : []),
       ...(env.NVIDIA_API_KEY ? ["__NVIDIA__"] : []),
       ...(env.GROQ_API_KEY ? ["__GROQ__"] : []),

@@ -1,0 +1,319 @@
+name: LUNA pull request quality gates
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["fix/episode-voice-sync-and-visual-qa"]
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-qa-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse Worker JavaScript
+        run: node --check worker.js
+      - name: Parse producer scripts and test episode safeguards
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const html = fs.readFileSync('producer.html', 'utf8');
+          const wrangler = fs.readFileSync('wrangler.toml', 'utf8');
+          const worker = fs.readFileSync('worker.js', 'utf8');
+          assert.match(wrangler, /^\[previews\]\s*$/m,
+            'Cloudflare Worker Preview builds require a previews configuration block');
+          const healthStart = worker.indexOf('if (request.method === "GET")');
+          const healthEnd = worker.indexOf('if (request.method !== "POST")', healthStart);
+          assert.ok(healthStart >= 0 && healthEnd > healthStart, 'Missing Worker health endpoint');
+          const healthBlock = worker.slice(healthStart, healthEnd);
+          assert.ok(healthBlock.includes('}, 200);'),
+            'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
+          assert.ok(!healthBlock.includes('env.AI ? 200 : 503'),
+            'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
+          assert.match(healthBlock, /identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding/i,
+            'Worker health response must disclose that Preview reference-image editing needs Workers AI');
+          const imageEditStart = worker.indexOf('if (mode === "image_edit")');
+          const imageEditEnd = worker.indexOf('// Generate one real scene image', imageEditStart);
+          assert.ok(imageEditStart >= 0 && imageEditEnd > imageEditStart, 'Missing reference-image edit route');
+          const imageEditRoute = worker.slice(imageEditStart, imageEditEnd);
+          assert.match(imageEditRoute, /if \(!env\.AI\) return json\([\s\S]*?REFERENCE_EDIT_REQUIRES_WORKERS_AI[\s\S]*?\}, 503\);/,
+            'Preview reference-image editing must fail clearly before attempting unavailable Workers AI');
+          const imageAnalysisStart = worker.indexOf('if (mode === "analyze_image")');
+          const imageAnalysisEnd = worker.indexOf('// Mobile-safe reference-image edit', imageAnalysisStart);
+          const imageAnalysisRoute = worker.slice(imageAnalysisStart, imageAnalysisEnd);
+          assert.equal((imageAnalysisRoute.match(/url: referenceImage/g) || []).length, 2,
+            'Both Qwen and Cloudflare vision fallbacks must receive the reference image for identity comparison');
+          assert.ok(worker.includes('body.referenceImage'),
+            'Image analysis must accept a reference image for face continuity checks');
+          assert.ok(worker.includes('url: referenceImage'),
+            'Vision analysis must compare the candidate image against its reference');
+          assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
+            'Murakumo fallback must use the current documented public model selector');
+          // Guard against double-escaped regex literals: they silently collapse all labelled dialogue into LUNA's voice.
+          assert.ok(worker.includes('speech.split(/\\\\r?\\\\n/)') === false,
+            'TTS must not use double-escaped newline regexes');
+          assert.ok(worker.includes('speech.split(/\\r?\\n/)'),
+            'TTS must split screenplay dialogue on actual newline characters');
+          assert.ok(worker.includes('line.match(/^(LUNA|LEO)\\\\s*:\\\\s*(.*)$/i)') === false,
+            'TTS must not use double-escaped speaker-label whitespace regexes');
+          assert.ok(worker.includes('line.match(/^(LUNA|LEO)\\s*:\\s*(.*)$/i)'),
+            'TTS must recognize LUNA and LEO speaker labels');
+
+          const ttsStart = worker.indexOf('if (mode === "tts")');
+          const ttsEnd = worker.indexOf('const profile = {', ttsStart);
+          assert.ok(ttsStart >= 0 && ttsEnd > ttsStart, 'Missing TTS route');
+          const ttsRoute = worker.slice(ttsStart, ttsEnd);
+          assert.match(ttsRoute, /speaker:\s*currentSpeaker/);
+          assert.match(ttsRoute, /speaker === "LEO" \? "am_adam" : "af_bella"/);
+          assert.match(ttsRoute, /voice: jobPart\.voice/);
+          assert.match(ttsRoute, /speakerChunks: speakerCounts/);
+          assert.ok(!/voice:\s*"af_bella"/.test(ttsRoute),
+            'TTS route must not force the same female voice for every speaker');
+          const directorAndPackFallbacks = worker.split('"__OVH__",\n        "__MURAKUMO_FREE__",').length - 1;
+          const screenplayFallback = worker.includes('"__OVH__",\n      "__MURAKUMO_FREE__",');
+          assert.ok(directorAndPackFallbacks >= 2 && screenplayFallback,
+            'Keyless Murakumo fallback must be wired into screenplay, director, and production-pack routes');
+
+          const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
+            .map(match => match[1]).filter(source => source.trim());
+          assert.ok(scripts.length >= 5, 'Expected the producer inline scripts to be present');
+          scripts.forEach((source, index) => {
+            try { new Function(source); }
+            catch (error) { throw new Error('Inline script ' + (index + 1) + ' has a syntax error: ' + error.message); }
+          });
+
+          function extractFunction(name, signature) {
+            const match = html.match(new RegExp('function ' + name + signature + '\\s*\\{[\\s\\S]*?\\n\\}'));
+            assert.ok(match, 'Missing function: ' + name);
+            return new Function(match[0] + '; return ' + name + ';')();
+          }
+
+          const extractDialogueForVoice = extractFunction('extractDialogueForVoice', '\\(script\\)');
+          const validateLunaImageQa = extractFunction('validateLunaImageQa', '\\(analysis,requireTwo=false\\)');
+          const validateLunaIdentityContinuity = extractFunction('validateLunaIdentityContinuity', '\\(analysis\\)');
+
+          const dialogue = extractDialogueForVoice(
+            'TITLE: Test\nLUNA: Why is the card wrong?\nLEO: I typed the surname incorrectly.\nNARRATOR: Unwanted voice\nLUNA: You did what?'
+          );
+          assert.match(dialogue, /^LUNA: Why is the card wrong\?/);
+          assert.match(dialogue, /LEO: I typed the surname incorrectly\./);
+          assert.match(dialogue, /LUNA: You did what\?/);
+          assert.doesNotMatch(dialogue, /NARRATOR|TITLE/);
+
+          const validTwoPersonQa = [
+            'CAST CHECK: PASS',
+            'VISIBLE PEOPLE: 2',
+            'FACES IN ARTWORK: NO',
+            'PHOTOREALISM: 8',
+            'HANDS/ANATOMY: 7',
+            'VISIBLE DEFECTS: none'
+          ].join('\n');
+          assert.equal(validateLunaImageQa(validTwoPersonQa, true).pass, true);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('VISIBLE PEOPLE: 2', 'VISIBLE PEOPLE: 3'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('FACES IN ARTWORK: NO', 'FACES IN ARTWORK: YES'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('PHOTOREALISM: 8', 'PHOTOREALISM: 5'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('HANDS/ANATOMY: 7', 'HANDS/ANATOMY: 4'), false).pass, false);
+          const onePersonQa = validTwoPersonQa.replace('VISIBLE PEOPLE: 2', 'VISIBLE PEOPLE: 1');
+          assert.equal(validateLunaImageQa(onePersonQa, false).pass, true);
+          assert.equal(validateLunaImageQa(onePersonQa, true).pass, false);
+          const validIdentityQa = [
+            'IDENTITY CONSISTENCY: PASS',
+            'LUNA FACE MATCH: YES',
+            'LEO FACE MATCH: YES'
+          ].join('\n');
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa).pass, true);
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LEO FACE MATCH: YES', 'LEO FACE MATCH: NO')).pass, false);
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LUNA FACE MATCH: YES', 'LUNA FACE MATCH: UNCLEAR')).pass, false);
+          assert.match(html, /analyzeLunaImageData\(dataUrl,generatedImageData\)/,
+            'Every later scene must be compared against the first approved scene image');
+          assert.match(html, /validateLunaIdentityContinuity\(sceneQa\.analysis\)/,
+            'Later scenes must fail when either lead face does not match the reference');
+          assert.match(html, /Return these required fields in English, one per line: CAST CHECK:/,
+            'Base visual QA prompt must allow the additional identity continuity fields');
+          assert.match(html, /IDENTITY CONSISTENCY: PASS or FAIL; LUNA FACE MATCH: YES or NO; LEO FACE MATCH: YES or NO/,
+            'Reference-image QA must explicitly request all three identity fields');
+
+          assert.doesNotMatch(html, /el\('makePreviewVideo'\)\.disabled\s*=\s*false/,
+            'Wan video must never be enabled before a passing visual QA result');
+          const videoHandler = html.match(/el\('makePreviewVideo'\)\.onclick\s*=\s*async\(\)=>\s*\{([\s\S]*?)\n\s*\};/);
+          assert.ok(videoHandler, 'Missing Wan video handler');
+          assert.match(videoHandler[1], /if\(!firstSceneQaPassed\)/,
+            'Wan video handler must enforce the first-scene QA flag');
+          const restoreStart = html.indexOf('async function restoreLatestLunaImage');
+          const restoreEnd = html.indexOf('function reportLunaDiagnostic', restoreStart);
+          assert.ok(restoreStart >= 0 && restoreEnd > restoreStart, 'Missing image restore routine');
+          const restore = html.slice(restoreStart, restoreEnd);
+          assert.match(restore, /firstSceneQaPassed=false/);
+          assert.match(restore, /el\('makePreviewVideo'\)\.disabled=true/);
+          assert.match(html, /const qa=validateLunaImageQa\(analysis,true\)/,
+            'First scene QA must require both LUNA and LEO');
+
+          assert.match(html, /const sceneQaResult=validateLunaImageQa\(sceneQa\.analysis,true\)/,
+            'Every generated story scene must pass two-person visual QA');
+          const autoStart = html.indexOf("el('autoProduce').onclick=async()=>");
+          assert.ok(autoStart >= 0, 'Missing automatic production handler');
+          const autoHandler = html.slice(autoStart);
+          assert.match(autoHandler, /if\(!firstSceneQaPassed&&generatedImageData\)/,
+            'One-click production must automatically re-run visual QA for a restored image');
+          assert.match(autoHandler, /analyzeButton\.click\(\)/,
+            'Restored image QA must not require a manual user click');
+          assert.match(autoHandler, /کنترل کیفیت تصویر بازیابی‌شده/,
+            'Restored image QA must have a bounded wait stage');
+          for (const stage of ['generateMoreScenes','generateVoice','generateWanClips','assembleWanClips']) {
+            assert.ok(autoHandler.includes("runAutoStage('" + stage + "'"),
+              'Automatic production must run the complete stage: ' + stage);
+          }
+          assert.match(html, /const LUNA_RENDER_SHOT_COUNT=6/,
+            'The renderer must use six independently generated shots');
+          assert.match(autoHandler, /generatedWanClipUrls\.length===LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for all six Wan clips');
+          assert.match(html, /generatedSceneImages\.length>=LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for six QA-approved scene images');
+          assert.match(autoHandler, /assembledWanVideoUrl/,
+            'Automatic production must wait for the final stitched film');
+          assert.match(html, /generatedSceneImages\.slice\(0,LUNA_RENDER_SHOT_COUNT\)\.sort\(\(a,b\)=>Number\(a\.shot\)-Number\(b\.shot\)\)/,
+            'Wan generation must use all approved scene images in shot-number order');
+          assert.match(html, /parsed\.shots\|\|\[\]\)\.slice\(\)\.sort\(\(a,b\)=>Number\(a\.id\)-Number\(b\.id\)\)/,
+            'Wan motion prompts must follow the same numeric shot order as approved images');
+          assert.match(html, /(?:همین|این) شش کلیپ به ترتیب تکرار می‌شوند/,
+            'The final video UI must disclose when the six short clips are repeated to cover longer dialogue');
+          assert.match(autoHandler, /if\(!lastDraft&&!quotaBlocked\)/,
+            'A valid Worker-provided local-template screenplay must not be rejected just because it is not AI-generated');
+          assert.match(autoHandler, /if\(!lastDraft\)\{[\s\S]*lastDraft=draft\(/,
+            'Browser-side fallback screenplay may only be synthesized when no valid Worker screenplay exists');
+          assert.match(autoHandler, /\]\.join\('\\n\\n'\);/,
+            'Local fallback production pack must use real newline separators so the shot parser can read it');
+          assert.match(html, /\.split\('\\n'\)/,
+            'Production-pack parser must split on real newline characters');
+          assert.match(autoHandler, /Worker یک سناریوی جایگزین محلی برگرداند/,
+            'Local-template fallback must be clearly labelled as non-AI output');
+          assert.ok(html.includes("mode:'director',script:lastDraft,duration:el('duration').value,allowDeterministicFallback:true"),
+            'Director planning must receive the selected episode duration and allow its labelled deterministic fallback');
+          assert.ok(html.includes('lastProductionPack=directorPack'),
+            'The accepted director shot plan must become the production pack consumed by image/video stages');
+          assert.ok(html.includes('function directorPlanToProductionPack(plan)'),
+            'Director shots must be adapted into numbered image and motion prompts for the existing renderer');
+          assert.ok(autoHandler.includes('if(!lastDirectorPlan)') && autoHandler.includes('makeDirectorPlan') && autoHandler.includes('ساخت نقشه کارگردانی سینمایی'),
+            'One-click production must create and apply a director plan before generating scene media');
+          const directorAdapterStart = html.indexOf('function directorPlanToProductionPack(plan)');
+          const directorAdapterEnd = html.indexOf('function extractFirstImagePrompt(pack)', directorAdapterStart);
+          assert.ok(directorAdapterStart >= 0 && directorAdapterEnd > directorAdapterStart, 'Missing director-plan production adapter');
+          const directorAdapter = html.slice(directorAdapterStart, directorAdapterEnd);
+          assert.ok(directorAdapter.includes(".join('\\n')") && directorAdapter.includes(".join('\\n\\n')"),
+            'Director adapter must emit real newline-separated sections so the existing shot parser can read them');
+          assert.ok(html.includes("duration:el('duration').value"),
+            'Director plan must use the selected short/long episode duration');
+          assert.match(html, /const LUNA_RENDER_SHOT_COUNT=6/,
+            'The renderer must use six independently generated shots to improve unique motion duration');
+          assert.ok(html.includes('for(let i=0;i<LUNA_RENDER_SHOT_COUNT;i++)'),
+            'Wan must render every approved scene in the six-shot sequence');
+          assert.ok(autoHandler.includes('generatedWanClipUrls.length===LUNA_RENDER_SHOT_COUNT'),
+            'Automatic production must wait for all six real Wan clips before assembly');
+          assert.ok(autoHandler.includes('generatedSceneImages.length>=LUNA_RENDER_SHOT_COUNT&&generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed)'),
+            'Automatic production must wait for six QA-approved images');
+          assert.ok(html.includes("'6. SCENE 6 — The misunderstanding dissolves"),
+            'The no-AI local fallback pack must provide six independent shots for the six-shot renderer');
+          assert.ok(html.includes("data.plan.shots.length<6"),
+            'Director plans with fewer than six shots must not enter the six-shot renderer');
+          assert.ok(html.includes("plan.shots.length<6)return ''"),
+            'Director production-pack conversion must independently reject fewer than six shots');
+          const fallbackStart = autoHandler.indexOf("'LUNA LOCAL PRODUCTION PACK'");
+          const fallbackEnd = autoHandler.indexOf("].join('\\n\\n')", fallbackStart);
+          assert.ok(fallbackStart >= 0 && fallbackEnd > fallbackStart, 'Missing complete local fallback pack');
+          const localPack = autoHandler.slice(fallbackStart, fallbackEnd);
+          for (const phrase of [
+            '2. SCENE 2 — LUNA notices the reservation card',
+            '3. SCENE 3 — LEO enters carrying the wrapped surprise',
+            '4. SCENE 4 — LUNA turns the card toward LEO',
+            '5. SCENE 5 — LEO reveals the harmless booking typo',
+            '6. SCENE 6 — The misunderstanding dissolves',
+            '2. Medium over-the-shoulder shot of LUNA',
+            '6. Warm final two-shot of LUNA and LEO',
+            '6. Gentle pull-back as both leads laugh naturally'
+          ]) assert.ok(localPack.includes(phrase), 'Local fallback is missing a distinct per-shot direction: ' + phrase);
+          assert.match(html, /shot\.motionPrompt\|\|shot\.action\|\|shot\.raw/,
+            'Each Wan clip must consume its matching shot-specific motion prompt');
+          assert.match(html, /Shot direction: '\+shotPrompt/,
+            'Wan prompts must include the matching shot-specific motion direction');
+          assert.ok(autoHandler.includes("if(el('duration').value==='long')"),
+            'Automatic production must block 3–5 minute episodes until the renderer supports all planned shots');
+          const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
+          const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
+          assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
+          const clearMedia = html.slice(clearMediaStart, clearMediaEnd);
+          assert.match(clearMedia, /assembledWanVideoUrl=''/,
+            'Starting a new episode must invalidate the previous assembled video URL');
+          assert.ok(clearMedia.includes("el('assembledWanPreview')") && clearMedia.includes("assembled.removeAttribute('src')"),
+            'Starting a new episode must clear the previous assembled video preview');
+          assert.ok(clearMedia.includes("el('downloadAssembledWan')") && clearMedia.includes("assembledLink.removeAttribute('href')"),
+            'Starting a new episode must clear the previous assembled download link');
+          assert.ok(clearMedia.includes("el('voicePreview')") && clearMedia.includes("audio.removeAttribute('src')"),
+            'Starting a new episode must clear the previous voice recording');
+          assert.ok(clearMedia.includes("el('wanClipList')") && clearMedia.includes("clipList.replaceChildren()"),
+            'Starting a new episode must clear stale Wan clip cards');
+          const voicedStart = html.indexOf("el('makeVoicedVideo').onclick=async()=>");
+          const voicedEnd = html.indexOf("el('generateVoice').onclick=async()=>", voicedStart);
+          assert.ok(voicedStart >= 0 && voicedEnd > voicedStart, 'Missing voiced animatic handler');
+          const voicedHandler = html.slice(voicedStart, voicedEnd);
+          assert.match(voicedHandler, /captionWeights/,
+            'Dialogue captions must use weighted durations rather than equal time slices');
+          assert.match(voicedHandler, /captionEnds\.findIndex/,
+            'Caption selection must follow cumulative weighted timing');
+          assert.match(voicedHandler, /caption\.replace\(\/\^\(LUNA\|LEO\|LUNA & LEO\)\\s\*:/,
+            'Speaker labels must be stripped from rendered captions');
+          assert.match(voicedHandler, /audio\.readyState<1/,
+            'Audio metadata must be ready before reading its duration');
+          assert.match(voicedHandler, /if\(!duration\)/,
+            'Animatic must reject unknown audio duration rather than silently assume 30 seconds');
+          const stitchStart = html.indexOf("el('assembleWanClips').onclick=async()=>");
+          const stitchEnd = html.indexOf("el('makeVoicedVideo').onclick=async()=>", stitchStart);
+          assert.ok(stitchStart >= 0 && stitchEnd > stitchStart, 'Missing real Wan clip assembly handler');
+          const stitchHandler = html.slice(stitchStart, stitchEnd);
+          assert.match(stitchHandler, /while\(hasVoice\?!audioEnded:clipIndex<videos\.length\)/,
+            'Real Wan clips must continue cycling until the voice track ends');
+          assert.match(stitchHandler, /audio\.onended=\(\)=>\{audioEnded=true;\}/,
+            'Wan clip cycling must stop on the actual voice-track ended event');
+          assert.match(stitchHandler, /clipIndex=\(clipIndex\+1\)%videos\.length/,
+            'Wan clips must cycle in story order instead of freezing on the final frame');
+          const generationStart = html.indexOf("el('generateSceneImage').onclick=async()=>");
+          const generationEnd = html.indexOf("el('generateMoreScenes').onclick=async()=>", generationStart);
+          assert.ok(generationStart >= 0 && generationEnd > generationStart, 'Missing first-scene generation handler');
+          const generationHandler = html.slice(generationStart, generationEnd);
+          assert.match(generationHandler, /generatedWanClipUrls\.forEach\(url=>URL\.revokeObjectURL\(url\)\)/,
+            'Regenerating the first image must revoke stale Wan clips');
+          assert.match(generationHandler, /generatedWanClipUrls=\[\]/,
+            'Regenerating the first image must clear old Wan clip references');
+          assert.match(generationHandler, /assembledWanVideoUrl=''/,
+            'Regenerating the first image must invalidate the assembled film');
+          assert.match(generationHandler, /downloadAssembledWan/,
+            'Regenerating the first image must clear the old assembled download link');
+          assert.match(generationHandler, /oldAssembled\.removeAttribute\('src'\)/,
+            'Regenerating the first image must clear the old assembled preview');
+          assert.match(generationHandler, /makeVoicedVideo/,
+            'Regenerating the first image must not leave stale voice-video state available');
+          const editStart = html.indexOf("el('editSceneImage').onclick=async()=>");
+          const editEnd = html.indexOf("el('downloadSceneImage').onclick=", editStart);
+          assert.ok(editStart >= 0 && editEnd > editStart, 'Missing image-edit handler');
+          const editHandler = html.slice(editStart, editEnd);
+          assert.match(editHandler, /firstSceneQaPassed=false/,
+            'Editing the first image must invalidate its previous approval');
+          assert.match(editHandler, /qaPassed:false/,
+            'Edited first image must start unapproved');
+          assert.ok(editHandler.includes('validateLunaImageQa(editedQa.analysis,true)'),
+            'Edited first image must pass fresh two-person visual QA');
+          for (const id of ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','assembleWanClips']) {
+            assert.ok(editHandler.includes("'" + id + "'"),
+              'Editing the first image must lock downstream action: ' + id);
+          }
+          console.log('INLINE_SCRIPT_SYNTAX: PASS (' + scripts.length + ' scripts)');
+          console.log('SCREENPLAY_TO_VOICE_SYNC: PASS');
+          console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
+          console.log('WAN_PRE_QA_LOCK: PASS (new image, edited image, and restored image paths)');
+          NODE

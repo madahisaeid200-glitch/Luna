@@ -2,19 +2,19 @@ name: LUNA real browser media pipeline smoke test
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "producer.html"
-      - "worker.js"
-      - ".github/workflows/luna-browser-media-smoke.yml"
+    inputs:
+      confirm_resource_usage:
+        description: "Confirm that this test may consume image, voice and video provider quotas"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   media-smoke:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,9 +29,12 @@ jobs:
       - name: Wait for the matching GitHub Pages build to be published
         run: |
           set -e
-          URL='https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=all-scenes-artwork-lock-20261102e'
+          BUILD_MARKER=$(grep -o 'name="luna-build" content="[^"]*"' producer.html | sed -E 's/.*content="([^"]+)".*/\1/')
+          if [ -z "$BUILD_MARKER" ]; then echo 'Missing LUNA build marker'; exit 1; fi
+          export BUILD_MARKER
+          URL="https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=$BUILD_MARKER"
           for attempt in $(seq 1 36); do
-            if curl -fsSL "$URL" | grep -q 'all-scenes-artwork-lock-20261102e'; then
+            if curl -fsSL "$URL" | grep -q "$BUILD_MARKER"; then
               echo 'Matching producer build is live.'
               exit 0
             fi
@@ -60,7 +63,9 @@ jobs:
               catch(e) { console.log('FAILED_STAGE:',label); console.log('PAGE_STATUS:',await page.locator('#aiStatus').innerText().catch(()=>'')); console.log('VISUAL_STATUS:',await page.locator('#visualStatus').innerText().catch(()=>'')); console.log('VOICE_STATUS:',await page.locator('#voiceStatus').innerText().catch(()=>'')); throw e; }
             };
             try {
-              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=all-scenes-artwork-lock-20261102e',{waitUntil:'domcontentloaded',timeout:30000});
+              const buildMarker = process.env.BUILD_MARKER;
+              if(!buildMarker) throw new Error('Missing checked-out Producer build marker');
+              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke='+encodeURIComponent(buildMarker),{waitUntil:'domcontentloaded',timeout:30000});
               if(!pageResponse?.ok()) throw new Error('Producer HTTP failure');
               await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
               await page.locator('#premise').fill('HOOK: Luna enters a breathtaking five-star hotel suite, delighted by Leo’s romantic surprise. SCENE 1: Leo proudly reveals that he booked the suite for their anniversary. Luna notices the welcome card says Mr. and Mrs. Thompson. SCENE 2: Leo sheepishly admits he typed the wrong surname. Luna teases him that they are apparently celebrating another couple’s anniversary. Leo tries to defend himself, then realizes the welcome card is the only thing that is wrong. They stay together in the same suite, laugh, hug and share a sweet kiss. PAYOFF: Leo promises an even better surprise next time. Luna asks whether he will remember their names. Final punchline: Leo says, “Of course. I’ve saved them under ‘My Favourite People’.” Only LUNA and LEO; remain inside the same suite; no reception, hotel staff, extra people, phone or new props. Romantic, playful luxury-comedy tone.');
@@ -80,35 +85,46 @@ jobs:
               const imgSize=await page.locator('#sceneImage').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
               results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
               await fs.writeFile('luna-test-output/scene-image.png',Buffer.from((await page.locator('#sceneImage').getAttribute('src')).split(',')[1],'base64'));
+              await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';const s=document.querySelector('#imageAnalysisStatus')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال کنترل کیفیت|در حال ارسال|در حال آماده‌سازی|پس از تولید تصویر/.test(s);},135000,'automatic-first-scene-visual-qa');
+              const firstQa=await page.locator('#imageAnalysisReport').innerText();
+              if(!/CAST CHECK:\s*PASS/i.test(firstQa)||!/VISIBLE PEOPLE:\s*2\b/i.test(firstQa)||!/FACES IN ARTWORK:\s*NO/i.test(firstQa)||!(/PHOTOREALISM:\s*(?:[7-9]|10)(?:\.\d+)?/i.test(firstQa))||!(/HANDS\/ANATOMY:\s*(?:[6-9]|10)(?:\.\d+)?/i.test(firstQa))) throw new Error('First-scene visual QA rejected the image: '+firstQa);
+              results.push('FIRST_SCENE_VISUAL_QA: PASS');
+              await fs.writeFile('luna-test-output/vision-report.txt',firstQa,'utf8');
               await page.locator('#generateMoreScenes').click();
-              await waitFor(()=>/3\s*از\s*[۳3]/.test(document.querySelector('#sceneImagesStatus')?.textContent||'')||/هر سه تصویر مستقل داستان آماده‌اند/.test(document.querySelector('#visualStatus')?.textContent||''),240000,'independent-scene-images');
-              results.push('INDEPENDENT_SCENE_IMAGES: PASS (3 distinct generated images)');
-              await page.locator('#analyzeSceneImage').click();
-              await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال ارسال|در حال آماده‌سازی/.test(document.querySelector('#imageAnalysisStatus')?.textContent||'');},75000,'vision-analysis');
-              results.push('VISION: PASS ('+(await page.locator('#imageAnalysisReport').innerText()).length+' chars)');
-              await fs.writeFile('luna-test-output/vision-report.txt',await page.locator('#imageAnalysisReport').innerText(),'utf8');
+              await waitFor(()=>/6\s*از\s*[۶6]/.test(document.querySelector('#sceneImagesStatus')?.textContent||'')||/هر شش تصویر مستقل داستان آماده‌اند/.test(document.querySelector('#visualStatus')?.textContent||''),720000,'independent-scene-images-and-qa');
+              results.push('INDEPENDENT_SCENE_IMAGES_AND_QA: PASS (6 distinct generated images passed visual QA)');
+              const syncedVoiceText=await page.locator('#voiceTestText').inputValue();
+              if(!syncedVoiceText.includes('LUNA:')||!syncedVoiceText.includes('LEO:')) throw new Error('Voiceover field was not synchronized from the generated screenplay: '+syncedVoiceText);
+              results.push('SCREENPLAY_TO_VOICE_SYNC: PASS');
               await page.locator('#generateVoice').click();
               await waitFor(()=>{const a=document.querySelector('#voicePreview'),b=document.querySelector('#makeVoicedVideo');return a?.src?.startsWith('data:audio/')&&a.src.length>1000&&b&&!b.disabled&&!/درخواست صدا|در حال ساخت/.test(document.querySelector('#voiceStatus')?.textContent||'');},165000,'tts-and-voiced-video-ready');
               results.push('TTS: PASS (audio loaded; voiced-video control enabled)');
               await fs.writeFile('luna-test-output/voice.mp3',Buffer.from((await page.locator('#voicePreview').getAttribute('src')).split(',')[1],'base64'));
-              await page.locator('#makePreviewVideo').click();
-              await waitFor(()=>{const b=document.querySelector('#makePreviewVideo');return !!b&&!b.disabled;},260000,'wan-video-request-finished');
-              const wanStatus=await page.locator('#visualStatus').innerText();
-              const wanLink=page.locator('#downloadVideoLink');
-              if(!(await wanLink.evaluate(a=>a.href.startsWith('blob:')&&a.style.display!=='none'))) throw new Error('Wan 2.2 did not return a video: '+wanStatus);
-              results.push('WAN_VIDEO: PASS ('+wanStatus+')');
-              const videoBytes=await page.evaluate(async()=>{const r=await fetch(document.querySelector('#downloadVideoLink').href);return (await r.blob()).size;});
-              if(videoBytes<10000) throw new Error('Preview video unexpectedly small: '+videoBytes);
-              results.push('BROWSER_VIDEO: PASS ('+videoBytes+' bytes)');
-              const videoData=await page.evaluate(async()=>Array.from(new Uint8Array(await (await fetch(document.querySelector('#downloadVideoLink').href)).arrayBuffer())));
-              await fs.writeFile('luna-test-output/luna-preview.webm',Buffer.from(videoData));
+              await page.locator('#generateWanClips').click();
+              await waitFor(()=>document.querySelectorAll('#wanClipList video').length===6&&!document.querySelector('#assembleWanClips')?.disabled,900000,'six-independent-wan-clips');
+              const clipCount=await page.locator('#wanClipList video').count();
+              if(clipCount!==6) throw new Error('Expected six real Wan clips, received '+clipCount);
+              results.push('WAN_MULTI_SHOT: PASS (6 independent clips)');
+              for(let shot=0;shot<6;shot++){
+                const clip=page.locator('#wanClipList video').nth(shot);
+                const meta=await clip.evaluate(v=>({src:v.currentSrc||v.src,ready:v.readyState}));
+                if(!meta.src.startsWith('blob:')) throw new Error('Wan clip '+(shot+1)+' is missing its local video URL');
+              }
+              await fs.writeFile('luna-test-output/wan-clip-count.txt','6 independent Wan 2.2 clips generated and listed.');
+              await page.locator('#assembleWanClips').click();
+              await waitFor(()=>{const v=document.querySelector('#assembledWanPreview'),a=document.querySelector('#downloadAssembledWan');return !!v?.src?.startsWith('blob:')&&!!a?.href?.startsWith('blob:')&&a.style.display!=='none';},300000,'six-clip-final-webm-assembly');
+              const finalVideo=await page.evaluate(async()=>{const a=document.querySelector('#downloadAssembledWan');const r=await fetch(a.href);return Array.from(new Uint8Array(await (await r.blob()).arrayBuffer()));});
+              const finalVideoBytes=Buffer.from(finalVideo);
+              if(finalVideoBytes.length<100000) throw new Error('Final assembled WebM unexpectedly small: '+finalVideoBytes.length);
+              await fs.writeFile('luna-test-output/luna-final-assembled.webm',finalVideoBytes);
+              results.push('FINAL_ASSEMBLED_WEBM: PASS ('+finalVideoBytes.length+' bytes)');
               await page.locator('#makeVoicedVideo').click();
-              await waitFor(()=>{const status=document.querySelector('#visualStatus')?.textContent||'';const link=document.querySelector('#downloadVideoLink');return /پیش‌نمایش تدوین‌شده \(Animatic\) ساخته شد/.test(status)&&!!link?.href?.startsWith('blob:')&&link.style.display!=='none';},90000,'voiced-animatic-video');
+              await waitFor(()=>{const status=document.querySelector('#visualStatus')?.textContent||'';const link=document.querySelector('#downloadVideoLink');return /پیش‌نمایش تدوین‌شده \\(Animatic\\) ساخته شد/.test(status)&&!!link?.href?.startsWith('blob:')&&link.style.display!=='none';},90000,'voiced-animatic-video');
               const voicedVideo=await page.evaluate(async()=>{const link=document.querySelector('#downloadVideoLink');if(!link?.href?.startsWith('blob:'))throw new Error('Animatic output link is missing');const r=await fetch(link.href);return Array.from(new Uint8Array(await (await r.blob()).arrayBuffer()));});
               const voicedVideoBytes=Buffer.from(voicedVideo);
               if(voicedVideoBytes.length<12000) throw new Error('Voiced video unexpectedly small: '+voicedVideoBytes.length);
-              await fs.writeFile('luna-test-output/luna-voiced-episode.webm',voicedVideoBytes);
-              results.push('VOICED_VIDEO: PASS ('+voicedVideoBytes.length+' bytes)');
+              await fs.writeFile('luna-test-output/luna-voiced-animatic.webm',voicedVideoBytes);
+              results.push('VOICED_ANIMATIC: PASS ('+voicedVideoBytes.length+' bytes)');
               await page.screenshot({path:'luna-test-output/producer-final.png',fullPage:true});
               console.log(results.join('\n'));
               console.log('MEDIA PIPELINE: PASS');

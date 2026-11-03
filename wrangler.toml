@@ -5,3 +5,6 @@ workers_dev = true
 
 [ai]
 binding = "AI"
+
+[previews]
+# Preview builds intentionally omit the production AI binding; keyless fallbacks remain available.
