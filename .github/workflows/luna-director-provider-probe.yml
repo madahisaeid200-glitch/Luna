@@ -4,14 +4,14 @@ on:
     branches:
       - probe/director-ovh-compact
     paths:
-      - ".github/workflows/luna-director-provider-probe.yml"
+      - .github/workflows/luna-director-provider-probe.yml
   workflow_dispatch:
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Test compact six-shot plan against anonymous OVH inference
+      - name: Test six-shot OVH director output
         shell: bash
         run: |
           set -euo pipefail
@@ -19,70 +19,48 @@ jobs:
           {
             "model":"Meta-Llama-3_3-70B-Instruct",
             "messages":[
-              {"role":"system","content":"You are a film director. Return strict compact JSON only. No markdown."},
-              {"role":"user","content":"Convert this screenplay into exactly 6 sequential vertical 9:16 shots. Return only JSON with schemaVersion luna-video-plan@1.0.0; episode {title,targetAspectRatio,targetDurationSeconds}; continuityBible {luna,leo,visualStyle,continuityRules}; and shots. Use exactly 6 seconds per shot. Populate continuityBible.luna and .leo with detailed fixed adult character appearance and identical wardrobe continuity; visualStyle must be non-empty; continuityRules must be an array of at least 3 strings. Each shot must have id, durationSeconds, location, shotType, characters, action, dialogue, videoPrompt, referenceFramePrompt, audio object {ambience,sfx,musicMood}, transition. Use varied shotType values (wide, medium, close-up, over-shoulder); do not make all shots medium. Each videoPrompt and referenceFramePrompt must be descriptive complete prompts of at least 35 words, including the same hotel suite, lighting, framing, physical appearance/wardrobe continuity, natural realistic motion or still composition, and no additional people. Keep same location and wardrobe in every shot. characters must identify only the speaking/visible LUNA and/or LEO. Use only LUNA and LEO; invent no people, props, events, or locations beyond the welcome card and reservation mix-up already in the screenplay. Preserve every dialogue line verbatim and in exact order, with correct speaker. JSON only, no markdown. Total duration 36 seconds. SCREENPLAY: SCREENPLAY: The Five-Star Name Mix-Up. LUNA: This welcome card has the wrong names on it, what's going on here exactly now. LEO: I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this. LUNA: You booked this suite for another couple or someone else, that's really quite amusing to me. LEO: I made the typo and I accept it, let's just enjoy our stay and make the most of it together. LUNA: Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury. LEO: I love you too, and I promise to get it right next time, with an even better surprise for you. Tease: Next time, LEO has an even bigger romantic surprise planned for LUNA."}
+              {"role":"system","content":"You are a film director and continuity supervisor. Return one valid JSON object only, without markdown."},
+              {"role":"user","content":"Create exactly six sequential 6-second vertical 9:16 shots. Return schemaVersion luna-video-plan@1.0.0; episode object; continuityBible with luna, leo, visualStyle, continuityRules; and shots. Every shot needs id,durationSeconds,location,shotType,characters,action,dialogue,videoPrompt,referenceFramePrompt,audio object,transition. Keep the same luxury hotel suite and identical outfits in all shots. Give LUNA and LEO detailed fixed adult appearance descriptions in continuityBible. Include at least three continuityRules. Use at least three shot types from wide, medium, close-up, over-shoulder. Each videoPrompt and referenceFramePrompt must be at least 100 characters and describe framing, lighting, same suite, fixed appearance and wardrobe, realistic movement or still composition. Only LUNA and LEO appear. No invented props except the welcome card, no invented events or locations. Put exactly one screenplay dialogue line in each shot, preserve speaker and exact wording in order. Screenplay: The Five-Star Name Mix-Up. LUNA: This welcome card has the wrong names on it, what's going on here exactly now. LEO: I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this. LUNA: You booked this suite for another couple or someone else, that's really quite amusing to me. LEO: I made the typo and I accept it, let's just enjoy our stay and make the most of it together. LUNA: Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury. LEO: I love you too, and I promise to get it right next time, with an even better surprise for you."}
             ],
-            "max_tokens":1800,
+            "max_tokens":2200,
             "temperature":0.15
           }
           JSON
-          echo "Calling OVH compact director request..."
-          curl --fail-with-body --silent --show-error --max-time 65 \
-            -H 'Content-Type: application/json' \
-            --data-binary @/tmp/request.json \
-            https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions \
-            -o /tmp/response.json -w 'HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
+          curl --fail-with-body --silent --show-error --max-time 65 -H 'Content-Type: application/json' --data-binary @/tmp/request.json https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions -o /tmp/response.json -w 'HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
           python3 - <<'PY'
-          import json,sys
+          import json
           data=json.load(open('/tmp/response.json'))
-          content=data.get('choices',[{}])[0].get('message',{}).get('content','')
-          if not isinstance(content,str) or not content.strip():
-              raise SystemExit('FAIL: OVH returned no message content')
-          content=content.strip()\ncontent=__import__('re').sub(r'^```(?:json)?\\s*', '', content, flags=__import__('re').I)\ncontent=__import__('re').sub(r'\\s*```
-          try:
-              plan=json.loads(content)
-          except Exception as e:
-              print('FINISH_REASON:',data.get('choices',[{}])[0].get('finish_reason'))
+          choice=data.get('choices',[{}])[0]
+          raw=choice.get('message',{}).get('content','')
+          if not isinstance(raw,str) or not raw.strip():
+              raise SystemExit('FAIL: no model content')
+          lines=raw.strip().splitlines()
+          if lines and lines[0].strip().lower() in ('```','```json'): lines=lines[1:]
+          if lines and lines[-1].strip()=='```': lines=lines[:-1]
+          content='\n'.join(lines).strip()
+          try: plan=json.loads(content)
+          except Exception:
+              print('FINISH_REASON:',choice.get('finish_reason'))
               print('CONTENT_CHARS:',len(content))
-              print('CONTENT_PREVIEW:',repr(content[:3500]))
+              print('CONTENT_PREVIEW:',repr(content[:3000]))
               raise
-          assert plan.get('schemaVersion')=='luna-video-plan@1.0.0', 'bad schema'
+          assert plan.get('schemaVersion')=='luna-video-plan@1.0.0','bad schema'
           shots=plan.get('shots')
-          assert isinstance(shots,list) and len(shots)==6, f'expected 6 shots, got {len(shots) if isinstance(shots,list) else type(shots)}'
-          allowed={'LUNA','LEO'}
-          for i,shot in enumerate(shots,1):
-              assert shot.get('durationSeconds')==6, f'shot {i} duration'
-              assert shot.get('characters') and set(shot['characters'])<=allowed, f'shot {i} cast'
-              assert len(shot.get('videoPrompt',''))>=120, f'shot {i} video prompt too short: {shot.get(\"videoPrompt\",\"\")!r}'
-              assert len(shot.get('referenceFramePrompt',''))>=120, f'shot {i} reference prompt too short: {shot.get(\"referenceFramePrompt\",\"\")!r}'
-          dialogue=' '.join(x.get('text','') for shot in shots for x in shot.get('dialogue',[]))
-          assert 'wrong surname' in dialogue.lower(), 'key story dialogue missing'\n  bible=plan.get('continuityBible',{})\n  assert all(isinstance(bible.get(k),str) and len(bible[k])>=20 for k in ('luna','leo','visualStyle')), 'continuity bible incomplete'\n  assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3, 'continuity rules incomplete'\n  types={s.get('shotType') for s in shots}\n  assert len(types)>=3, f'insufficient shot variety: {types}'
-          print('PASS: compact OVH director plan parsed and validated')
-          print('Model:',data.get('model'))
-          print('Shots:',len(shots),'JSON chars:',len(content))
-          print('First action:',shots[0].get('action','')[:180])
-          PY
-, '', content).strip()
-          try:
-              plan=json.loads(content)
-          except Exception as e:
-              print('FINISH_REASON:',data.get('choices',[{}])[0].get('finish_reason'))
-              print('CONTENT_CHARS:',len(content))
-              print('CONTENT_PREVIEW:',repr(content[:3500]))
-              raise
-          assert plan.get('schemaVersion')=='luna-video-plan@1.0.0', 'bad schema'
-          shots=plan.get('shots')
-          assert isinstance(shots,list) and len(shots)==6, f'expected 6 shots, got {len(shots) if isinstance(shots,list) else type(shots)}'
-          allowed={'LUNA','LEO'}
-          for i,shot in enumerate(shots,1):
-              assert shot.get('durationSeconds')==6, f'shot {i} duration'
-              assert shot.get('characters') and set(shot['characters'])<=allowed, f'shot {i} cast'
-              assert len(shot.get('videoPrompt',''))>=30, f'shot {i} video prompt'
-              assert len(shot.get('referenceFramePrompt',''))>=30, f'shot {i} reference prompt'
-          dialogue=' '.join(x.get('text','') for shot in shots for x in shot.get('dialogue',[]))
-          assert 'wrong surname' in dialogue.lower(), 'key story dialogue missing'
-          print('PASS: compact OVH director plan parsed and validated')
-          print('Model:',data.get('model'))
-          print('Shots:',len(shots),'JSON chars:',len(content))
-          print('First action:',shots[0].get('action','')[:180])
+          assert isinstance(shots,list) and len(shots)==6,'expected exactly six shots'
+          for i,s in enumerate(shots,1):
+              assert s.get('durationSeconds')==6,f'shot {i} duration'
+              assert s.get('characters') and set(s['characters']) <= {'LUNA','LEO'},f'shot {i} cast'
+              assert len(s.get('videoPrompt',''))>=100,f'shot {i} video prompt too short'
+              assert len(s.get('referenceFramePrompt',''))>=100,f'shot {i} reference prompt too short'
+              assert isinstance(s.get('audio'),dict),f'shot {i} audio object missing'
+          bible=plan.get('continuityBible',{})
+          assert all(isinstance(bible.get(k),str) and len(bible[k])>=20 for k in ('luna','leo','visualStyle')),'continuity bible incomplete'
+          assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3,'continuity rules missing'
+          kinds={s.get('shotType') for s in shots}
+          assert len(kinds)>=3,f'insufficient shot variety: {kinds}'
+          dialogue=[(d.get('speaker'),d.get('text')) for s in shots for d in s.get('dialogue',[])]
+          assert len(dialogue)==6,'expected six dialogue lines'
+          assert [x[0] for x in dialogue]==['LUNA','LEO','LUNA','LEO','LUNA','LEO'],'speaker/order mismatch'
+          print('PASS: six-shot plan and cinematic quality gates')
+          print('Model:',data.get('model'),'shots:',len(shots),'chars:',len(content),'shot types:',sorted(kinds))
           PY
