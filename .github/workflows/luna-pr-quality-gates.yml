@@ -188,6 +188,14 @@ jobs:
             'Director shots must be adapted into numbered image and motion prompts for the existing renderer');
           assert.match(autoHandler, /if\\(!lastDirectorPlan\\)[\\s\\S]*makeDirectorPlan[\\s\\S]*ساخت نقشه کارگردانی سینمایی/,
             'One-click production must create and apply a director plan before generating scene media');
+          const directorAdapterStart = html.indexOf('function directorPlanToProductionPack(plan)');
+          const directorAdapterEnd = html.indexOf('function extractFirstImagePrompt(pack)', directorAdapterStart);
+          assert.ok(directorAdapterStart >= 0 && directorAdapterEnd > directorAdapterStart, 'Missing director-plan production adapter');
+          const directorAdapter = html.slice(directorAdapterStart, directorAdapterEnd);
+          assert.ok(directorAdapter.includes(".join('\\n')") && directorAdapter.includes(".join('\\n\\n')"),
+            'Director adapter must emit real newline-separated sections so the existing shot parser can read them');
+          assert.match(html, /duration:el\\('duration'\\)\\.value/,
+            'Director plan must use the selected short/long episode duration');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
           assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
