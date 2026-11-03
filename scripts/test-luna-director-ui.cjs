@@ -84,7 +84,7 @@ const plan = {
       });
     }
     if (payload.mode === "image" || payload.mode === "image_edit") {
-      if (payload.mode === "image") imageRequests++; else { imageEditRequests++; editImageDimensions.push(jpegDimensions(payload.image)); }
+      if (payload.mode === "image") { imageRequests++; imagePrompts.push(String(payload.script || "")); } else { imageEditRequests++; editPrompts.push(String(payload.prompt || "")); editImageDimensions.push(jpegDimensions(payload.image)); }
       const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/XioAAAAASUVORK5CYII=";
       return route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ image: png, mimeType: "image/png", model: "test-fixture" }) });
     }
