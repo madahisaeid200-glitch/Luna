@@ -2,6 +2,13 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const producerSource = fs.readFileSync("producer.html", "utf8");
 const workerSource = fs.readFileSync("worker.js", "utf8");
+const smokeWorkflow = fs.readFileSync(".github/workflows/luna-director-worker-integration.yml", "utf8");
+if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-smoke]') && steps.media-smoke.outcome == 'success'")) {
+  throw new Error("Wan real-media smoke must run only after a successful real reference-image generation");
+}
+if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-smoke]')")) {
+  throw new Error("Wan smoke marker must be explicitly opt-in");
+}
 if (workerSource.indexOf("const pollinationsFailures = [];") < 0 || workerSource.indexOf("const pollinationsFailures = [];") > workerSource.indexOf("const hokusaiFailures = [];")) {
   throw new Error("Worker must attempt the no-key FLUX route before the Hokusai fallback");
 }
