@@ -39,7 +39,13 @@ jobs:
           if not isinstance(content,str) or not content.strip():
               raise SystemExit('FAIL: OVH returned no message content')
           content=content.strip().removeprefix('```json').removesuffix('```').strip()
-          plan=json.loads(content)
+          try:
+              plan=json.loads(content)
+          except Exception as e:
+              print('FINISH_REASON:',data.get('choices',[{}])[0].get('finish_reason'))
+              print('CONTENT_CHARS:',len(content))
+              print('CONTENT_PREVIEW:',repr(content[:3500]))
+              raise
           assert plan.get('schemaVersion')=='luna-video-plan@1.0.0', 'bad schema'
           shots=plan.get('shots')
           assert isinstance(shots,list) and len(shots)==6, f'expected 6 shots, got {len(shots) if isinstance(shots,list) else type(shots)}'
