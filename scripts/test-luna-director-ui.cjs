@@ -31,6 +31,12 @@ if (!pollinationsBlock.includes("if (!response.ok)")) {
 if (!workerSource.includes("const pollinationsPrompt =") || !workerSource.includes("Exactly two adult people, one woman and one man")) {
   throw new Error("The no-key FLUX fallback must use the concise two-character hotel prompt");
 }
+if (!workerSource.includes('"targetDurationSeconds":30') || !workerSource.includes('duration === "long" ? 10 : 5')) {
+  throw new Error("Short Director plans must total 30 seconds across six five-second shots");
+}
+if (!producerSource.includes("durationSeconds:5") || !producerSource.includes("5 seconds, vertical 9:16")) {
+  throw new Error("Wan clip duration must match the five-second Director shot duration");
+}
 if (!workerSource.includes('prompt: pollinationsPrompt, size: "512x768"')) {
   throw new Error("Hokusai must receive the same concise scene-and-character prompt instead of the verbose raw prompt");
 }
@@ -65,7 +71,7 @@ const words = [
 ];
 const shots = speakers.map((speaker, index) => ({
   id: "S0" + (index + 1),
-  durationSeconds: 6,
+  durationSeconds: 5,
   location: "The same luxury hotel suite",
   shotType: ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"][index],
   characters: index % 2 ? ["LEO"] : ["LUNA", "LEO"],
@@ -79,7 +85,7 @@ const shots = speakers.map((speaker, index) => ({
 }));
 const plan = {
   schemaVersion: "luna-video-plan@1.0.0",
-  episode: { title: "The Five-Star Name Mix-Up", logline: "A welcome-card typo becomes a romantic comedy.", targetAspectRatio: "9:16", targetDurationSeconds: 36 },
+  episode: { title: "The Five-Star Name Mix-Up", logline: "A welcome-card typo becomes a romantic comedy.", targetAspectRatio: "9:16", targetDurationSeconds: 30 },
   continuityBible: {
     luna: "Adult woman with long glossy chestnut-brown hair and elegant European appearance.",
     leo: "Adult stylish European man with masculine tailored luxury styling.",
