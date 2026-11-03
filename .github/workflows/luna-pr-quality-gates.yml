@@ -206,7 +206,7 @@ jobs:
             'Wan must render every approved scene in the six-shot sequence');
           assert.ok(autoHandler.includes('generatedWanClipUrls.length===LUNA_RENDER_SHOT_COUNT'),
             'Automatic production must wait for all six real Wan clips before assembly');
-          assert.match(html, /generatedSceneImages\\.length>=LUNA_RENDER_SHOT_COUNT/,
+          assert.ok(autoHandler.includes('generatedSceneImages.length>=LUNA_RENDER_SHOT_COUNT&&generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed)'),
             'Automatic production must wait for six QA-approved images');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
