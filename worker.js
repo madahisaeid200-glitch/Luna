@@ -186,7 +186,7 @@ export default {
           openrouter: Boolean(env.OPENROUTER_API_KEY)
         },
         publicFallbacks: { murakumo: true, murakumoFree: true, mishima: true, qwen3vl: true },
-        message: "Worker is reachable. Keyless Qwen3-VL text, Mishima text, and Qwen3-VL vision fallbacks are wired through Murakumo; health checks do not consume model quota."
+        message: "Worker is reachable. Keyless OVH and Murakumo text fallbacks plus Murakumo Qwen3-VL vision analysis are wired. Identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding; health checks do not consume model quota."
       }, 200);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
@@ -895,6 +895,12 @@ ${script.trim()}`;
     // Mobile-safe reference-image edit: use a normal JSON response rather than a
     // ReadableStream. Some Android/Chrome network paths stall before exposing stream headers.
     if (mode === "image_edit") {
+      if (!env.AI) return json({
+        error: "Reference-image editing is unavailable on this Preview because its Cloudflare Workers AI binding is intentionally disabled.",
+        code: "REFERENCE_EDIT_REQUIRES_WORKERS_AI",
+        retryable: false,
+        details: "No keyless provider is currently configured for identity-preserving image-to-image editing. The app will not substitute a new unrelated text-to-image image."
+      }, 503);
       const startedAt = Date.now();
       if (typeof body.image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image) || body.image.length > 4500000) {
         return json({ error: "Reference image is missing, unsupported, or too large." }, 400);
