@@ -128,6 +128,16 @@ jobs:
             'Audio metadata must be ready before reading its duration');
           assert.match(voicedHandler, /if\(!duration\)/,
             'Animatic must reject unknown audio duration rather than silently assume 30 seconds');
+          const stitchStart = html.indexOf("el('assembleWanClips').onclick=async()=>");
+          const stitchEnd = html.indexOf("el('makeVoicedVideo').onclick=async()=>", stitchStart);
+          assert.ok(stitchStart >= 0 && stitchEnd > stitchStart, 'Missing real Wan clip assembly handler');
+          const stitchHandler = html.slice(stitchStart, stitchEnd);
+          assert.match(stitchHandler, /while\(hasVoice\?!audioEnded:clipIndex<videos\.length\)/,
+            'Real Wan clips must continue cycling until the voice track ends');
+          assert.match(stitchHandler, /audio\.onended=\(\)=>\{audioEnded=true;\}/,
+            'Wan clip cycling must stop on the actual voice-track ended event');
+          assert.match(stitchHandler, /clipIndex=\(clipIndex\+1\)%videos\.length/,
+            'Wan clips must cycle in story order instead of freezing on the final frame');
           const generationStart = html.indexOf("el('generateSceneImage').onclick=async()=>");
           const generationEnd = html.indexOf("el('generateMoreScenes').onclick=async()=>", generationStart);
           assert.ok(generationStart >= 0 && generationEnd > generationStart, 'Missing first-scene generation handler');
