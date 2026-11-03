@@ -342,13 +342,13 @@ export default {
       };
       // Keep the speaker label attached to each audio job so LUNA and LEO
       // receive distinct Kokoro voices while preserving screenplay order.
-      const dialogueLines = speech.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
-      const hasSpeakerLabels = dialogueLines.some(line => /^(LUNA|LEO)\\s*:/i.test(line));
+      const dialogueLines = speech.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const hasSpeakerLabels = dialogueLines.some(line => /^(LUNA|LEO)\s*:/i.test(line));
       const utterances = [];
       if (hasSpeakerLabels) {
         let currentSpeaker = "LUNA";
         for (const line of dialogueLines) {
-          const match = line.match(/^(LUNA|LEO)\\s*:\\s*(.*)$/i);
+          const match = line.match(/^(LUNA|LEO)\s*:\s*(.*)$/i);
           if (match) {
             currentSpeaker = match[1].toUpperCase();
             if (match[2].trim()) utterances.push({ speaker: currentSpeaker, text: match[2].trim() });
