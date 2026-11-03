@@ -572,7 +572,7 @@ ${script.trim()}`;
           let actualModel = model;
           if (model.startsWith("__")) {
             provider = model === "__MURAKUMO_FREE__" ? "murakumo-free" : model === "__MURAKUMO__" ? "murakumo" : model === "__OVH__" ? "ovhcloud" : model === "__LLMFAUCET__" ? "llmfaucet" : model === "__LLM7__" ? "llm7" : model === "__QWEN3VL__" ? "qwen3vl" : model === "__GEMINI__" ? "gemini" : model === "__GROQ__" ? "groq" : model === "__MISTRAL__" ? "mistral" : model === "__NVIDIA__" ? "nvidia" : "openrouter";
-            result = await externalChat(provider, messages, 1600, 0.15, 65_000);
+            result = await externalChat(provider, messages, 1600, 0.15, 150_000);
             actualModel = result.model;
           } else {
             result = await env.AI.run(model, { messages, max_tokens: 1600, temperature: 0.15 });
