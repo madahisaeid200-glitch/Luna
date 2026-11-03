@@ -61,10 +61,11 @@ const plan = {
   try {
     const response = await page.goto("http://127.0.0.1:8000/producer.html", { waitUntil: "domcontentloaded" });
     if (!response || !response.ok()) throw new Error("Producer page did not load");
-    await page.evaluate(() => {
+    const draftText = "The Five-Star Name Mix-Up\\nLUNA: " + words[0] + "\\nLEO: " + words[1];
+    await page.evaluate((draft) => {
       localStorage.setItem("lunaAiEndpoint", "https://orange-firefly-6434.madahisaeid200.workers.dev");
-      window.eval("lastDraft = " + JSON.stringify("The Five-Star Name Mix-Up\nLUNA: " + words[0] + "\nLEO: " + words[1]) + ";");
-    });
+      window.eval("lastDraft = " + JSON.stringify(draft) + ";");
+    }, draftText);
     await page.locator("#makeDirectorPlan").click();
     await page.waitForFunction(() =>
       (document.querySelector("#aiStatus")?.textContent || "").includes("نقشه کارگردانی به بسته تولید متصل شد"),
