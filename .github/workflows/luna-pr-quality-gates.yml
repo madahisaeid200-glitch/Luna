@@ -100,13 +100,13 @@ jobs:
           const clearMedia = html.slice(clearMediaStart, clearMediaEnd);
           assert.match(clearMedia, /assembledWanVideoUrl=''/,
             'Starting a new episode must invalidate the previous assembled video URL');
-assert.ok(clearMedia.includes("el('assembledWanPreview')") && clearMedia.includes("assembled.removeAttribute('src')"),
+          assert.ok(clearMedia.includes("el('assembledWanPreview')") && clearMedia.includes("assembled.removeAttribute('src')"),
             'Starting a new episode must clear the previous assembled video preview');
-assert.ok(clearMedia.includes("el('downloadAssembledWan')") && clearMedia.includes("assembledLink.removeAttribute('href')"),
+          assert.ok(clearMedia.includes("el('downloadAssembledWan')") && clearMedia.includes("assembledLink.removeAttribute('href')"),
             'Starting a new episode must clear the previous assembled download link');
-assert.ok(clearMedia.includes("el('voicePreview')") && clearMedia.includes("audio.removeAttribute('src')"),
+          assert.ok(clearMedia.includes("el('voicePreview')") && clearMedia.includes("audio.removeAttribute('src')"),
             'Starting a new episode must clear the previous voice recording');
-assert.ok(clearMedia.includes("el('wanClipList')") && clearMedia.includes("clipList.replaceChildren()"),
+          assert.ok(clearMedia.includes("el('wanClipList')") && clearMedia.includes("clipList.replaceChildren()"),
             'Starting a new episode must clear stale Wan clip cards');
           const voicedStart = html.indexOf("el('makeVoicedVideo').onclick=async()=>");
           const voicedEnd = html.indexOf("el('generateVoice').onclick=async()=>", voicedStart);
