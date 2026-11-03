@@ -515,6 +515,20 @@ el('generateSceneImage').onclick=async()=>{
      if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۳';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('makeVoicedVideo').disabled=true;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=false;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
      const stored=await saveLunaImage(generatedImageData,{model:data.model||'FLUX',prompt:prompt,title:el('epTitle').value,profile:readCharacterProfile()});
+     try{
+       const firstQa=await analyzeLunaImageData(generatedImageData);
+       const firstQaResult=validateLunaImageQa(firstQa.analysis,true);
+       generatedSceneImages[0].qaPassed=firstQaResult.pass;generatedSceneImages[0].qaReport=firstQa.analysis;firstSceneQaPassed=firstQaResult.pass;
+       el('imageAnalysisReport').textContent=firstQa.analysis;
+       el('imageAnalysisStatus').textContent=firstQaResult.pass?'تصویر صحنه اول تأیید شد؛ می‌توانی صحنه‌های بعدی را بسازی.':'تصویر برای ادامه تولید رد شد: '+firstQaResult.reason;
+       el('generateMoreScenes').disabled=!firstQaResult.pass;el('makePreviewVideo').disabled=!firstQaResult.pass;
+       logLunaDiagnostic('image-qa-'+(firstQaResult.pass?'pass':'fail'),firstQaResult.reason,{model:firstQa.model,people:firstQaResult.people,realism:firstQaResult.realism,anatomy:firstQaResult.anatomy});
+     }catch(qaError){
+       firstSceneQaPassed=false;generatedSceneImages[0].qaPassed=false;
+       el('imageAnalysisStatus').textContent='تصویر ساخته شد اما کنترل کیفیت خودکار انجام نشد؛ برای بررسی دوباره دکمه ارزیابی را بزن.';
+       el('generateMoreScenes').disabled=true;el('makePreviewVideo').disabled=true;
+       logLunaDiagnostic('image-qa-error',qaError.message||qaError);
+     }
      el('visualStatus').textContent='تصویر ساخته شد ('+(data.model||'FLUX')+').' +(data.fallbackUsed?' مسیر جایگزین رایگان استفاده شد.':'')+(stored?' در کتابخانه خصوصی همین مرورگر ذخیره شد.':' ذخیره دائمی مرورگر ناموفق بود؛ تصویر را دانلود کن.')+' می‌توانی کیفیت را ارزیابی کنی.';
      logLunaDiagnostic('image-generation-success','Image generated',{model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,promptLength:prompt.length,stored});
    }catch(error){const msg=error.name==='AbortError'?'زمان درخواست تمام شد (۹۰ ثانیه).':(error.message||'خطای نامشخص');el('visualStatus').textContent='ساخت تصویر ناموفق بود: '+msg;logLunaDiagnostic('image-generation-error',msg,{prompt:prompt.slice(0,1200),endpoint:(localStorage.getItem('lunaAiEndpoint')||workerEndpoint).replace(/\?.*$/,'')});}
@@ -1000,7 +1014,7 @@ el('autoProduce').onclick=async()=>{
      await runButton('generateSceneImage',()=>!!generatedImageData,'ساخت تصویر',120000);
    }
    if(!generatedImageData)throw new Error('تصویر مرجع تولید یا بازیابی نشد.');
-   if(!firstSceneQaPassed){master.textContent='کنترل کیفیت تصویر…';await runButton('analyzeSceneImage',()=>firstSceneQaPassed,'کنترل کیفیت تصویر اول',120000);}
+   if(!firstSceneQaPassed)throw new Error('تصویر صحنه اول از کنترل کیفیت عبور نکرد یا ارزیابی آن کامل نشد: '+(el('imageAnalysisStatus')?.textContent||''));
    master.textContent='مرحله ۴/۴ · ویدئوی واقعی Wan 2.2…';
    const video=el('generatedVideoPreview');
    if(!video.src||video.style.display==='none'){
