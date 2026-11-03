@@ -5,6 +5,7 @@ on:
       - probe/director-ovh-compact
     paths:
       - .github/workflows/luna-director-provider-probe.yml
+      - worker.js
   workflow_dispatch:
 jobs:
   probe:
@@ -63,7 +64,12 @@ jobs:
           assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3,'continuity rules repair failed'
           kinds={s.get('shotType') for s in shots}
           assert len(kinds)>=3,f'insufficient shot variety: {kinds}'
-          dialogue=[(d.get('speaker'),d.get('text')) for s in shots for d in s.get('dialogue',[])]
+          dialogue=[]
+          for shot in shots:
+              for item in shot.get('dialogue',[]):
+                  if isinstance(item,str) and ':' in item:
+                      speaker,text=item.split(':',1); dialogue.append((speaker.strip(),text.strip()))
+                  elif isinstance(item,dict): dialogue.append((item.get('speaker'),item.get('text')))
           assert len(dialogue)==6,'expected six dialogue lines'
           assert [x[0] for x in dialogue]==['LUNA','LEO','LUNA','LEO','LUNA','LEO'],'speaker/order mismatch'
           print('PASS: six-shot plan and cinematic quality gates')
