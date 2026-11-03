@@ -1,4 +1,9 @@
 const { chromium } = require("playwright");
+const fs = require("fs");
+const producerSource = fs.readFileSync("producer.html", "utf8");
+for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6"]) {
+  if (!producerSource.includes(required)) throw new Error("Six-shot production guard missing: " + required);
+}
 
 const speakers = ["LUNA", "LEO", "LUNA", "LEO", "LUNA", "LEO"];
 const words = [
@@ -41,6 +46,7 @@ const plan = {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
   const errors = [];
+  let imageRequests = 0, imageEditRequests = 0, videoRequests = 0;
   page.on("pageerror", error => errors.push(error.message));
   await page.route("https://orange-firefly-6434.madahisaeid200.workers.dev/**", async route => {
     if (route.request().method() === "OPTIONS") {
@@ -50,12 +56,25 @@ const plan = {
         "Access-Control-Allow-Headers": "Content-Type"
       }});
     }
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ ok: true, mode: "director", provider: "ovhcloud", model: "Meta-Llama-3_3-70B-Instruct", plan })
-    });
+    const payload = JSON.parse(route.request().postData() || "{}");
+    if (payload.mode === "director") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: JSON.stringify({ ok: true, mode: "director", provider: "ovhcloud", model: "Meta-Llama-3_3-70B-Instruct", plan })
+      });
+    }
+    if (payload.mode === "image" || payload.mode === "image_edit") {
+      if (payload.mode === "image") imageRequests++; else imageEditRequests++;
+      const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/XioAAAAASUVORK5CYII=";
+      return route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ image: png, mimeType: "image/png", model: "test-fixture" }) });
+    }
+    if (payload.mode === "video") {
+      videoRequests++;
+      return route.fulfill({ status: 200, contentType: "video/webm", headers: { "Access-Control-Allow-Origin": "*" }, body: Buffer.alloc(60000, 1) });
+    }
+    return route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Unexpected test mode: " + payload.mode }) });
   });
 
   try {
@@ -91,11 +110,27 @@ const plan = {
     if (speakers.some((speaker, index) => !result.voiceText.includes(speaker + ": " + words[index]))) throw new Error("Exact screenplay dialogue was not mapped into voice text");
     if (result.imageButtonDisabled) throw new Error("Image generation was not enabled after Director planning");
     if (result.directorDownloadDisabled) throw new Error("Director JSON download was not enabled");
+    await page.locator("#generateSceneImage").click();
+    await page.waitForFunction(() => window.eval("generatedSceneImages.length") === 1, null, { timeout: 10000 });
+    await page.locator("#generateMoreScenes").click();
+    await page.waitForFunction(() => window.eval("generatedSceneImages.length") === 6, null, { timeout: 15000 });
+    if (imageRequests !== 1 || imageEditRequests !== 5) throw new Error("Expected one initial image plus five reference edits; got image=" + imageRequests + " edits=" + imageEditRequests);
+    if (document.querySelector("#generateWanClips")?.disabled) throw new Error("Wan generation did not enable after six images");
+    await page.locator("#generateWanClips").click();
+    await page.waitForFunction(() => window.eval("generatedWanClipUrls.length") === 6, null, { timeout: 15000 });
+    const mediaState = await page.evaluate(() => ({
+      imageCount: window.eval("generatedSceneImages.length"),
+      clipCount: window.eval("generatedWanClipUrls.length"),
+      cards: document.querySelectorAll("#wanClipList video").length,
+      assembleDisabled: document.querySelector("#assembleWanClips")?.disabled
+    }));
+    if (videoRequests !== 6 || mediaState.imageCount !== 6 || mediaState.clipCount !== 6 || mediaState.cards !== 6 || mediaState.assembleDisabled) throw new Error("Six-shot media pipeline mismatch: " + JSON.stringify({ videoRequests, mediaState }));
     if (errors.length) throw new Error("Browser errors: " + errors.join(" | "));
     console.log("PASS: Producer Director UI → production pack → six parsed shots");
     console.log("PASS: all six image prompts and six motion prompts mapped");
     console.log("PASS: exact six dialogue lines mapped to voice text");
-    console.log("PASS: image generation and Director JSON download controls enabled");
+    console.log("PASS: one initial image + five reference-image scene generations");
+    console.log("PASS: six Wan clip requests, six clip cards and assembly enabled");
   } finally {
     await browser.close();
   }
