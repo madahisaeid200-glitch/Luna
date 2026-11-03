@@ -402,11 +402,11 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
    const shotList=shots.map((shot,index)=>{
      const id=index+1;
      const dialogue=Array.isArray(shot.dialogue)?shot.dialogue.map(line=>String(line.speaker||'')+': '+String(line.text||'')).filter(line=>line.trim()!==':').join(' | '):'';
-     return [id+'. SCENE '+id,'Duration: '+(Number(shot.durationSeconds)||6)+' seconds','Camera: '+String(shot.shotType||'medium'),'Action: '+String(shot.action||'A coherent story action'),'Emotion: '+String(shot.emotion||'Natural and restrained'),'Dialogue: '+dialogue].join('\\n');
-   }).join('\\n');
-   const imagePrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.referenceFramePrompt||shot.action||'Photorealistic story frame')).join('\\n');
-   const motionPrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.videoPrompt||shot.action||'Natural continuous cinematic movement')).join('\\n');
-   return ['LUNA DIRECTOR PRODUCTION PACK','EPISODE SUMMARY',String(plan.episode?.title||el('epTitle').value||'LUNA episode')+'\\n'+String(plan.episode?.logline||''),'CHARACTER CONTINUITY',String(plan.continuityBible?.luna||'LUNA identity continuity')+'\\n'+String(plan.continuityBible?.leo||'LEO identity continuity')+'\\n'+String(plan.continuityBible?.visualStyle||'Photorealistic cinematic style'),'SHOT LIST',shotList,'IMAGE PROMPTS',imagePrompts,'VIDEO / MOTION PROMPTS',motionPrompts,'VOICE AND SOUND',shots.map((shot,index)=>(index+1)+'. '+String(shot.audio?.ambience||'Natural location ambience')+'; '+String(shot.audio?.sfx||'Only story-implied sound')+'; '+String(shot.audio?.musicMood||'Romantic comedy')).join('\\n'),'ON-SCREEN CAPTIONS',(plan.captions||[]).map(item=>String(item.shotId||'')+': '+String(item.text||'')).join('\\n'),'EDITING PLAN',shots.map((shot,index)=>(index+1)+'. '+String(shot.transition||'cut')).join('\\n'),'FINAL QUALITY CHECK',(plan.qualityGates||[]).join('\\n')].join('\\n\\n');
+     return [id+'. SCENE '+id,'Duration: '+(Number(shot.durationSeconds)||6)+' seconds','Camera: '+String(shot.shotType||'medium'),'Action: '+String(shot.action||'A coherent story action'),'Emotion: '+String(shot.emotion||'Natural and restrained'),'Dialogue: '+dialogue].join('\n');
+   }).join('\n');
+   const imagePrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.referenceFramePrompt||shot.action||'Photorealistic story frame')).join('\n');
+   const motionPrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.videoPrompt||shot.action||'Natural continuous cinematic movement')).join('\n');
+   return ['LUNA DIRECTOR PRODUCTION PACK','EPISODE SUMMARY',String(plan.episode?.title||el('epTitle').value||'LUNA episode')+'\n'+String(plan.episode?.logline||''),'CHARACTER CONTINUITY',String(plan.continuityBible?.luna||'LUNA identity continuity')+'\n'+String(plan.continuityBible?.leo||'LEO identity continuity')+'\n'+String(plan.continuityBible?.visualStyle||'Photorealistic cinematic style'),'SHOT LIST',shotList,'IMAGE PROMPTS',imagePrompts,'VIDEO / MOTION PROMPTS',motionPrompts,'VOICE AND SOUND',shots.map((shot,index)=>(index+1)+'. '+String(shot.audio?.ambience||'Natural location ambience')+'; '+String(shot.audio?.sfx||'Only story-implied sound')+'; '+String(shot.audio?.musicMood||'Romantic comedy')).join('\n'),'ON-SCREEN CAPTIONS',(plan.captions||[]).map(item=>String(item.shotId||'')+': '+String(item.text||'')).join('\n'),'EDITING PLAN',shots.map((shot,index)=>(index+1)+'. '+String(shot.transition||'cut')).join('\n'),'FINAL QUALITY CHECK',(plan.qualityGates||[]).join('\n')].join('\n\n');
  }
  function extractFirstImagePrompt(pack){
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
@@ -1065,7 +1065,7 @@ el('autoProduce').onclick=async()=>{
    localStorage.setItem('lunaAiEndpoint',endpoint);
    if(!lastDraft||!lastDraftIsAi){
      lastDraft='';lastProductionPack='';lastDirectorPlan=null;
-     master.textContent='مرحله ۱/۷ · سناریو…';
+     master.textContent='مرحله ۱/۸ · سناریو…';
      await runButton('generate',()=>!!lastDraft,'ساخت سناریو',90000);
      const aiMessage=el('aiStatus')?.textContent||'';
      if(!lastDraftIsAi||aiMessage.includes('خطای واقعی تولید')){
@@ -1105,16 +1105,26 @@ el('autoProduce').onclick=async()=>{
      }
    }
    if(lastDraftIsAi&&!lastProductionPack){
-     master.textContent='مرحله ۲/۷ · بسته تولید سینمایی…';
+     master.textContent='مرحله ۲/۸ · بسته تولید سینمایی…';
      await runButton('makeProductionPack',()=>!!lastProductionPack,'ساخت بسته تولید سینمایی',150000);
    }
    if(!lastDirectorPlan){
      master.textContent='مرحله ۳/۸ · طراحی نماهای سینمایی…';
+     const fallbackProductionPack=lastProductionPack;
      const directorButton=el('makeDirectorPlan');
-     if(!directorButton||directorButton.disabled)throw new Error('دکمه نقشه کارگردانی برای سناریوی فعلی آماده نیست.');
-     directorButton.click();
-     await waitFor(()=>!!lastDirectorPlan||(!directorButton.disabled&&/ناموفق|خطا/.test(el('aiStatus')?.textContent||'')),'ساخت نقشه کارگردانی سینمایی',155000);
-     if(!lastDirectorPlan)throw new Error('نقشه کارگردانی ساخته نشد: '+(el('aiStatus')?.textContent||'خطای نامشخص'));
+     if(directorButton&&!directorButton.disabled){
+       directorButton.click();
+       try{
+         await waitFor(()=>!!lastDirectorPlan||(!directorButton.disabled&&/ناموفق|خطا/.test(el('aiStatus')?.textContent||'')),'ساخت نقشه کارگردانی سینمایی',155000);
+       }catch(directorError){
+         logLunaDiagnostic('director-plan-fallback',directorError.message||directorError,{fallbackPackAvailable:!!fallbackProductionPack});
+       }
+     }
+     if(!lastDirectorPlan){
+       lastProductionPack=fallbackProductionPack;
+       updateAiStatus('نقشه کارگردانی در دسترس نبود؛ بسته تولید قبلی حفظ شد و تولید با همان ادامه می‌یابد.');
+       logLunaDiagnostic('director-plan-fallback','Using the existing production pack because no director plan was returned',{fallbackPackAvailable:!!fallbackProductionPack});
+     }
    }
    if(!generatedImageData){
      master.textContent='مرحله ۴/۸ · تصویر صحنه…';
