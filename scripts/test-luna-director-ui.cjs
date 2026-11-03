@@ -82,8 +82,10 @@ const plan = {
       directorDownloadDisabled: document.querySelector("#downloadDirectorPlan")?.disabled,
       output: document.querySelector("#output")?.textContent || ""
     }));
+    console.log("DIRECTOR_PACK_PREVIEW:", result.pack.slice(0,1800));
+    console.log("PARSED_SHOT_COUNT:", result.parsed.shots.length, "SHOT_LIST_PREVIEW:", result.parsed.shotListRaw.slice(0,1400));
     if (!result.pack.includes("IMAGE PROMPTS") || !result.pack.includes("VIDEO / MOTION PROMPTS")) throw new Error("Director plan was not converted into a media production pack");
-    if (result.parsed.shots.length !== 6) throw new Error("Production parser did not recover all six shots");
+    if (result.parsed.shots.length !== 6) throw new Error("Production parser did not recover all six shots; parsed=" + result.parsed.shots.length + "; raw=" + result.parsed.shotListRaw.slice(0,500));
     if (result.parsed.shots.some((shot, index) => !shot.imagePrompt || !shot.motionPrompt)) throw new Error("One or more image/motion prompts were not mapped to the shot list");
     if (!result.imagePrompt.includes("reference still")) throw new Error("First reference-frame prompt was not placed in the image prompt field");
     if (speakers.some((speaker, index) => !result.voiceText.includes(speaker + ": " + words[index]))) throw new Error("Exact screenplay dialogue was not mapped into voice text");
