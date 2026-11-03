@@ -577,7 +577,7 @@ el('generateSceneImage').onclick=async()=>{
         const dataUrl='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
         el('visualStatus').textContent='در حال کنترل کیفیت تصویر صحنه '+shot.id+'…';
         const sceneQa=await analyzeLunaImageData(dataUrl);
-        const sceneQaResult=validateLunaImageQa(sceneQa.analysis,false);
+        const sceneQaResult=validateLunaImageQa(sceneQa.analysis,true);
         if(!sceneQaResult.pass)throw new Error('صحنه '+shot.id+' در کنترل کیفیت رد شد: '+sceneQaResult.reason);
         generatedSceneImages.push({dataUrl,shot:shot.id,prompt,qaPassed:true,qaReport:sceneQa.analysis});
         await saveLunaImage(dataUrl,{model:data.model||'FLUX',mode:'story-scene',shot:shot.id,prompt,title:el('epTitle').value,profile});
@@ -1059,17 +1059,31 @@ el('autoProduce').onclick=async()=>{
    }
    if(!generatedImageData)throw new Error('تصویر مرجع تولید یا بازیابی نشد.');
    if(!firstSceneQaPassed)throw new Error('تصویر صحنه اول از کنترل کیفیت عبور نکرد یا ارزیابی آن کامل نشد: '+(el('imageAnalysisStatus')?.textContent||''));
-   master.textContent='مرحله ۴/۴ · ویدئوی واقعی Wan 2.2…';
-   const video=el('generatedVideoPreview');
-   if(!video.src||video.style.display==='none'){
-     const b=el('makePreviewVideo');
+   const runAutoStage=async(id,ready,label,timeoutMs)=>{
+     if(ready())return;
+     const b=el(id);
+     if(!b)throw new Error('دکمه مرحله «'+label+'» پیدا نشد.');
+     if(b.disabled)throw new Error('مرحله «'+label+'» هنوز از نظر کنترل کیفیت یا پیش‌نیازها فعال نیست.');
      b.click();
-     await waitFor(()=>!b.disabled&&!!video.src&&video.style.display!=='none','تولید MP4 با Wan 2.2',260000);
+     await waitFor(()=>ready()||(!b.disabled&&/ناموفق|متوقف|شکست|رد شد/i.test(el('visualStatus').textContent+' '+el('voiceStatus').textContent)),label,timeoutMs);
+     if(!ready())throw new Error('مرحله «'+label+'» کامل نشد: '+(el('visualStatus').textContent||el('voiceStatus').textContent));
+   };
+   if(generatedSceneImages.length<3){
+     master.textContent='مرحله ۴/۷ · ساخت سه تصویر مستقل…';
+     await runAutoStage('generateMoreScenes',()=>generatedSceneImages.length>=3&&generatedSceneImages.slice(0,3).every(x=>x.qaPassed),'ساخت و کنترل کیفیت سه صحنه',420000);
    }
-   el('visualStatus').textContent+=' · زنجیرهٔ خودکار کامل شد.';
-   master.textContent='تولید کامل شد — مشاهده ویدئو';
-   el('viewGeneratedVideo').scrollIntoView({behavior:'smooth',block:'center'});
-   video.scrollIntoView({behavior:'smooth',block:'center'});
+   if(generatedSceneImages.length<3||!generatedSceneImages.slice(0,3).every(x=>x.qaPassed))throw new Error('هر سه تصویر مستقل باید کنترل کیفیت را بگذرانند.');
+   master.textContent='مرحله ۵/۷ · ساخت صدای دیالوگ…';
+   const voice=el('voicePreview');
+   await runAutoStage('generateVoice',()=>!!(voice.src&&voice.src.startsWith('data:audio/')),'ساخت صدای انگلیسی',165000);
+   master.textContent='مرحله ۶/۷ · تولید سه کلیپ واقعی Wan 2.2…';
+   await runAutoStage('generateWanClips',()=>generatedWanClipUrls.length===3,'تولید سه کلیپ واقعی Wan',780000);
+   master.textContent='مرحله ۷/۷ · اتصال کلیپ‌ها و صدای دیالوگ…';
+   await runAutoStage('assembleWanClips',()=>!!assembledWanVideoUrl,'اتصال سه کلیپ و صدا',240000);
+   const finalPreview=el('assembledWanPreview');
+   el('visualStatus').textContent+=' · زنجیرهٔ کامل شامل سه تصویر تأییدشده، صدای دیالوگ، سه کلیپ واقعی Wan و فایل واحد WebM آماده شد.';
+   master.textContent='تولید کامل شد — مشاهده فیلم واحد';
+   finalPreview.scrollIntoView({behavior:'smooth',block:'center'});
  }catch(error){
    const detail=['LUNA AUTO ERROR',new Date().toISOString(),'مرحله: '+master.textContent,'خطا: '+(error.message||String(error)),'AI: '+(el('aiStatus')?.textContent||''),'Visual: '+(el('visualStatus')?.textContent||''),'Online: '+navigator.onLine,'Page: '+location.href.split('?')[0]].join('\\n');
    master.textContent='توقف خودکار: '+(error.message||'خطای نامشخص');
