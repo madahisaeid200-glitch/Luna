@@ -8,6 +8,9 @@ if (workerSource.indexOf("const pollinationsFailures = [];") < 0 || workerSource
 if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
   throw new Error("Do not force a model selector on the verified anonymous legacy Pollinations endpoint");
 }
+if (!workerSource.includes("upstreamHttpStatus: response.status") || !workerSource.includes("bytes.length < 10_000")) {
+  throw new Error("Pollinations fallback must validate image MIME and byte size while preserving upstream status");
+}
 function jpegDimensions(dataUrl) {
   const bytes = Buffer.from(String(dataUrl).split(",")[1] || "", "base64");
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
