@@ -20,7 +20,7 @@ permissions:
 jobs:
   director-integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -116,6 +116,69 @@ jobs:
           print('SHOT_TYPES:',sorted(kinds),'DIALOGUE_LINES:',len(actual))
           print('DURATION_SECONDS:',plan.get('episode',{}).get('targetDurationSeconds'))
           PY
+      - name: One real image and one real Wan video smoke test
+        id: media-smoke
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, time, urllib.request, urllib.error
+          base='http://127.0.0.1:8787/'
+          report={'image':None,'wan_health':None,'video':None}
+          def post(payload, timeout):
+            req=urllib.request.Request(base,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
+            with urllib.request.urlopen(req,timeout=timeout) as r:
+              return r.status,r.headers, r.read()
+          try:
+            print('Checking public Wan Space availability without starting GPU generation...')
+            status,headers,raw=post({'mode':'video_health'},35)
+            health=json.loads(raw)
+            report['wan_health']={'http':status,'ok':health.get('ok'),'engine':health.get('engine'),'endpointAvailable':health.get('endpointAvailable')}
+            print('WAN_HEALTH:',json.dumps(report['wan_health']))
+            if not health.get('ok'): raise RuntimeError('Wan public Space is not ready; no video job was submitted.')
+            prompt=('Photorealistic live-action vertical 9:16 cinematic frame, elegant luxury European hotel suite, '
+                    'one adult woman with long glossy chestnut-brown hair in a refined evening dress beside one adult '
+                    'man in masculine tailored dark luxury clothing. Exactly these two adults, natural skin texture, '
+                    'warm practical lighting, realistic anatomy, candid film still, no text, no logo.')
+            print('Generating exactly one real image through the Worker image route...')
+            status,headers,raw=post({'mode':'image','script':prompt},210)
+            data=json.loads(raw)
+            image=data.get('image')
+            if status!=200 or not image: raise RuntimeError('Image generation returned no image: '+str(data.get('error') or status)+' '+str(data.get('details') or '')[:300])
+            mime=data.get('mimeType') or 'image/jpeg'
+            ext='png' if 'png' in mime else 'jpg'
+            os.makedirs('media-smoke',exist_ok=True)
+            image_path='media-smoke/luna-smoke-image.'+ext
+            with open(image_path,'wb') as out: out.write(base64.b64decode(image))
+            report['image']={'http':status,'provider':data.get('provider'),'model':data.get('model'),'bytes':os.path.getsize(image_path),'path':image_path,'fallbackUsed':data.get('fallbackUsed')}
+            print('REAL_IMAGE:',json.dumps(report['image']))
+            print('Submitting exactly one short real Wan 2.2 I2V generation...')
+            video_payload={'mode':'video','image':'data:'+mime+';base64,'+image,'prompt':'Animate only this exact reference frame for 1.5 seconds. Preserve the same two adult people, faces, clothing and hotel suite. Subtle natural breathing, a gentle glance toward each other, minimal smooth camera push-in. No cuts, no morphing, no added people or objects. Photorealistic live action.','durationSeconds':1.5,'steps':2}
+            status,headers,video=post(video_payload,230)
+            ctype=headers.get('Content-Type','')
+            if status!=200 or not ctype.lower().startswith('video/'): raise RuntimeError('Wan did not return a video: HTTP '+str(status)+' '+ctype+' '+video[:350].decode(errors='replace'))
+            ext='mp4' if 'mp4' in ctype else 'webm'
+            video_path='media-smoke/luna-smoke-video.'+ext
+            with open(video_path,'wb') as out: out.write(video)
+            if os.path.getsize(video_path)<50000: raise RuntimeError('Wan video file was unexpectedly small.')
+            report['video']={'http':status,'contentType':ctype,'bytes':os.path.getsize(video_path),'path':video_path,'engine':'Wan2.2-14B-Fast-I2V'}
+            print('REAL_VIDEO:',json.dumps(report['video']))
+            report['status']='passed'
+          except Exception as error:
+            report['status']='failed'
+            report['error']=str(error)[:1200]
+            print('MEDIA_SMOKE_FAILED:',report['error'])
+            raise
+          finally:
+            os.makedirs('media-smoke',exist_ok=True)
+            with open('media-smoke/report.json','w') as out: json.dump(report,out,indent=2)
+          PY
+      - name: Upload real media smoke-test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-real-media-smoke
+          path: media-smoke/
+          if-no-files-found: warn
       - name: Stop local Worker
         if: always()
         run: |
