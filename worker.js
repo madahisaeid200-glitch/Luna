@@ -587,9 +587,11 @@ ${script.trim()}`;
           const speakerNames = [...new Set([profile.lunaName, profile.leoName, "LUNA", "LEO"])];
           const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const speakerPattern = speakerNames.map(escapeRegex).join("|");
+          const normalizeDialogue = value => String(value || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^\\p{L}\\p{N}]+/gu, " ").trim().replace(/\\s+/g, " ");
           const sourceDialogue = script.split(/\r?\n/).map(row => {
-            const match = row.match(new RegExp("^\\s*(" + speakerPattern + ")\\s*:\\s*(.+?)\\s*$", "i"));
-            return match ? { speaker: match[1], text: match[2].trim() } : null;
+            const cleaned = row.replace(/^\\s*(?:[-•]\\s*)?/, "").replace(/^\\*{1,2}/, "").replace(/\\*{1,2}\\s*$/, "").trim();
+            const match = cleaned.match(new RegExp("^(" + speakerPattern + ")\\s*:\\s*(.+?)\\s*$", "i"));
+            return match ? { speaker: match[1], text: match[2].replace(/^\\*{1,2}|\\*{1,2}$/g, "").trim() } : null;
           }).filter(Boolean);
           const usedSourceDialogue = new Set();
           const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];
@@ -607,7 +609,7 @@ ${script.trim()}`;
                 if (split && allowed.has(split[1].trim())) { speaker = split[1].trim(); candidate = split[2].trim(); }
               }
               if (!candidate) return null;
-              const sourceIndex = sourceDialogue.findIndex((entry, index) => !usedSourceDialogue.has(index) && entry.text === candidate);
+              const sourceIndex = sourceDialogue.findIndex((entry, index) => !usedSourceDialogue.has(index) && normalizeDialogue(entry.text) === normalizeDialogue(candidate));
               if (sourceIndex < 0) return null;
               usedSourceDialogue.add(sourceIndex);
               const source = sourceDialogue[sourceIndex];
