@@ -208,7 +208,7 @@ jobs:
             'Automatic production must wait for all six real Wan clips before assembly');
           assert.ok(autoHandler.includes('generatedSceneImages.length>=LUNA_RENDER_SHOT_COUNT&&generatedSceneImages.slice(0,LUNA_RENDER_SHOT_COUNT).every(x=>x.qaPassed)'),
             'Automatic production must wait for six QA-approved images');
-          assert.ok(html.includes("'6. A final reaction shot closes the episode'"),
+          assert.ok(html.includes("'6. SCENE 6 — The misunderstanding dissolves"),
             'The no-AI local fallback pack must provide six independent shots for the six-shot renderer');
           assert.ok(html.includes("data.plan.shots.length<6"),
             'Director plans with fewer than six shots must not enter the six-shot renderer');
