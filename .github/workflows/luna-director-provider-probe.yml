@@ -68,6 +68,7 @@ jobs:
           assert isinstance(bible.get('continuityRules'),list) and len(bible['continuityRules'])>=3,'continuity rules repair failed'
           kinds={s.get('shotType') for s in shots}
           assert len(kinds)>=3,f'insufficient shot variety: {kinds}'
+          print('DIALOGUE_RAW_BY_SHOT:',[shot.get('dialogue') for shot in shots])
           dialogue=[]
           for shot in shots:
               for item in shot.get('dialogue',[]):
