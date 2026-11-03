@@ -157,6 +157,44 @@ jobs:
           print('REAL_WORKER_IMAGE:',json.dumps(report))
           with open('media-smoke/report.json','w') as out: json.dump(report,out,indent=2)
           PY
+      - name: One real Wan 2.2 video smoke test
+        id: wan-smoke
+        if: contains(github.event.head_commit.message, '[wan-smoke]') && steps.media-smoke.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, urllib.request, urllib.error, time
+          image_path=next(('media-smoke/luna-worker-image.'+ext for ext in ('jpg','png','webp') if os.path.exists('media-smoke/luna-worker-image.'+ext)),None)
+          if not image_path: raise SystemExit('No successful real reference image is available for Wan smoke test.')
+          with open(image_path,'rb') as f: image_bytes=f.read()
+          mime='image/png' if image_path.endswith('.png') else 'image/webp' if image_path.endswith('.webp') else 'image/jpeg'
+          data_url='data:'+mime+';base64,'+base64.b64encode(image_bytes).decode()
+          payload={'mode':'video','image':data_url,'prompt':'One continuous photorealistic live-action shot in the exact same luxury hotel suite. Preserve the two adults exactly as visible in the reference image, their faces, gender presentation, hair and wardrobe. Subtle natural movement, a gentle camera push-in, realistic fabric and warm practical lighting. No cuts, no morphing, no new people, no text or logos.','durationSeconds':2.5,'steps':2}
+          req=urllib.request.Request('http://127.0.0.1:8787/',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'},method='POST')
+          started=time.time()
+          try:
+            with urllib.request.urlopen(req,timeout=225) as response:
+              status=response.status
+              content_type=response.headers.get('Content-Type','')
+              video=response.read()
+          except urllib.error.HTTPError as error:
+            status=error.code
+            content_type=error.headers.get('Content-Type','')
+            video=error.read()
+          if status!=200 or 'video' not in content_type.lower() or len(video)<50000:
+            try: detail=json.loads(video).get('details') or json.loads(video).get('error')
+            except Exception: detail=video[:600].decode('utf-8','replace')
+            report={'status':'failed','http':status,'contentType':content_type,'bytes':len(video),'details':detail,'elapsedSeconds':round(time.time()-started,1)}
+            os.makedirs('media-smoke',exist_ok=True)
+            with open('media-smoke/wan-report.json','w') as f: json.dump(report,f,indent=2)
+            raise RuntimeError('Real Wan smoke failed: '+json.dumps(report))
+          ext='mp4' if 'mp4' in content_type.lower() else 'webm'
+          path='media-smoke/luna-wan-smoke.'+ext
+          with open(path,'wb') as f: f.write(video)
+          report={'status':'passed','http':status,'engine':'Wan2.2-14B-Fast-I2V','contentType':content_type,'bytes':len(video),'elapsedSeconds':round(time.time()-started,1),'path':path,'referenceImage':image_path}
+          with open('media-smoke/wan-report.json','w') as f: json.dump(report,f,indent=2)
+          print('REAL_WAN_VIDEO:',json.dumps(report))
+          PY
       - name: Upload real media smoke-test artifacts
         if: always()
         uses: actions/upload-artifact@v4
