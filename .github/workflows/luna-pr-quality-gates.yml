@@ -37,6 +37,14 @@ jobs:
             'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
           assert.ok(!healthBlock.includes('env.AI ? 200 : 503'),
             'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
+          assert.match(healthBlock, /identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding/,
+            'Worker health response must disclose that Preview reference-image editing needs Workers AI');
+          const imageEditStart = worker.indexOf('if (mode === "image_edit")');
+          const imageEditEnd = worker.indexOf('// Generate one real scene image', imageEditStart);
+          assert.ok(imageEditStart >= 0 && imageEditEnd > imageEditStart, 'Missing reference-image edit route');
+          const imageEditRoute = worker.slice(imageEditStart, imageEditEnd);
+          assert.match(imageEditRoute, /if \(!env\.AI\) return json\([\s\S]*?REFERENCE_EDIT_REQUIRES_WORKERS_AI[\s\S]*?\}, 503\);/,
+            'Preview reference-image editing must fail clearly before attempting unavailable Workers AI');
           assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
             'Murakumo fallback must use the current documented public model selector');
           const directorAndPackFallbacks = worker.split('"__OVH__",\n        "__MURAKUMO_FREE__",').length - 1;
