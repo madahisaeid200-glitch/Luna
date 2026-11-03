@@ -204,7 +204,7 @@ jobs:
             'The renderer must use six independently generated shots to improve unique motion duration');
           assert.ok(html.includes('for(let i=0;i<LUNA_RENDER_SHOT_COUNT;i++)'),
             'Wan must render every approved scene in the six-shot sequence');
-          assert.match(autoHandler, /generatedWanClipUrls\\.length===LUNA_RENDER_SHOT_COUNT/,
+          assert.ok(autoHandler.includes('generatedWanClipUrls.length===LUNA_RENDER_SHOT_COUNT'),
             'Automatic production must wait for all six real Wan clips before assembly');
           assert.match(html, /generatedSceneImages\\.length>=LUNA_RENDER_SHOT_COUNT/,
             'Automatic production must wait for six QA-approved images');
