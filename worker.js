@@ -1031,31 +1031,34 @@ ${script.trim()}`;
           signal: AbortSignal.timeout(75_000)
         });
         const mimeType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        // The legacy gateway has occasionally returned a valid JPEG body with HTTP 400.
-        // Accept only a correctly typed, plausible image payload; never accept an error page.
-        if (!mimeType.startsWith("image/")) {
-          pollinationsFailures.push("Pollinations FLUX HTTP " + response.status + " returned non-image content: " + mimeType);
-        } else if (bytes.length < 10_000 || bytes.length > 8_000_000) {
-          pollinationsFailures.push("Pollinations FLUX image size outside safe bounds: " + bytes.length + " bytes (HTTP " + response.status + ")");
+        if (!response.ok) {
+          const detail = mimeType.startsWith("image/") ? "upstream returned an image payload with an error status; refusing it as an error placeholder" : (await response.text()).slice(0, 260);
+          pollinationsFailures.push("Pollinations FLUX HTTP " + response.status + ": " + detail);
+        } else if (!mimeType.startsWith("image/")) {
+          pollinationsFailures.push("Pollinations FLUX returned non-image content: " + mimeType);
         } else {
-          let binary = "";
-          for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-            binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          if (bytes.length < 10_000 || bytes.length > 8_000_000) {
+            pollinationsFailures.push("Pollinations FLUX image size outside safe bounds: " + bytes.length + " bytes");
+          } else {
+            let binary = "";
+            for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+              binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+            }
+            return json({
+              image: btoa(binary),
+              mimeType,
+              model: "flux",
+              provider: "pollinations",
+              fallbackUsed: true,
+              fallbackReason: cloudflareError,
+              mode: "image",
+              generationMs: Date.now() - generationStartedAt,
+              size: "512x768",
+              imageBytes: bytes.length,
+              upstreamHttpStatus: response.status
+            });
           }
-          return json({
-            image: btoa(binary),
-            mimeType,
-            model: "flux",
-            provider: "pollinations",
-            fallbackUsed: true,
-            fallbackReason: cloudflareError + " | Pollinations HTTP " + response.status,
-            mode: "image",
-            generationMs: Date.now() - generationStartedAt,
-            size: "512x768",
-            imageBytes: bytes.length,
-            upstreamHttpStatus: response.status
-          });
         }
       } catch (error) {
         pollinationsFailures.push(String(error?.message || error || "unknown Pollinations FLUX error").slice(0, 260));
