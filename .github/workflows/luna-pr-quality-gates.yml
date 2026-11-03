@@ -81,6 +81,22 @@ jobs:
           assert.match(html, /const qa=validateLunaImageQa\(analysis,true\)/,
             'First scene QA must require both LUNA and LEO');
 
+          const generationStart = html.indexOf("el('generateSceneImage').onclick=async()=>");
+          const generationEnd = html.indexOf("el('generateMoreScenes').onclick=async()=>", generationStart);
+          assert.ok(generationStart >= 0 && generationEnd > generationStart, 'Missing first-scene generation handler');
+          const generationHandler = html.slice(generationStart, generationEnd);
+          assert.match(generationHandler, /generatedWanClipUrls\.forEach\(url=>URL\.revokeObjectURL\(url\)\)/,
+            'Regenerating the first image must revoke stale Wan clips');
+          assert.match(generationHandler, /generatedWanClipUrls=\[\]/,
+            'Regenerating the first image must clear old Wan clip references');
+          assert.match(generationHandler, /assembledWanVideoUrl=''/,
+            'Regenerating the first image must invalidate the assembled film');
+          assert.match(generationHandler, /downloadAssembledWan/,
+            'Regenerating the first image must clear the old assembled download link');
+          assert.match(generationHandler, /oldAssembled\.removeAttribute\('src'\)/,
+            'Regenerating the first image must clear the old assembled preview');
+          assert.match(generationHandler, /makeVoicedVideo/,
+            'Regenerating the first image must not leave stale voice-video state available');
           const editStart = html.indexOf("el('editSceneImage').onclick=async()=>");
           const editEnd = html.indexOf("el('downloadSceneImage').onclick=", editStart);
           assert.ok(editStart >= 0 && editEnd > editStart, 'Missing image-edit handler');
