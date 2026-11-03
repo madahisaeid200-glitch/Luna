@@ -315,7 +315,7 @@ el('makeDirectorPlan').onclick=async()=>{
  try{
   const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'director',script:lastDraft,duration:el('duration').value,allowDeterministicFallback:true,characterProfile:saveCharacterProfile(false)||readCharacterProfile()})},150000);
   if(!response.ok||data.error)throw new Error(data.error||'Director plan failed');
-  if(!data.plan||!Array.isArray(data.plan.shots)||data.plan.shots.length<3)throw new Error('پاسخ مدل فاقد حداقل سه نمای معتبر است.');
+  if(!data.plan||!Array.isArray(data.plan.shots)||data.plan.shots.length<6)throw new Error('برای موتور رندر فعلی، نقشه کارگردانی باید حداقل شش نمای مستقل داشته باشد.');
   const directorPack=directorPlanToProductionPack(data.plan);
   if(!directorPack)throw new Error('نقشه کارگردانی به بسته تولید قابل استفاده تبدیل نشد.');
   lastDirectorPlan=data.plan;
@@ -323,7 +323,7 @@ el('makeDirectorPlan').onclick=async()=>{
   el('downloadDirectorPlan').disabled=false;
   el('exportProductionJson').disabled=false;
   el('output').textContent=JSON.stringify(data.plan,null,2);
-  updateAiStatus('نقشهٔ کارگردانی آماده شد: '+data.plan.shots.length+' نما، مدت هدف '+data.plan.episode.targetDurationSeconds+' ثانیه. سه نمای نخست اکنون به پرامپت تصویر و حرکت موتور تولید وصل شدند؛ رندر هنوز انجام نشده است.');
+  updateAiStatus('نقشهٔ کارگردانی آماده شد: '+data.plan.shots.length+' نما، مدت هدف '+data.plan.episode.targetDurationSeconds+' ثانیه. موتور فعلی فقط شش نمای نخست را رندر می‌کند؛ تولید خودکار قسمت ۳ تا ۵ دقیقه‌ای تا پشتیبانی کامل از همه نماها غیرفعال است.');
  }catch(error){updateAiStatus('ساخت نقشهٔ کارگردانی ناموفق بود: '+(error.message||'خطای نامشخص'));}
  finally{button.disabled=false;button.textContent='ساخت نقشه کارگردانی سینمایی (مرحلهٔ جدید)';}
 };
@@ -1041,6 +1041,7 @@ el('testImageUpload').onclick=async()=>{
  
 el('autoProduce').onclick=async()=>{
  const master=el('autoProduce');
+ if(el('duration').value==='long'){el('visualStatus').textContent='تولید خودکار قسمت ۳ تا ۵ دقیقه‌ای فعلاً متوقف است: موتور ویدئو فقط شش کلیپ ۳٫۵ ثانیه‌ای می‌سازد و تکرار آن‌ها فیلم پیوستهٔ چنددقیقه‌ای تولید نمی‌کند. برای جلوگیری از خروجی ضعیف، فعلاً Short / Reel را انتخاب کن.';return;}
  if(master.dataset.running==='1')return;
  master.dataset.running='1';master.disabled=true;
  const original=master.textContent;
@@ -1091,7 +1092,7 @@ el('autoProduce').onclick=async()=>{
          'LUNA LOCAL PRODUCTION PACK',
          'EPISODE SUMMARY',title,
          'CHARACTER CONTINUITY',profile.lunaName+': '+profile.lunaLook,profile.leoName+': '+profile.leoLook,
-         'SHOT LIST','1. Luxury hotel establishing shot','2. Luna waits for the surprise','3. Leo reveals the booking mix-up','4. Luna reacts with playful disbelief','5. Romantic comedy payoff',
+         'SHOT LIST','1. Luxury hotel establishing shot','2. Luna waits for the surprise','3. Leo reveals the booking mix-up','4. Luna reacts with playful disbelief','5. Luna and Leo reach the romantic comedy payoff','6. A final reaction shot closes the episode',
          'IMAGE PROMPTS',el('imagePrompt').value,
          'VIDEO / MOTION PROMPTS','Natural cinematic motion, expressive faces, gentle camera movement; preserve identity and wardrobe.',
          'VOICE AND SOUND','Warm English romantic-comedy dialogue and subtle hotel ambience.',
