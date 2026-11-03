@@ -10,6 +10,10 @@ on:
       - .github/workflows/luna-director-worker-integration.yml
   workflow_dispatch:
 
+concurrency:
+  group: luna-director-integration-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
