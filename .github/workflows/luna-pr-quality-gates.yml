@@ -160,16 +160,20 @@ jobs:
             assert.ok(autoHandler.includes("runAutoStage('" + stage + "'"),
               'Automatic production must run the complete stage: ' + stage);
           }
-          assert.match(autoHandler, /generatedWanClipUrls\.length===3/,
-            'Automatic production must wait for all three Wan clips');
+          assert.match(html, /const LUNA_RENDER_SHOT_COUNT=6/,
+            'The renderer must use six independently generated shots');
+          assert.match(autoHandler, /generatedWanClipUrls\.length===LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for all six Wan clips');
+          assert.match(html, /generatedSceneImages\.length>=LUNA_RENDER_SHOT_COUNT/,
+            'Automatic production must wait for six QA-approved scene images');
           assert.match(autoHandler, /assembledWanVideoUrl/,
             'Automatic production must wait for the final stitched film');
-          assert.match(html, /generatedSceneImages\.slice\(0,3\)\.sort\(\(a,b\)=>Number\(a\.shot\)-Number\(b\.shot\)\)/,
-            'Wan generation must use approved scene images in shot-number order');
+          assert.match(html, /generatedSceneImages\.slice\(0,LUNA_RENDER_SHOT_COUNT\)\.sort\(\(a,b\)=>Number\(a\.shot\)-Number\(b\.shot\)\)/,
+            'Wan generation must use all approved scene images in shot-number order');
           assert.match(html, /parsed\.shots\|\|\[\]\)\.slice\(\)\.sort\(\(a,b\)=>Number\(a\.id\)-Number\(b\.id\)\)/,
             'Wan motion prompts must follow the same numeric shot order as approved images');
-          assert.match(html, /these three clips.*repeat|these three motions.*repeat|(?:همین|این) سه کلیپ به ترتیب تکرار می‌شوند/,
-            'The final video UI must disclose when the three short clips are repeated to cover longer dialogue');
+          assert.match(html, /(?:همین|این) شش کلیپ به ترتیب تکرار می‌شوند/,
+            'The final video UI must disclose when the six short clips are repeated to cover longer dialogue');
           assert.match(autoHandler, /if\(!lastDraft&&!quotaBlocked\)/,
             'A valid Worker-provided local-template screenplay must not be rejected just because it is not AI-generated');
           assert.match(autoHandler, /if\(!lastDraft\)\{[\s\S]*lastDraft=draft\(/,
