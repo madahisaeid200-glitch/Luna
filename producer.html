@@ -451,6 +451,7 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
  async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
  async function fetchLunaJsonWithTimeout(url,options={},timeoutMs=60000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{const response=await fetch(url,{...options,signal:controller.signal});const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+raw.length+' کاراکتر.')}return {response,data}}finally{clearTimeout(timer)}}
+ async function prepareLunaReferenceImage(dataUrl,maxSide=480,quality=0.88){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=maxSide;canvas.height=maxSide;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان آماده‌سازی تصویر مرجع را ندارد.');ctx.fillStyle='#f3f0eb';ctx.fillRect(0,0,maxSide,maxSide);const scale=Math.min(maxSide/img.naturalWidth,maxSide/img.naturalHeight);const width=Math.max(1,Math.round(img.naturalWidth*scale));const height=Math.max(1,Math.round(img.naturalHeight*scale));ctx.drawImage(img,Math.round((maxSide-width)/2),Math.round((maxSide-height)/2),width,height);const compact=canvas.toDataURL('image/jpeg',quality);if(compact.length>1800000)throw new Error('تصویر مرجع پس از فشرده‌سازی هنوز بیش از حد بزرگ است.');resolve(compact);}catch(e){reject(e)}};img.onerror=()=>reject(new Error('تصویر مرجع برای ویرایش قابل خواندن نیست.'));img.src=dataUrl})}
  async function prepareLunaImageForAnalysis(dataUrl,maxSide=512,quality=0.42){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{try{const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان آماده‌سازی تصویر را ندارد.');ctx.drawImage(img,0,0,canvas.width,canvas.height);const compact=canvas.toDataURL('image/jpeg',quality);if(compact.length>1800000)throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ این نسخه باید کوچک‌تر شود.');resolve(compact);}catch(e){reject(e)}};img.onerror=()=>reject(new Error('تصویر بازیابی‌شده قابل خواندن نیست.'));img.src=dataUrl})}
  el('analyzeSceneImage').onclick=async()=>{
   if(!generatedImageData){el('imageAnalysisStatus').textContent='ابتدا یک تصویر بساز.';return;}
@@ -538,33 +539,24 @@ el('generateSceneImage').onclick=async()=>{
         const prompt=(castLock+' '+identity+' NEW DISTINCT STORY SCENE '+shot.id+': '+scene.slice(0,400)+action.slice(0,160)+' Different camera composition and moment, not a crop. Same suite, time of day and outfits. Both leads recognizable; natural expressions, realistic skin and hands, cinematic light, vertical 9:16 photorealistic live action. NEGATIVE: third person, staff, guest, background human, silhouette, portrait, people in artwork, mirror or reflection person, screen person, extra limbs, text, logo, collage, split-screen.').slice(0,1950);
         el('visualStatus').textContent='در حال ساخت تصویر مستقل نما '+shot.id+' از ۶؛ ممکن است هر تصویر کمی زمان ببرد…';
         let data,referenceEditUsed=false,referenceEditError='';
+        const referenceForEdit=await prepareLunaReferenceImage(generatedImageData,480,0.88);
+        const editPrompt=('Using the supplied square reference image, create a new distinct live-action frame for story scene '+shot.id+'. Preserve exact identities of the same two adult leads only: same faces, hair, age, body proportions, skin tone, gender presentation and wardrobe. Change only camera angle, pose, expression and action. Keep same suite, time and lighting. Scene: '+scene+action+'. '+profile.style.slice(0,180)+' Photorealistic natural skin. EXACTLY TWO PHYSICAL PEOPLE. No third person, staff, guest, silhouette, portrait, face or human figure in any painting, photo, framed artwork, poster, screen, mirror, reflection, sculpture, statue or mannequin. Walls blank or abstract geometric art only. No text, logo, collage or split screen.').slice(0,1750);
+        const editController=new AbortController(),editTimer=setTimeout(()=>editController.abort(),105000);let editResponse;
         try{
-          const editController=new AbortController(),editTimer=setTimeout(()=>editController.abort(),105000);let editResponse;
-          try{
-            const editPrompt=('Using the supplied reference image, create a new distinct live-action frame for story scene '+shot.id+'. Preserve exact identities of the same two adult leads only: same faces, hair, age, body proportions, skin tone, gender presentation and wardrobe. Change only camera angle, pose, expression and action. Keep same suite, time and lighting. Scene: '+scene+action+'. '+profile.style.slice(0,180)+' Photorealistic natural skin. EXACTLY TWO PHYSICAL PEOPLE. No third person, staff, guest, silhouette, portrait, face or human figure in any painting, photo, framed artwork, poster, screen, mirror, reflection, sculpture, statue or mannequin. Walls blank or abstract geometric art only. No text, logo, collage or split screen.').slice(0,1750);
-            editResponse=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:generatedImageData,prompt:editPrompt,width:768,height:1152}),signal:editController.signal});
-          }finally{clearTimeout(editTimer);}
-          const editData=await editResponse.json();
-          if(!editResponse.ok||editData.error||!editData.image)throw new Error((editData.error||'Reference image edit failed')+(editData.details?' — '+editData.details:''));
-          data=editData;referenceEditUsed=true;
-        }catch(editError){
-          referenceEditError=String(editError?.message||editError||'reference edit unavailable').slice(0,260);
-          const fallbackController=new AbortController(),fallbackTimer=setTimeout(()=>fallbackController.abort(),110000);let fallbackResponse;
-          try{
-            fallbackResponse=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:profile}),signal:fallbackController.signal});
-          }finally{clearTimeout(fallbackTimer);}
-          data=await fallbackResponse.json();
-          if(!fallbackResponse.ok||data.error||!data.image)throw new Error('ویرایش با حفظ مرجع ناموفق بود: '+referenceEditError+'؛ تولید جایگزین هم شکست خورد: '+(data.error||'خطای نامشخص')+(data.details?' — '+data.details:''));
-        }
+          editResponse=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:referenceForEdit,prompt:editPrompt,width:768,height:1152}),signal:editController.signal});
+        }finally{clearTimeout(editTimer);}
+        const editData=await editResponse.json();
+        if(!editResponse.ok||editData.error||!editData.image)throw new Error((editData.error||'Reference image edit failed')+(editData.details?' — '+editData.details:''));
+        data=editData;referenceEditUsed=true;
         const dataUrl='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
         generatedSceneImages.push({dataUrl,shot:shot.id,prompt});
         await saveLunaImage(dataUrl,{model:data.model||'FLUX',mode:'story-scene',shot:shot.id,prompt,title:el('epTitle').value,profile});
         el('sceneImagesStatus').textContent='تصاویر مستقل داستان: '+generatedSceneImages.length+' از ۶';
-        el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد ('+(data.model||'FLUX')+').'+(referenceEditUsed?' با ویرایش تصویر مرجع و حفظ هویت.':(' مسیر جایگزین متنی استفاده شد. '+referenceEditError));
+        el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد ('+(data.model||'FLUX')+').'+(referenceEditUsed?' با ویرایش تصویر مرجع و حفظ هویت.':(' ویرایش مرجع استفاده شد.'));
         logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,referenceEditUsed,referenceEditError,imageChars:data.image.length});
       }
       el('makeVoicedVideo').disabled=!(el('voicePreview').src||'').startsWith('data:audio/');el('generateWanClips').disabled=generatedSceneImages.length<6;
-       el('visualStatus').textContent='هر شش تصویر مستقل داستان آماده‌اند. در صورت موفقیت ویرایش مرجع، هویت شخصیت‌ها بهتر حفظ می‌شود؛ در مسیر جایگزین متنی ثبات چهره تضمین‌شده نیست.';
+       el('visualStatus').textContent='هر شش تصویر مستقل داستان با اتکا به تصویر مرجع ساخته شدند؛ در صورت شکست ویرایش مرجع، تولید متوقف می‌شود تا چهره‌ها با تولید متنی بی‌ارتباط جایگزین نشوند.';
       button.textContent='تصاویر شش نما آماده شد';
     }catch(error){
       const msg=error.name==='AbortError'?'تولید تصویر بیش از ۱۱۰ ثانیه طول کشید.':(error.message||'خطای نامشخص');
