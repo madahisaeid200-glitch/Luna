@@ -885,8 +885,17 @@ el('testImageUpload').onclick=async()=>{
      const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3000000}),chunks=[];
      recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('ضبط ویدئوی صداگذاری‌شده ناموفق بود.'));});
-     const rawLines=(el('voiceTestText').value||'').split(/(?=(?:LUNA|LEO)\s*:)|\n+/i).map(x=>x.trim()).filter(Boolean);
-     const captions=rawLines.length>1?rawLines:(rawLines[0]||'').split(/(?=(?:LUNA|LEO)\\s*:)/i).map(x=>x.trim()).filter(Boolean);
+     const rawLines=(el('voiceTestText').value||'').replace(/\r/g,'').split(/\n+/).flatMap(line=>line.split(/(?=(?:LUNA|LEO)\s*:)/i)).map(x=>x.trim()).filter(Boolean);
+     const captions=rawLines.length?rawLines:[''];
+     const captionWeights=captions.map(line=>{
+       const spoken=line.replace(/^(?:LUNA|LEO)\s*:\s*/i,'').trim();
+       const words=spoken.split(/\s+/).filter(Boolean).length;
+       const pauseWeight=(spoken.match(/[,.!?;:]/g)||[]).length*.35;
+       return Math.max(1,words+pauseWeight);
+     });
+     const totalCaptionWeight=captionWeights.reduce((sum,value)=>sum+value,0)||1;
+     const captionEnds=[];let accumulatedCaptionWeight=0;
+     for(const weight of captionWeights){accumulatedCaptionWeight+=weight;captionEnds.push(accumulatedCaptionWeight/totalCaptionWeight);}
      const shots=[
        {name:'THE GRAND ARRIVAL',x:.50,y:.48,z:1.02},
        {name:'LUNA · THE REACTION',x:.34,y:.42,z:1.22},
@@ -895,7 +904,14 @@ el('testImageUpload').onclick=async()=>{
        {name:'HAPPY ENDING',x:.50,y:.48,z:1.04}
      ];
      audio.pause();audio.currentTime=0;
-     const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:30;
+     if(audio.readyState<1)await new Promise((resolve,reject)=>{
+       const timer=setTimeout(()=>reject(new Error('اطلاعات مدت فایل صوتی بارگذاری نشد.')),10000);
+       audio.addEventListener('loadedmetadata',()=>{clearTimeout(timer);resolve();},{once:true});
+       audio.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('فایل صوتی قابل خواندن نیست.'));},{once:true});
+       audio.load();
+     });
+     const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:0;
+     if(!duration)throw new Error('مدت صدای تولیدشده قابل تشخیص نیست؛ صدا را دوباره بساز.');
      const durationMs=Math.max(1000,duration*1000);
      recorder.start();await audio.play();
      const startTime=performance.now();
@@ -914,13 +930,14 @@ el('testImageUpload').onclick=async()=>{
        const cutFade=local<.10?local/.10:1;
        if(cutFade<1){ctx.fillStyle='rgba(12,8,15,'+(1-cutFade)+')';ctx.fillRect(0,0,720,1280);}
        ctx.restore();
-       const captionIndex=Math.min(captions.length-1,Math.floor(t*captions.length));
+       let captionIndex=captionEnds.findIndex(end=>t<end);
+       if(captionIndex<0)captionIndex=captions.length-1;
        const caption=captions[captionIndex]||'';
        ctx.fillStyle='rgba(12,8,15,.70)';ctx.fillRect(0,1010,720,270);
        ctx.textAlign='center';ctx.direction='ltr';
        ctx.fillStyle='#e9c7df';ctx.font='bold 22px system-ui';ctx.fillText(shot.name,360,1065);
        ctx.fillStyle='#fff';ctx.font='bold 34px system-ui';
-       const words=caption.replace(/^(LUNA|LEO|LUNA & LEO)\\s*:\\s*/i,'').split(/\\s+/);
+       const words=caption.replace(/^(LUNA|LEO|LUNA & LEO)\s*:\s*/i,'').split(/\s+/);
        let lines=[],line='';
        for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>620&&line){lines.push(line);line=word;}else line=test;}
        if(line)lines.push(line);
