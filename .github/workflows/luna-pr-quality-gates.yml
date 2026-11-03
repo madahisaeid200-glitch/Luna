@@ -25,6 +25,9 @@ jobs:
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
           const html = fs.readFileSync('producer.html', 'utf8');
+          const wrangler = fs.readFileSync('wrangler.toml', 'utf8');
+          assert.match(wrangler, /^\[previews\]\s*$/m,
+            'Cloudflare Worker Preview builds require a previews configuration block');
 
           const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
             .map(match => match[1]).filter(source => source.trim());
