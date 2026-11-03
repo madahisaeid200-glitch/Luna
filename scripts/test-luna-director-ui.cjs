@@ -9,6 +9,9 @@ if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-sm
 if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-smoke]')")) {
   throw new Error("Wan smoke marker must be explicitly opt-in");
 }
+if (!smokeWorkflow.includes("if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[director-smoke]')")) {
+  throw new Error("Live OVH Director calls must be opt-in and must not block media-only smoke tests");
+}
 if (workerSource.indexOf("const hokusaiFailures = [];") < 0 || workerSource.indexOf("const hokusaiFailures = [];") > workerSource.indexOf("const pollinationsFailures = [];")) {
   throw new Error("Worker must prefer the sharper no-key Hokusai route before anonymous Pollinations FLUX");
 }
