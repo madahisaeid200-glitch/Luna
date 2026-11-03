@@ -442,14 +442,28 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
  async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
  async function fetchLunaJsonWithTimeout(url,options={},timeoutMs=60000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{const response=await fetch(url,{...options,signal:controller.signal});const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+raw.length+' کاراکتر.')}return {response,data}}finally{clearTimeout(timer)}}
  async function prepareLunaImageForAnalysis(dataUrl,maxSide=512,quality=0.42){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{try{const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان آماده‌سازی تصویر را ندارد.');ctx.drawImage(img,0,0,canvas.width,canvas.height);const compact=canvas.toDataURL('image/jpeg',quality);if(compact.length>1800000)throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ این نسخه باید کوچک‌تر شود.');resolve(compact);}catch(e){reject(e)}};img.onerror=()=>reject(new Error('تصویر بازیابی‌شده قابل خواندن نیست.'));img.src=dataUrl})}
- async function analyzeLunaImageData(dataUrl){
+ async function analyzeLunaImageData(dataUrl,referenceDataUrl=null){
   const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint;
   const compact=await prepareLunaImageForAnalysis(dataUrl,384,0.30);
-  const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'analyze_image',image:compact,prompt:'STRICT VISUAL QA. Inspect only clearly visible details. Return exactly these fields in English, one per line: CAST CHECK: PASS or FAIL; VISIBLE PEOPLE: integer count of physical people; FACES IN ARTWORK: YES or NO; PHOTOREALISM: score 1-10; HANDS/ANATOMY: score 1-10; VISIBLE DEFECTS: up to 3 concrete observations. The intended cast is exactly two adults: LUNA, an adult woman, and LEO, an adult man. Never count a painting, photograph, poster, screen, mirror, statue, sculpture or mannequin as a physical person. Any face or human figure in artwork is prohibited and means CAST CHECK: FAIL. A clearly visible third physical person means FAIL. Do not guess or infer unseen people. If uncertain, write UNCLEAR and fail.'})},120000);
+  const reference=referenceDataUrl?await prepareLunaImageForAnalysis(referenceDataUrl,384,0.30):'';
+  const basePrompt='STRICT VISUAL QA. Inspect only clearly visible details. Return exactly these fields in English, one per line: CAST CHECK: PASS or FAIL; VISIBLE PEOPLE: integer count of physical people; FACES IN ARTWORK: YES or NO; PHOTOREALISM: score 1-10; HANDS/ANATOMY: score 1-10; VISIBLE DEFECTS: up to 3 concrete observations. The intended cast is exactly two adults: LUNA, an adult woman, and LEO, an adult man. Never count a painting, photograph, poster, screen, mirror, statue, sculpture or mannequin as a physical person. Any face or human figure in artwork is prohibited and means CAST CHECK: FAIL. A clearly visible third physical person means FAIL. Do not guess or infer unseen people. If uncertain, write UNCLEAR and fail.';
+  const continuityPrompt=reference?' Compare the REFERENCE IMAGE and CANDIDATE IMAGE directly. The reference is the first image and the candidate is the second. Judge identity, not pose or lighting: same LUNA face and same LEO face, including facial structure, eyes, nose, mouth, age appearance, skin tone and hairline. Do not pass merely because hair/clothing/style match. Return three additional exact fields: IDENTITY CONSISTENCY: PASS or FAIL; LUNA FACE MATCH: YES or NO; LEO FACE MATCH: YES or NO. If either face is obscured, too small, turned away, or uncertain, answer NO/FAIL. Also note wardrobe mismatch as a visible defect.':'';
+  const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'analyze_image',image:compact,...(reference?{referenceImage:reference}:{}),prompt:basePrompt+continuityPrompt})},120000);
   if(!response.ok)throw new Error((data.error||'تحلیل تصویر ناموفق بود')+(data.details?' — '+(Array.isArray(data.details)?data.details.join(' | '):data.details):''));
   const analysis=data.analysis||data.response||data.result||'';
   if(typeof analysis!=='string'||!analysis.trim())throw new Error('مدل بینایی گزارش قابل ارزیابی برنگرداند.');
   return {analysis:analysis.trim(),model:data.model||'vision-model'};
+}
+function validateLunaIdentityContinuity(analysis){
+  const value=String(analysis||'');
+  const identityPass=/^\\s*IDENTITY CONSISTENCY\\s*:\\s*PASS\\s*$/im.test(value);
+  const lunaMatch=/^\\s*LUNA FACE MATCH\\s*:\\s*YES\\s*$/im.test(value);
+  const leoMatch=/^\\s*LEO FACE MATCH\\s*:\\s*YES\\s*$/im.test(value);
+  const reasons=[];
+  if(!identityPass)reasons.push('ثبات هویت کلی تأیید نشد');
+  if(!lunaMatch)reasons.push('تطابق چهره لونا تأیید نشد');
+  if(!leoMatch)reasons.push('تطابق چهره لئو تأیید نشد');
+  return {pass:reasons.length===0,reason:reasons.join('؛ ')||'تطابق دو چهره با تصویر مرجع تأیید شد'};
 }
 function validateLunaImageQa(analysis,requireTwo=false){
   const value=String(analysis||'');
@@ -579,13 +593,14 @@ el('generateSceneImage').onclick=async()=>{
         }
         const dataUrl='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;
         el('visualStatus').textContent='در حال کنترل کیفیت تصویر صحنه '+shot.id+'…';
-        const sceneQa=await analyzeLunaImageData(dataUrl);
+        const sceneQa=await analyzeLunaImageData(dataUrl,generatedImageData);
         const sceneQaResult=validateLunaImageQa(sceneQa.analysis,true);
-        if(!sceneQaResult.pass)throw new Error('صحنه '+shot.id+' در کنترل کیفیت رد شد: '+sceneQaResult.reason);
-        generatedSceneImages.push({dataUrl,shot:shot.id,prompt,qaPassed:true,qaReport:sceneQa.analysis});
+        const identityQaResult=validateLunaIdentityContinuity(sceneQa.analysis);
+        if(!sceneQaResult.pass||!identityQaResult.pass)throw new Error('صحنه '+shot.id+' در کنترل کیفیت رد شد: '+[sceneQaResult.reason,identityQaResult.reason].filter(Boolean).join('؛ '));
+        generatedSceneImages.push({dataUrl,shot:shot.id,prompt,qaPassed:true,identityPassed:true,qaReport:sceneQa.analysis});
         await saveLunaImage(dataUrl,{model:data.model||'FLUX',mode:'story-scene',shot:shot.id,prompt,title:el('epTitle').value,profile});
         el('sceneImagesStatus').textContent='تصاویر مستقل داستان: '+generatedSceneImages.length+' از ۳';
-        el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد ('+(data.model||'FLUX')+').'+(referenceEditUsed?' با ویرایش تصویر مرجع و حفظ هویت.':(' مسیر جایگزین متنی استفاده شد. '+referenceEditError));
+        el('visualStatus').textContent='تصویر صحنه '+shot.id+' ساخته شد و تطابق چهره هر دو شخصیت با مرجع بررسی و تأیید شد ('+(data.model||'FLUX')+').'+(referenceEditUsed?' ویرایش مرجع موفق بود.':' مسیر تولید متنی استفاده شد؛ تأیید چهره مستقل انجام شد.');
         logLunaDiagnostic('scene-image-success','Generated a distinct story scene image',{shot:shot.id,model:data.model||'FLUX',provider:data.provider||'unknown',fallbackUsed:!!data.fallbackUsed,referenceEditUsed,referenceEditError,imageChars:data.image.length});
       }
       el('makeVoicedVideo').disabled=!(el('voicePreview').src||'').startsWith('data:audio/')||generatedSceneImages.length<3||!generatedSceneImages.slice(0,3).every(x=>x.qaPassed);el('generateWanClips').disabled=generatedSceneImages.length<3||!generatedSceneImages.slice(0,3).every(x=>x.qaPassed);
