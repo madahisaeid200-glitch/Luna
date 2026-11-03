@@ -226,6 +226,7 @@ el('generate').onclick=async()=>{
  lastDraft='';
  lastDraftIsAi=false;
  lastProductionPack='';
+ lastDirectorPlan=null;
  el('output').textContent=fa?'در حال تولید سناریوی واقعی با هوش مصنوعی…':'Generating a real AI screenplay…';
  el('makeDirectorPlan').disabled=true;
  el('makeProductionPack').disabled=true;
@@ -311,13 +312,17 @@ el('makeDirectorPlan').onclick=async()=>{
  const button=el('makeDirectorPlan');button.disabled=true;button.textContent='در حال کارگردانی و شکستن داستان به نماها…';
  updateAiStatus('در حال ساخت نقشهٔ ساختاریافتهٔ فیلم؛ این مرحله هنوز ویدئو تولید نمی‌کند.');
  try{
-  const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'director',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()})},150000);
+  const {response,data}=await fetchLunaJsonWithTimeout(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'director',script:lastDraft,duration:el('duration').value,allowDeterministicFallback:true,characterProfile:saveCharacterProfile(false)||readCharacterProfile()})},150000);
   if(!response.ok||data.error)throw new Error(data.error||'Director plan failed');
-  if(!data.plan||!Array.isArray(data.plan.shots))throw new Error('پاسخ مدل فاقد فهرست نماهای معتبر است.');
+  if(!data.plan||!Array.isArray(data.plan.shots)||data.plan.shots.length<3)throw new Error('پاسخ مدل فاقد حداقل سه نمای معتبر است.');
+  const directorPack=directorPlanToProductionPack(data.plan);
+  if(!directorPack)throw new Error('نقشه کارگردانی به بسته تولید قابل استفاده تبدیل نشد.');
   lastDirectorPlan=data.plan;
+  lastProductionPack=directorPack;
   el('downloadDirectorPlan').disabled=false;
+  el('exportProductionJson').disabled=false;
   el('output').textContent=JSON.stringify(data.plan,null,2);
-  updateAiStatus('نقشهٔ کارگردانی آماده شد: '+data.plan.shots.length+' نما، مدت هدف '+data.plan.episode.targetDurationSeconds+' ثانیه. این هنوز رندر ویدئو نیست؛ مرحلهٔ بعد اتصال موتور ویدئوی واقعی است.');
+  updateAiStatus('نقشهٔ کارگردانی آماده شد: '+data.plan.shots.length+' نما، مدت هدف '+data.plan.episode.targetDurationSeconds+' ثانیه. سه نمای نخست اکنون به پرامپت تصویر و حرکت موتور تولید وصل شدند؛ رندر هنوز انجام نشده است.');
  }catch(error){updateAiStatus('ساخت نقشهٔ کارگردانی ناموفق بود: '+(error.message||'خطای نامشخص'));}
  finally{button.disabled=false;button.textContent='ساخت نقشه کارگردانی سینمایی (مرحلهٔ جدید)';}
 };
@@ -390,6 +395,19 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
   }
   el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const parsed=parseProductionPack(lastProductionPack);const payload={schema:'luna-production-pack',schemaVersion:'1.1.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,...parsed,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model. Raw productionPackMarkdown and shotListRaw are preserved even when parsing is incomplete.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
+
+ function directorPlanToProductionPack(plan){
+   if(!plan||!Array.isArray(plan.shots)||plan.shots.length<3)return '';
+   const shots=plan.shots.slice(0,12);
+   const shotList=shots.map((shot,index)=>{
+     const id=index+1;
+     const dialogue=Array.isArray(shot.dialogue)?shot.dialogue.map(line=>String(line.speaker||'')+': '+String(line.text||'')).filter(line=>line.trim()!==':').join(' | '):'';
+     return [id+'. SCENE '+id,'Duration: '+(Number(shot.durationSeconds)||6)+' seconds','Camera: '+String(shot.shotType||'medium'),'Action: '+String(shot.action||'A coherent story action'),'Emotion: '+String(shot.emotion||'Natural and restrained'),'Dialogue: '+dialogue].join('\\n');
+   }).join('\\n');
+   const imagePrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.referenceFramePrompt||shot.action||'Photorealistic story frame')).join('\\n');
+   const motionPrompts=shots.map((shot,index)=>(index+1)+'. '+String(shot.videoPrompt||shot.action||'Natural continuous cinematic movement')).join('\\n');
+   return ['LUNA DIRECTOR PRODUCTION PACK','EPISODE SUMMARY',String(plan.episode?.title||el('epTitle').value||'LUNA episode')+'\\n'+String(plan.episode?.logline||''),'CHARACTER CONTINUITY',String(plan.continuityBible?.luna||'LUNA identity continuity')+'\\n'+String(plan.continuityBible?.leo||'LEO identity continuity')+'\\n'+String(plan.continuityBible?.visualStyle||'Photorealistic cinematic style'),'SHOT LIST',shotList,'IMAGE PROMPTS',imagePrompts,'VIDEO / MOTION PROMPTS',motionPrompts,'VOICE AND SOUND',shots.map((shot,index)=>(index+1)+'. '+String(shot.audio?.ambience||'Natural location ambience')+'; '+String(shot.audio?.sfx||'Only story-implied sound')+'; '+String(shot.audio?.musicMood||'Romantic comedy')).join('\\n'),'ON-SCREEN CAPTIONS',(plan.captions||[]).map(item=>String(item.shotId||'')+': '+String(item.text||'')).join('\\n'),'EDITING PLAN',shots.map((shot,index)=>(index+1)+'. '+String(shot.transition||'cut')).join('\\n'),'FINAL QUALITY CHECK',(plan.qualityGates||[]).join('\\n')].join('\\n\\n');
+ }
  function extractFirstImagePrompt(pack){
    const section=(pack.split(/IMAGE PROMPTS/i)[1]||'').split(/VIDEO\/MOTION PROMPTS|VOICE AND SOUND|ON-SCREEN CAPTIONS/i)[0]||'';
    return (section.split(/SHOT\s*2|SCENE\s*2|\n\s*2[.):]/i)[0]||section).replace(/^\s*[:\n-]+/,'').replace(/^(?:SHOT\s*1|SCENE\s*1|1[.):])\s*/i,'').trim().slice(0,1800);
@@ -1046,7 +1064,7 @@ el('autoProduce').onclick=async()=>{
    if(!endpoint)throw new Error('آدرس Worker تنظیم نشده است؛ ابتدا اتصال را ذخیره کن.');
    localStorage.setItem('lunaAiEndpoint',endpoint);
    if(!lastDraft||!lastDraftIsAi){
-     lastDraft='';lastProductionPack='';
+     lastDraft='';lastProductionPack='';lastDirectorPlan=null;
      master.textContent='مرحله ۱/۷ · سناریو…';
      await runButton('generate',()=>!!lastDraft,'ساخت سناریو',90000);
      const aiMessage=el('aiStatus')?.textContent||'';
@@ -1090,8 +1108,16 @@ el('autoProduce').onclick=async()=>{
      master.textContent='مرحله ۲/۷ · بسته تولید سینمایی…';
      await runButton('makeProductionPack',()=>!!lastProductionPack,'ساخت بسته تولید سینمایی',150000);
    }
+   if(!lastDirectorPlan){
+     master.textContent='مرحله ۳/۸ · طراحی نماهای سینمایی…';
+     const directorButton=el('makeDirectorPlan');
+     if(!directorButton||directorButton.disabled)throw new Error('دکمه نقشه کارگردانی برای سناریوی فعلی آماده نیست.');
+     directorButton.click();
+     await waitFor(()=>!!lastDirectorPlan||(!directorButton.disabled&&/ناموفق|خطا/.test(el('aiStatus')?.textContent||'')),'ساخت نقشه کارگردانی سینمایی',155000);
+     if(!lastDirectorPlan)throw new Error('نقشه کارگردانی ساخته نشد: '+(el('aiStatus')?.textContent||'خطای نامشخص'));
+   }
    if(!generatedImageData){
-     master.textContent='مرحله ۳/۷ · تصویر صحنه…';
+     master.textContent='مرحله ۴/۸ · تصویر صحنه…';
      await runButton('generateSceneImage',()=>!!generatedImageData,'ساخت تصویر',120000);
    }
    if(!generatedImageData)throw new Error('تصویر مرجع تولید یا بازیابی نشد.');
@@ -1120,16 +1146,16 @@ el('autoProduce').onclick=async()=>{
      if(!ready())throw new Error('مرحله «'+label+'» کامل نشد: '+(el('visualStatus').textContent||el('voiceStatus').textContent));
    };
    if(generatedSceneImages.length<3){
-     master.textContent='مرحله ۴/۷ · ساخت سه تصویر مستقل…';
+     master.textContent='مرحله ۵/۸ · ساخت سه تصویر مستقل…';
      await runAutoStage('generateMoreScenes',()=>generatedSceneImages.length>=3&&generatedSceneImages.slice(0,3).every(x=>x.qaPassed),'ساخت و کنترل کیفیت سه صحنه',420000);
    }
    if(generatedSceneImages.length<3||!generatedSceneImages.slice(0,3).every(x=>x.qaPassed))throw new Error('هر سه تصویر مستقل باید کنترل کیفیت را بگذرانند.');
-   master.textContent='مرحله ۵/۷ · ساخت صدای دیالوگ…';
+   master.textContent='مرحله ۶/۸ · ساخت صدای دیالوگ…';
    const voice=el('voicePreview');
    await runAutoStage('generateVoice',()=>!!(voice.src&&voice.src.startsWith('data:audio/')),'ساخت صدای انگلیسی',165000);
-   master.textContent='مرحله ۶/۷ · تولید سه کلیپ واقعی Wan 2.2…';
+   master.textContent='مرحله ۷/۸ · تولید سه کلیپ واقعی Wan 2.2…';
    await runAutoStage('generateWanClips',()=>generatedWanClipUrls.length===3,'تولید سه کلیپ واقعی Wan',780000);
-   master.textContent='مرحله ۷/۷ · اتصال کلیپ‌ها و صدای دیالوگ…';
+   master.textContent='مرحله ۸/۸ · اتصال کلیپ‌ها و صدای دیالوگ…';
    await runAutoStage('assembleWanClips',()=>!!assembledWanVideoUrl,'اتصال سه کلیپ و صدا',240000);
    const finalPreview=el('assembledWanPreview');
    el('visualStatus').textContent+=' · زنجیرهٔ کامل شامل سه تصویر تأییدشده، صدای دیالوگ، سه کلیپ واقعی Wan و فایل واحد WebM آماده شد.';
