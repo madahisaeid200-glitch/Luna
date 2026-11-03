@@ -32,9 +32,11 @@ jobs:
           const healthStart = worker.indexOf('if (request.method === "GET")');
           const healthEnd = worker.indexOf('if (request.method !== "POST")', healthStart);
           assert.ok(healthStart >= 0 && healthEnd > healthStart, 'Missing Worker health endpoint');
-          assert.match(worker.slice(healthStart, healthEnd), /\\}, 200\\);/,
+          assert.ok(worker.slice(healthStart, healthEnd).includes('}, 200);'),
             'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
-          assert.doesNotMatch(worker.slice(healthStart, healthEnd), /env\\.AI \\? 200 : 503/,
+            'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
+          assert.ok(!worker.slice(healthStart, healthEnd).includes('env.AI ? 200 : 503'),
+            'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
             'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
 
           const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
