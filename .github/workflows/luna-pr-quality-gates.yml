@@ -39,7 +39,9 @@ jobs:
             'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
           assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
             'Murakumo fallback must use the current documented public model selector');
-          assert.ok(worker.split('\\n').filter(line => line.trim() === '\"__MURAKUMO_FREE__\",').length >= 3,
+          const directorAndPackFallbacks = worker.split('"__OVH__",\n        "__MURAKUMO_FREE__",').length - 1;
+          const screenplayFallback = worker.includes('"__OVH__",\n      "__MURAKUMO_FREE__",');
+          assert.ok(directorAndPackFallbacks >= 2 && screenplayFallback,
             'Keyless Murakumo fallback must be wired into screenplay, director, and production-pack routes');
 
           const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
