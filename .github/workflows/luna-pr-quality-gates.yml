@@ -26,8 +26,16 @@ jobs:
           const assert = require('node:assert/strict');
           const html = fs.readFileSync('producer.html', 'utf8');
           const wrangler = fs.readFileSync('wrangler.toml', 'utf8');
+          const worker = fs.readFileSync('worker.js', 'utf8');
           assert.match(wrangler, /^\[previews\]\s*$/m,
             'Cloudflare Worker Preview builds require a previews configuration block');
+          const healthStart = worker.indexOf('if (request.method === "GET")');
+          const healthEnd = worker.indexOf('if (request.method !== "POST")', healthStart);
+          assert.ok(healthStart >= 0 && healthEnd > healthStart, 'Missing Worker health endpoint');
+          assert.match(worker.slice(healthStart, healthEnd), /\\}, 200\\);/,
+            'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
+          assert.doesNotMatch(worker.slice(healthStart, healthEnd), /env\\.AI \\? 200 : 503/,
+            'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
 
           const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
             .map(match => match[1]).filter(source => source.trim());
