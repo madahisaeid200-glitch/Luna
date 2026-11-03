@@ -194,7 +194,7 @@ jobs:
           const directorAdapter = html.slice(directorAdapterStart, directorAdapterEnd);
           assert.ok(directorAdapter.includes(".join('\\n')") && directorAdapter.includes(".join('\\n\\n')"),
             'Director adapter must emit real newline-separated sections so the existing shot parser can read them');
-          assert.match(html, /duration:el\\('duration'\\)\\.value/,
+          assert.ok(html.includes("duration:el('duration').value"),
             'Director plan must use the selected short/long episode duration');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
