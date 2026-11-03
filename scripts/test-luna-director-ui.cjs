@@ -12,6 +12,9 @@ if (!smokeWorkflow.includes("contains(github.event.head_commit.message, '[wan-sm
 if (workerSource.indexOf("const hokusaiFailures = [];") < 0 || workerSource.indexOf("const hokusaiFailures = [];") > workerSource.indexOf("const pollinationsFailures = [];")) {
   throw new Error("Worker must prefer the sharper no-key Hokusai route before anonymous Pollinations FLUX");
 }
+if (!workerSource.includes('model: "awai-network/hokusai"') || !workerSource.includes('provider: "murakumo"')) {
+  throw new Error("Hokusai fallback must return an identified real image provider and model");
+}
 if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
   throw new Error("Do not force a model selector on the verified anonymous legacy Pollinations endpoint");
 }
