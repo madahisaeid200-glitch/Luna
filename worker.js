@@ -592,7 +592,8 @@ ${script.trim()}`;
             return match ? { speaker: match[1], text: match[2].trim() } : null;
           }).filter(Boolean);
           const usedSourceDialogue = new Set();
-          const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];          for (let index = 0; index < plan.shots.length; index++) {
+          const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];
+          for (let index = 0; index < plan.shots.length; index++) {
             const shot = plan.shots[index];
             // Enforce deliberate cinematic coverage even when the model repeats one framing.
             shot.shotType = cinematicFraming[index];
@@ -602,7 +603,7 @@ ${script.trim()}`;
               let candidate = typeof line === "string" ? line.trim() : line && typeof line === "object" ? String(line.text || "").trim() : "";
               let speaker = line && typeof line === "object" ? String(line.speaker || "").trim() : "";
               if (typeof line === "string" && line.includes(":")) {
-                const split = line.match(/^\\s*([^:]+):\\s*(.+)$/);
+                const split = line.match(/^\s*([^:]+):\s*(.+)$/);
                 if (split && allowed.has(split[1].trim())) { speaker = split[1].trim(); candidate = split[2].trim(); }
               }
               if (!candidate) return null;
