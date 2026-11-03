@@ -830,16 +830,29 @@ el('testImageUpload').onclick=async()=>{
        if(!videoSequenceDone)raf=requestAnimationFrame(draw);
      };
      recorder.start(500);raf=requestAnimationFrame(draw);
-     if(hasVoice){audio.pause();audio.currentTime=0;await audio.play();}
-     for(let i=0;i<videos.length;i++){
+     // Start the soundtrack and keep cycling the three real motion clips until
+     // the dialogue ends. A one-pass sequence would leave a frozen frame for most
+     // of a 30–60 second voice track (Wan clips are only a few seconds each).
+     let audioEnded=!hasVoice,clipIndex=0,playCount=0;
+     if(hasVoice){
+       audio.pause();audio.currentTime=0;
+       audio.onended=()=>{audioEnded=true;};
+       await audio.play();
+     }
+     while(hasVoice?!audioEnded:clipIndex<videos.length){
+       const i=clipIndex;
        activeVideo=videos[i];
        await new Promise(async(resolve,reject)=>{
-         videos[i].onended=resolve;videos[i].onerror=()=>reject(new Error('پخش کلیپ '+(i+1)+' در زمان اتصال شکست خورد.'));
+         videos[i].onended=resolve;
+         videos[i].onerror=()=>reject(new Error('پخش کلیپ '+(i+1)+' در زمان اتصال شکست خورد.'));
          try{await videos[i].play();}catch(error){reject(new Error('مرورگر نتوانست کلیپ '+(i+1)+' را پخش کند: '+error.message));}
        });
+       clipIndex=(clipIndex+1)%videos.length;
+       playCount++;
+       if(playCount>30)throw new Error('تعداد تکرار کلیپ‌ها از حد ایمن گذشت؛ طول صدا یا پخش کلیپ را بررسی کن.');
      }
      videoSequenceDone=true;if(raf)cancelAnimationFrame(raf);
-     if(hasVoice&&!audio.ended)await new Promise(resolve=>{audio.onended=resolve;audio.onerror=resolve;});
+     audio.onended=null;
      recorder.stop();await stopped;
      if(hasVoice)audio.pause();
      const blob=new Blob(chunks,{type:mime});
