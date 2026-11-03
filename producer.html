@@ -408,7 +408,7 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
   function directorPlanToProductionPack(plan){
     const shots=Array.isArray(plan?.shots)?plan.shots:[];
     const bible=plan?.continuityBible||{};
-    const section=(title,body)=>title+'\\n'+body.join('\\n\\n');
+    const section=(title,body)=>title+'\n'+body.join('\n\n');
     const shotLabel=shot=>'SHOT '+String(shot.id||'').replace(/\D/g,'').padStart(2,'0');
     const shotList=shots.map(shot=>[
       shotLabel(shot),
@@ -417,12 +417,12 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
       'Visible Action: '+String(shot.action||''),
       'Emotion: '+String(shot.emotion||''),
       'Dialogue: '+(Array.isArray(shot.dialogue)?shot.dialogue.map(line=>line.speaker+': '+line.text).join(' | '):'')
-    ].join('\\n')).join('\\n\\n');
-    const imagePrompts=shots.map(shot=>shotLabel(shot)+': '+String(shot.referenceFramePrompt||shot.videoPrompt||'')).join('\\n\\n');
-    const motionPrompts=shots.map(shot=>shotLabel(shot)+': '+String(shot.videoPrompt||shot.action||'')).join('\\n\\n');
-    const voice=shots.map(shot=>shotLabel(shot)+': '+JSON.stringify(shot.audio||{})).join('\\n');
-    const captions=Array.isArray(plan?.captions)?plan.captions.map(item=>'SHOT '+String(item.shotId||'')+': '+String(item.text||'')).join('\\n'):'';
-    const editing=shots.map(shot=>shotLabel(shot)+': '+String(shot.transition||'cut')).join('\\n');
+    ].join('\n')).join('\n\n');
+    const imagePrompts=shots.map(shot=>shotLabel(shot)+': '+String(shot.referenceFramePrompt||shot.videoPrompt||'')).join('\n\n');
+    const motionPrompts=shots.map(shot=>shotLabel(shot)+': '+String(shot.videoPrompt||shot.action||'')).join('\n\n');
+    const voice=shots.map(shot=>shotLabel(shot)+': '+JSON.stringify(shot.audio||{})).join('\n');
+    const captions=Array.isArray(plan?.captions)?plan.captions.map(item=>'SHOT '+String(item.shotId||'')+': '+String(item.text||'')).join('\n'):'';
+    const editing=shots.map(shot=>shotLabel(shot)+': '+String(shot.transition||'cut')).join('\n');
     return [
       section('EPISODE SUMMARY',[String(plan?.episode?.title||el('epTitle').value||'LUNA episode'),String(plan?.episode?.logline||''),'Target: 9:16 vertical · '+shots.reduce((sum,shot)=>sum+(Number(shot.durationSeconds)||6),0)+' seconds']),
       section('CHARACTER CONTINUITY',['LUNA: '+String(bible.luna||''),'LEO: '+String(bible.leo||''),'Visual style: '+String(bible.visualStyle||''),...(Array.isArray(bible.continuityRules)?bible.continuityRules.map(rule=>'Continuity rule: '+rule):[])]),
@@ -433,7 +433,7 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
       section('ON-SCREEN CAPTIONS',[captions]),
       section('EDITING PLAN',[editing]),
       section('FINAL QUALITY CHECK',Array.isArray(plan?.qualityGates)?plan.qualityGates:['Preserve exact cast, wardrobe, location, chronology and dialogue.'])
-    ].join('\\n\\n');
+    ].join('\n\n');
   }
   el('exportProductionJson').onclick=()=>{if(!lastProductionPack||!lastDraft)return;const parsed=parseProductionPack(lastProductionPack);const payload={schema:'luna-production-pack',schemaVersion:'1.1.0',exportedAt:new Date().toISOString(),episode:{title:el('epTitle').value.trim(),premise:el('premise').value.trim(),duration:el('duration').value,tone:el('tone').value,language:el('scriptLang').value},characters:saveCharacterProfile(false)||readCharacterProfile(),episodeScript:lastDraft,productionPackMarkdown:lastProductionPack,...parsed,firstImagePrompt:extractFirstImagePrompt(lastProductionPack),targetFormats:['9:16 vertical short video','16:9 YouTube video'],notes:'Interchange file for future LUNA renderers. This export does not render a video or call an AI model. Raw productionPackMarkdown and shotListRaw are preserved even when parsing is incomplete.'};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-production-pack.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
