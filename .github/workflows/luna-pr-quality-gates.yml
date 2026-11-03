@@ -123,7 +123,7 @@ jobs:
           assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LUNA FACE MATCH: YES', 'LUNA FACE MATCH: UNCLEAR')).pass, false);
           assert.match(html, /analyzeLunaImageData\(dataUrl,generatedImageData\)/,
             'Every later scene must be compared against the first approved scene image');
-          assert.match(html, /validateLunaIdentityContinuity\(sceneQa\\.analysis\)/,
+          assert.match(html, /validateLunaIdentityContinuity\(sceneQa\.analysis\)/,
             'Later scenes must fail when either lead face does not match the reference');
 
           assert.doesNotMatch(html, /el\('makePreviewVideo'\)\.disabled\s*=\s*false/,
