@@ -456,9 +456,9 @@ function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{
 }
 function validateLunaIdentityContinuity(analysis){
   const value=String(analysis||'');
-  const identityPass=/^\\s*IDENTITY CONSISTENCY\\s*:\\s*PASS\\s*$/im.test(value);
-  const lunaMatch=/^\\s*LUNA FACE MATCH\\s*:\\s*YES\\s*$/im.test(value);
-  const leoMatch=/^\\s*LEO FACE MATCH\\s*:\\s*YES\\s*$/im.test(value);
+  const identityPass=/^\s*IDENTITY CONSISTENCY\s*:\s*PASS\s*$/im.test(value);
+  const lunaMatch=/^\s*LUNA FACE MATCH\s*:\s*YES\s*$/im.test(value);
+  const leoMatch=/^\s*LEO FACE MATCH\s*:\s*YES\s*$/im.test(value);
   const reasons=[];
   if(!identityPass)reasons.push('ثبات هویت کلی تأیید نشد');
   if(!lunaMatch)reasons.push('تطابق چهره لونا تأیید نشد');
