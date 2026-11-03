@@ -852,7 +852,11 @@ ${script.trim()}`;
       if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(body.image)) {
         return json({ error: "Unsupported image data URL. Use PNG, JPEG, or WebP." }, 400);
       }
-      const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 1800);
+      const analysisPrompt = String(body.prompt || "Describe this image and assess photorealism, anatomy, hands, styling, and visible defects.").slice(0, 2200);
+      const referenceImage = typeof body.referenceImage === "string" ? body.referenceImage : "";
+      if (referenceImage && (!referenceImage.startsWith("data:image/") || referenceImage.length > 7_000_000 || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(referenceImage))) {
+        return json({ error: "Reference image data is invalid or too large." }, 400);
+      }
       const qwenModel = "qwen3-vl-2b-instruct";
       let qwenDetails = "";
       try {
@@ -868,6 +872,11 @@ ${script.trim()}`;
               role: "user",
               content: [
                 { type: "text", text: analysisPrompt },
+                ...(referenceImage ? [
+                  { type: "text", text: "REFERENCE IMAGE (first): use it only as the identity baseline." },
+                  { type: "image_url", image_url: { url: referenceImage } },
+                  { type: "text", text: "CANDIDATE IMAGE (second): compare the same two lead faces against the reference." }
+                ] : []),
                 { type: "image_url", image_url: { url: body.image } }
               ]
             }],
