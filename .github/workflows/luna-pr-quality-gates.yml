@@ -219,11 +219,11 @@ jobs:
           assert.ok(fallbackStart >= 0 && fallbackEnd > fallbackStart, 'Missing complete local fallback pack');
           const localPack = autoHandler.slice(fallbackStart, fallbackEnd);
           for (const phrase of [
-            '2. LUNA notices the reservation card',
-            '3. LEO enters carrying the wrapped surprise',
-            '4. LUNA turns the card toward LEO',
-            '5. LEO reveals the harmless booking typo',
-            '6. The misunderstanding dissolves',
+            '2. SCENE 2 — LUNA notices the reservation card',
+            '3. SCENE 3 — LEO enters carrying the wrapped surprise',
+            '4. SCENE 4 — LUNA turns the card toward LEO',
+            '5. SCENE 5 — LEO reveals the harmless booking typo',
+            '6. SCENE 6 — The misunderstanding dissolves',
             '2. Medium over-the-shoulder shot of LUNA',
             '6. Warm final two-shot of LUNA and LEO',
             '6. Gentle pull-back as both leads laugh naturally'
