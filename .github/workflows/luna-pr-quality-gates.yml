@@ -180,6 +180,14 @@ jobs:
             'Production-pack parser must split on real newline characters');
           assert.match(autoHandler, /Worker یک سناریوی جایگزین محلی برگرداند/,
             'Local-template fallback must be clearly labelled as non-AI output');
+          assert.match(html, /mode:'director',script:lastDraft,duration:el\\('duration'\\)\\.value,allowDeterministicFallback:true/,
+            'Director planning must receive the selected episode duration and allow its labelled deterministic fallback');
+          assert.match(html, /lastProductionPack=directorPack/,
+            'The accepted director shot plan must become the production pack consumed by image/video stages');
+          assert.match(html, /function directorPlanToProductionPack\\(plan\\)/,
+            'Director shots must be adapted into numbered image and motion prompts for the existing renderer');
+          assert.match(autoHandler, /if\\(!lastDirectorPlan\\)[\\s\\S]*makeDirectorPlan[\\s\\S]*ساخت نقشه کارگردانی سینمایی/,
+            'One-click production must create and apply a director plan before generating scene media');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
           const clearMediaEnd = html.indexOf('const lunaDiagnostics', clearMediaStart);
           assert.ok(clearMediaStart >= 0 && clearMediaEnd > clearMediaStart, 'Missing episode media reset routine');
