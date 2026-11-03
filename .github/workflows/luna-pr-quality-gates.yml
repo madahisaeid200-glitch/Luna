@@ -89,7 +89,7 @@ jobs:
             'Editing the first image must invalidate its previous approval');
           assert.match(editHandler, /qaPassed:false/,
             'Edited first image must start unapproved');
-          assert.match(editHandler, /validateLunaImageQa\\(editedQa.analysis,true\\)/,
+          assert.ok(editHandler.includes('validateLunaImageQa(editedQa.analysis,true)'),
             'Edited first image must pass fresh two-person visual QA');
           for (const id of ['generateMoreScenes','generateWanClips','makePreviewVideo','makeVoicedVideo','assembleWanClips']) {
             assert.ok(editHandler.includes("'" + id + "'"),
