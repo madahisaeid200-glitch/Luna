@@ -21,7 +21,7 @@ if (workerSource.includes('imageUrl.searchParams.set("model", "flux")')) {
 if (!workerSource.includes("upstreamHttpStatus: response.status") || !workerSource.includes("bytes.length < 10_000")) {
   throw new Error("Pollinations fallback must validate image MIME and byte size while preserving upstream status");
 }
-const pollinationsBlock = workerSource.slice(workerSource.indexOf("const pollinationsFailures = [];"), workerSource.indexOf("const hokusaiFailures = [];"));
+const pollinationsBlock = workerSource.slice(workerSource.indexOf("const pollinationsFailures = [];"), workerSource.indexOf('error: "Image generation failed on Cloudflare FLUX, Hokusai and Pollinations."'));
 if (!pollinationsBlock.includes("if (!response.ok)")) {
   throw new Error("Pollinations HTTP error placeholders must never be returned as real images");
 }
