@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   media-smoke:
-    if: github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_resource_usage == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,6 +31,7 @@ jobs:
           set -e
           BUILD_MARKER=$(grep -o 'name="luna-build" content="[^"]*"' producer.html | sed -E 's/.*content="([^"]+)".*/\1/')
           if [ -z "$BUILD_MARKER" ]; then echo 'Missing LUNA build marker'; exit 1; fi
+          export BUILD_MARKER
           URL="https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=$BUILD_MARKER"
           for attempt in $(seq 1 36); do
             if curl -fsSL "$URL" | grep -q "$BUILD_MARKER"; then
@@ -62,7 +63,9 @@ jobs:
               catch(e) { console.log('FAILED_STAGE:',label); console.log('PAGE_STATUS:',await page.locator('#aiStatus').innerText().catch(()=>'')); console.log('VISUAL_STATUS:',await page.locator('#visualStatus').innerText().catch(()=>'')); console.log('VOICE_STATUS:',await page.locator('#voiceStatus').innerText().catch(()=>'')); throw e; }
             };
             try {
-              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke=all-scenes-artwork-lock-20261102e',{waitUntil:'domcontentloaded',timeout:30000});
+              const buildMarker = process.env.BUILD_MARKER;
+              if(!buildMarker) throw new Error('Missing checked-out Producer build marker');
+              const pageResponse = await page.goto('https://madahisaeid200-glitch.github.io/Luna/producer.html?luna-smoke='+encodeURIComponent(buildMarker),{waitUntil:'domcontentloaded',timeout:30000});
               if(!pageResponse?.ok()) throw new Error('Producer HTTP failure');
               await page.locator('#epTitle').fill('The Five-Star Room Mix-Up');
               await page.locator('#premise').fill('HOOK: Luna enters a breathtaking five-star hotel suite, delighted by Leo’s romantic surprise. SCENE 1: Leo proudly reveals that he booked the suite for their anniversary. Luna notices the welcome card says Mr. and Mrs. Thompson. SCENE 2: Leo sheepishly admits he typed the wrong surname. Luna teases him that they are apparently celebrating another couple’s anniversary. Leo tries to defend himself, then realizes the welcome card is the only thing that is wrong. They stay together in the same suite, laugh, hug and share a sweet kiss. PAYOFF: Leo promises an even better surprise next time. Luna asks whether he will remember their names. Final punchline: Leo says, “Of course. I’ve saved them under ‘My Favourite People’.” Only LUNA and LEO; remain inside the same suite; no reception, hotel staff, extra people, phone or new props. Romantic, playful luxury-comedy tone.');
