@@ -169,9 +169,9 @@ jobs:
           assert.match(autoHandler, /if\(!lastDraft\)\{[\s\S]*lastDraft=draft\(/,
             'Browser-side fallback screenplay may only be synthesized when no valid Worker screenplay exists');
           assert.match(autoHandler, /\]\.join\('\n\n'\);/,
-            'Local fallback production pack must use real newline separators so the shot parser can read it');
+          assert.match(autoHandler, /\]\.join\('\\n\\n'\);/,
           assert.match(html, /\.split\('\n'\)/,
-            'Production-pack parser must split on real newline characters');
+          assert.match(html, /\.split\('\\n'\)/,
           assert.match(autoHandler, /Worker یک سناریوی جایگزین محلی برگرداند/,
             'Local-template fallback must be clearly labelled as non-AI output');
           const clearMediaStart = html.indexOf('function clearCurrentEpisodeMedia()');
