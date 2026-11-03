@@ -293,14 +293,15 @@ export default {
         if (!/^https:\/\/zerogpu-aoti-wan2-2-fp8da-aoti-faster\.hf\.space\//.test(fileUrl)) throw new Error("Wan returned an unexpected video URL.");
         const videoResponse = await wanFetch(fileUrl, {}, 20_000);
         if (!videoResponse.ok) throw new Error("Wan video download failed (HTTP " + videoResponse.status + ").");
-        const videoType = videoResponse.headers.get("Content-Type") || "video/mp4";
-        if (!videoType.includes("video") && !fileUrl.toLowerCase().endsWith(".mp4")) throw new Error("Wan result is not a video file (" + videoType + ").");
+        const videoType = videoResponse.headers.get("Content-Type") || (fileUrl.toLowerCase().endsWith(".webm") ? "video/webm" : fileUrl.toLowerCase().endsWith(".mp4") ? "video/mp4" : "application/octet-stream");
+        if (!videoType.includes("video")) throw new Error("Wan result is not a video file (" + videoType + ").");
+        const videoExtension = videoType.toLowerCase().includes("webm") ? "webm" : videoType.toLowerCase().includes("mp4") ? "mp4" : "video";
         return new Response(videoResponse.body, {
           status: 200,
           headers: {
             ...cors,
-            "Content-Type": videoType.includes("video") ? videoType : "video/mp4",
-            "Content-Disposition": "attachment; filename=\"LUNA-Wan2.2-I2V.mp4\"",
+            "Content-Type": videoType,
+            "Content-Disposition": "attachment; filename=\"LUNA-Wan2.2-I2V." + videoExtension + "\"",
             "Cache-Control": "no-store",
             "X-LUNA-Video-Engine": "Wan2.2-14B-Fast-I2V"
           }
