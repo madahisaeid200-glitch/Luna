@@ -580,10 +580,13 @@ ${script.trim()}`;
           if (typeof raw !== "string" || !raw.trim()) throw new Error("empty model response");
           raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
           const plan = JSON.parse(raw);
-          if (plan.schemaVersion !== "luna-video-plan@1.0.0" || !Array.isArray(plan.shots) || plan.shots.length < 4) throw new Error("response does not match LUNA video-plan schema");
+          if (plan.schemaVersion !== "luna-video-plan@1.0.0" || !Array.isArray(plan.shots) || plan.shots.length !== 6) throw new Error("response does not contain exactly six LUNA shots");
           const allowed = new Set([profile.lunaName, profile.leoName, "LUNA", "LEO"]);
+          const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];
           for (let index = 0; index < plan.shots.length; index++) {
             const shot = plan.shots[index];
+            // Enforce deliberate cinematic coverage even when the model repeats one framing.
+            shot.shotType = cinematicFraming[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
             shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
             shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.filter(line => line && allowed.has(line.speaker) && typeof line.text === "string") : [];
@@ -599,8 +602,8 @@ ${script.trim()}`;
             shot.location = safeLocation;
             const safeVideoPrompt = profile.style + " Continuous live-action vertical 9:16 cinematic shot at " + safeLocation + ". " + safeAction + " Natural body motion, subtle facial expression, believable eye-line and gentle camera movement. Preserve character identity, gender presentation and wardrobe; no extra people, locations, captions or logos.";
             const safeReferencePrompt = profile.style + " Photorealistic vertical 9:16 still reference frame at " + safeLocation + ". " + safeAction + " Natural skin texture, realistic anatomy, coherent lighting and consistent character identity and wardrobe. No extra people, text or logos.";
-            shot.videoPrompt = typeof shot.videoPrompt === "string" && shot.videoPrompt.trim().length >= 30 ? shot.videoPrompt.trim().slice(0, 1600) : safeVideoPrompt;
-            shot.referenceFramePrompt = typeof shot.referenceFramePrompt === "string" && shot.referenceFramePrompt.trim().length >= 30 ? shot.referenceFramePrompt.trim().slice(0, 1600) : safeReferencePrompt;
+            shot.videoPrompt = typeof shot.videoPrompt === "string" && shot.videoPrompt.trim().length >= 100 ? shot.videoPrompt.trim().slice(0, 1600) : safeVideoPrompt;
+            shot.referenceFramePrompt = typeof shot.referenceFramePrompt === "string" && shot.referenceFramePrompt.trim().length >= 100 ? shot.referenceFramePrompt.trim().slice(0, 1600) : safeReferencePrompt;
             shot.audio = shot.audio && typeof shot.audio === "object" ? shot.audio : { ambience: "Natural ambience of the established location", sfx: "Only sounds implied by the screenplay", musicMood: "Soft romantic comedy" };
             shot.transition = typeof shot.transition === "string" && shot.transition.trim() ? shot.transition.trim().slice(0, 80) : "cut";
           }
@@ -611,6 +614,7 @@ ${script.trim()}`;
           plan.continuityBible.luna = profile.lunaLook;
           plan.continuityBible.leo = profile.leoLook;
           plan.continuityBible.visualStyle = profile.style;
+          plan.continuityBible.continuityRules = Array.isArray(plan.continuityBible.continuityRules) && plan.continuityBible.continuityRules.length >= 3 ? plan.continuityBible.continuityRules.slice(0, 8) : ["Keep the same location and spatial layout throughout all six shots.", "Preserve LUNA and LEO face, hair, gender presentation and wardrobe exactly.", "Only LUNA and LEO may appear; invent no people, props or locations.", "Preserve screenplay chronology, dialogue wording and emotional progression."];
           plan.qualityGates = Array.isArray(plan.qualityGates) ? plan.qualityGates : [];
           plan.qualityGates.push("Reject altered identity, wardrobe swaps, extra characters, frozen still frames or broken chronology.");
           return json({ ok: true, mode: "director", plan, model: actualModel, provider, fallbackUsed: provider !== "cloudflare-workers-ai" || model !== primaryModel, providerReady: false, note: "Shot plan generated. Real video rendering still requires a connected generative-video provider; no video has been rendered." });
