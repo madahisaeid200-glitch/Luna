@@ -17,7 +17,7 @@ function jpegDimensions(dataUrl) {
   }
   return null;
 }
-for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6", "prepareLunaReferenceImage(generatedImageData,480,0.88)"]) {
+for (const required of ["Math.max(0,6-generatedSceneImages.length)", "slice(0,6)", "for(let i=0;i<6;i++)", "generatedWanClipUrls.length!==6", "prepareLunaReferenceImage(generatedImageData,480,0.88)", "generatedSceneImages.slice(0,6).map(item=>item.dataUrl)", "independentSceneCount=Math.min(6,generatedSceneImages.length)", "{name:'THE REVEAL'", "{name:'HAPPY ENDING'"]) {
   if (!producerSource.includes(required)) throw new Error("Six-shot production guard missing: " + required);
 }
 
