@@ -601,7 +601,7 @@ ${script.trim()}`;
             shot.shotType = cinematicFraming[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
             shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
-            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.map(line => {
+            shot.dialogue = (Array.isArray(shot.dialogue) ? shot.dialogue : typeof shot.dialogue === "string" ? [shot.dialogue] : []).map(line => {
               let candidate = typeof line === "string" ? line.trim() : line && typeof line === "object" ? String(line.text || "").trim() : "";
               let speaker = line && typeof line === "object" ? String(line.speaker || "").trim() : "";
               if (typeof line === "string" && line.includes(":")) {
