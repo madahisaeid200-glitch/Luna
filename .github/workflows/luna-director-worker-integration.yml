@@ -1,0 +1,91 @@
+name: LUNA branch Worker director integration
+on:
+  push:
+    branches:
+      - probe/director-ovh-compact
+    paths:
+      - worker.js
+      - .github/workflows/luna-director-worker-integration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  director-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Wrangler
+        run: npm install --no-save wrangler
+      - name: Start the exact branch Worker locally
+        run: |
+          npx wrangler dev worker.js --local --ip 127.0.0.1 --port 8787 --log-level warn > /tmp/luna-wrangler.log 2>&1 &
+          echo $! > /tmp/luna-wrangler.pid
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/ >/tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/luna-wrangler.log
+          exit 1
+      - name: Exercise real Director route through the branch Worker
+        run: |
+          cat > /tmp/request.json <<'JSON'
+          {
+            "mode":"director",
+            "title":"The Five-Star Name Mix-Up",
+            "duration":"short",
+            "script":"The Five-Star Name Mix-Up\nLUNA: This welcome card has the wrong names on it, what's going on here exactly now.\nLEO: I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this.\nLUNA: You booked this suite for another couple or someone else, that's really quite amusing to me.\nLEO: I made the typo and I accept it, let's just enjoy our stay and make the most of it together.\nLUNA: Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury.\nLEO: I love you too, and I promise to get it right next time, with an even better surprise for you."
+          }
+          JSON
+          curl --fail-with-body --silent --show-error --max-time 210 -H 'Content-Type: application/json' --data-binary @/tmp/request.json http://127.0.0.1:8787/ -o /tmp/worker-response.json -w 'WORKER_HTTP=%{http_code} elapsed=%{time_total}s bytes=%{size_download}\n'
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/worker-response.json'))
+          assert data.get('ok') is True, data.get('error') or 'Worker did not report success'
+          assert data.get('mode')=='director', 'wrong mode'
+          assert data.get('provider')=='ovhcloud', f"expected live OVH provider, got {data.get('provider')}"
+          plan=data.get('plan') or {}
+          assert plan.get('schemaVersion')=='luna-video-plan@1.0.0', 'schema mismatch'
+          shots=plan.get('shots')
+          assert isinstance(shots,list) and len(shots)==6, 'expected six shots'
+          expected=[
+            ('LUNA',"This welcome card has the wrong names on it, what's going on here exactly now."),
+            ('LEO',"I typed the wrong surname on our anniversary reservation, I'm so terribly sorry about this."),
+            ('LUNA',"You booked this suite for another couple or someone else, that's really quite amusing to me."),
+            ('LEO',"I made the typo and I accept it, let's just enjoy our stay and make the most of it together."),
+            ('LUNA',"Well, at least we're getting a five-star mix-up, and I love you for the laugh and the luxury."),
+            ('LEO',"I love you too, and I promise to get it right next time, with an even better surprise for you.")
+          ]
+          actual=[]
+          kinds=set()
+          for index,shot in enumerate(shots):
+            assert shot.get('durationSeconds')>=4, f"shot {index+1} duration"
+            assert shot.get('characters') and set(shot['characters']) <= {'LUNA','LEO'}, f"shot {index+1} cast"
+            assert len(shot.get('videoPrompt',''))>=100, f"shot {index+1} video prompt"
+            assert len(shot.get('referenceFramePrompt',''))>=100, f"shot {index+1} reference prompt"
+            assert isinstance(shot.get('audio'),dict), f"shot {index+1} audio"
+            kinds.add(shot.get('shotType'))
+            for line in shot.get('dialogue',[]):
+              actual.append((line.get('speaker'),line.get('text')))
+          assert actual==expected, f'dialogue mismatch: {actual!r}'
+          assert len(kinds)>=3, f'insufficient framing variety: {kinds}'
+          bible=plan.get('continuityBible') or {}
+          assert all(isinstance(bible.get(k),str) and len(bible[k])>=20 for k in ('luna','leo','visualStyle')), 'continuity bible missing'
+          assert len(bible.get('continuityRules',[]))>=3, 'continuity rules missing'
+          print('PASS: branch Worker → live OVH Director → normalized six-shot plan')
+          print('PROVIDER:',data.get('provider'),'MODEL:',data.get('model'))
+          print('SHOT_TYPES:',sorted(kinds),'DIALOGUE_LINES:',len(actual))
+          print('DURATION_SECONDS:',plan.get('episode',{}).get('targetDurationSeconds'))
+          PY
+      - name: Stop local Worker
+        if: always()
+        run: |
+          if [ -f /tmp/luna-wrangler.pid ]; then kill "$(cat /tmp/luna-wrangler.pid)" 2>/dev/null || true; fi
