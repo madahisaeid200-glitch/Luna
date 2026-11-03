@@ -1,0 +1,88 @@
+name: LUNA pull request quality gates
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["fix/episode-voice-sync-and-visual-qa"]
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-qa-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse producer scripts and test episode safeguards
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const html = fs.readFileSync('producer.html', 'utf8');
+
+          const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+            .map(match => match[1]).filter(source => source.trim());
+          assert.ok(scripts.length >= 5, 'Expected the producer inline scripts to be present');
+          scripts.forEach((source, index) => {
+            try { new Function(source); }
+            catch (error) { throw new Error('Inline script ' + (index + 1) + ' has a syntax error: ' + error.message); }
+          });
+
+          function extractFunction(name, signature) {
+            const match = html.match(new RegExp('function ' + name + signature + '\\s*\\{[\\s\\S]*?\\n\\}'));
+            assert.ok(match, 'Missing function: ' + name);
+            return new Function(match[0] + '; return ' + name + ';')();
+          }
+
+          const extractDialogueForVoice = extractFunction('extractDialogueForVoice', '\\(script\\)');
+          const validateLunaImageQa = extractFunction('validateLunaImageQa', '\\(analysis,requireTwo=false\\)');
+
+          const dialogue = extractDialogueForVoice(
+            'TITLE: Test\\nLUNA: Why is the card wrong?\\nLEO: I typed the surname incorrectly.\\nNARRATOR: Unwanted voice\\nLUNA: You did what?'
+          );
+          assert.match(dialogue, /^LUNA: Why is the card wrong\\?/);
+          assert.match(dialogue, /LEO: I typed the surname incorrectly\\./);
+          assert.match(dialogue, /LUNA: You did what\\?/);
+          assert.doesNotMatch(dialogue, /NARRATOR|TITLE/);
+
+          const validTwoPersonQa = [
+            'CAST CHECK: PASS',
+            'VISIBLE PEOPLE: 2',
+            'FACES IN ARTWORK: NO',
+            'PHOTOREALISM: 8',
+            'HANDS/ANATOMY: 7',
+            'VISIBLE DEFECTS: none'
+          ].join('\\n');
+          assert.equal(validateLunaImageQa(validTwoPersonQa, true).pass, true);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('VISIBLE PEOPLE: 2', 'VISIBLE PEOPLE: 3'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('FACES IN ARTWORK: NO', 'FACES IN ARTWORK: YES'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('PHOTOREALISM: 8', 'PHOTOREALISM: 5'), false).pass, false);
+          assert.equal(validateLunaImageQa(validTwoPersonQa.replace('HANDS/ANATOMY: 7', 'HANDS/ANATOMY: 4'), false).pass, false);
+          const onePersonQa = validTwoPersonQa.replace('VISIBLE PEOPLE: 2', 'VISIBLE PEOPLE: 1');
+          assert.equal(validateLunaImageQa(onePersonQa, false).pass, true);
+          assert.equal(validateLunaImageQa(onePersonQa, true).pass, false);
+
+          assert.doesNotMatch(html, /el\\('makePreviewVideo'\\)\\.disabled\\s*=\\s*false/,
+            'Wan video must never be enabled before a passing visual QA result');
+          const videoHandler = html.match(/el\\('makePreviewVideo'\\)\\.onclick\\s*=\\s*async\\(\\)=>\\s*\\{([\\s\\S]*?)\\n\\s*\\};/);
+          assert.ok(videoHandler, 'Missing Wan video handler');
+          assert.match(videoHandler[1], /if\\(!firstSceneQaPassed\\)/,
+            'Wan video handler must enforce the first-scene QA flag');
+          const restoreStart = html.indexOf('async function restoreLatestLunaImage');
+          const restoreEnd = html.indexOf('function reportLunaDiagnostic', restoreStart);
+          assert.ok(restoreStart >= 0 && restoreEnd > restoreStart, 'Missing image restore routine');
+          const restore = html.slice(restoreStart, restoreEnd);
+          assert.match(restore, /firstSceneQaPassed=false/);
+          assert.match(restore, /el\\('makePreviewVideo'\\)\\.disabled=true/);
+          assert.match(html, /const qa=validateLunaImageQa\\(analysis,true\\)/,
+            'First scene QA must require both LUNA and LEO');
+
+          console.log('INLINE_SCRIPT_SYNTAX: PASS (' + scripts.length + ' scripts)');
+          console.log('SCREENPLAY_TO_VOICE_SYNC: PASS');
+          console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
+          console.log('WAN_PRE_QA_LOCK: PASS (new image, edited image, and restored image paths)');
+          NODE
