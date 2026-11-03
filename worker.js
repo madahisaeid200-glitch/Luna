@@ -583,14 +583,36 @@ ${script.trim()}`;
           const plan = JSON.parse(raw);
           if (plan.schemaVersion !== "luna-video-plan@1.0.0" || !Array.isArray(plan.shots) || plan.shots.length !== 6) throw new Error("response does not contain exactly six LUNA shots");
           const allowed = new Set([profile.lunaName, profile.leoName, "LUNA", "LEO"]);
-          const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];
-          for (let index = 0; index < plan.shots.length; index++) {
+          // Attribute plain-text dialogue only by exact matching against the accepted screenplay.
+          const speakerNames = [...new Set([profile.lunaName, profile.leoName, "LUNA", "LEO"])];
+          const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const speakerPattern = speakerNames.map(escapeRegex).join("|");
+          const sourceDialogue = script.split(/\r?\n/).map(row => {
+            const match = row.match(new RegExp("^\\s*(" + speakerPattern + ")\\s*:\\s*(.+?)\\s*$", "i"));
+            return match ? { speaker: match[1], text: match[2].trim() } : null;
+          }).filter(Boolean);
+          const usedSourceDialogue = new Set();
+          const cinematicFraming = ["wide", "close-up", "medium", "over-shoulder", "medium", "close-up"];          for (let index = 0; index < plan.shots.length; index++) {
             const shot = plan.shots[index];
             // Enforce deliberate cinematic coverage even when the model repeats one framing.
             shot.shotType = cinematicFraming[index];
             shot.id = "S" + String(index + 1).padStart(2, "0");
             shot.durationSeconds = Math.max(4, Math.min(10, Number(shot.durationSeconds) || 6));
-            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.map(line => { if (typeof line === "string") { const match = line.match(/^\s*([^:]+):\s*(.+)$/); return match ? { speaker: match[1].trim(), text: match[2].trim() } : null; } return line && typeof line === "object" ? line : null; }).filter(line => line && allowed.has(line.speaker) && typeof line.text === "string" && line.text.trim()) : [];
+            shot.dialogue = Array.isArray(shot.dialogue) ? shot.dialogue.map(line => {
+              let candidate = typeof line === "string" ? line.trim() : line && typeof line === "object" ? String(line.text || "").trim() : "";
+              let speaker = line && typeof line === "object" ? String(line.speaker || "").trim() : "";
+              if (typeof line === "string" && line.includes(":")) {
+                const split = line.match(/^\\s*([^:]+):\\s*(.+)$/);
+                if (split && allowed.has(split[1].trim())) { speaker = split[1].trim(); candidate = split[2].trim(); }
+              }
+              if (!candidate) return null;
+              const sourceIndex = sourceDialogue.findIndex((entry, index) => !usedSourceDialogue.has(index) && entry.text === candidate);
+              if (sourceIndex < 0) return null;
+              usedSourceDialogue.add(sourceIndex);
+              const source = sourceDialogue[sourceIndex];
+              if (speaker && allowed.has(speaker) && speaker.toLowerCase() !== source.speaker.toLowerCase()) return null;
+              return { speaker: source.speaker, text: source.text };
+            }).filter(Boolean) : [];
             shot.characters = Array.isArray(shot.characters) ? shot.characters.filter(name => allowed.has(name)) : [];
             // Repair incomplete provider JSON into usable prompts before returning a shot plan.
             const safeAction = typeof shot.action === "string" && shot.action.trim()
