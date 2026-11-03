@@ -56,6 +56,16 @@ jobs:
             'Vision analysis must compare the candidate image against its reference');
           assert.ok(worker.includes('provider === "murakumo-free" ? "murakumo/free"'),
             'Murakumo fallback must use the current documented public model selector');
+          // Guard against double-escaped regex literals: they silently collapse all labelled dialogue into LUNA's voice.
+          assert.ok(worker.includes('speech.split(/\\\\r?\\\\n/)') === false,
+            'TTS must not use double-escaped newline regexes');
+          assert.ok(worker.includes('speech.split(/\\r?\\n/)'),
+            'TTS must split screenplay dialogue on actual newline characters');
+          assert.ok(worker.includes('line.match(/^(LUNA|LEO)\\\\s*:\\\\s*(.*)$/i)') === false,
+            'TTS must not use double-escaped speaker-label whitespace regexes');
+          assert.ok(worker.includes('line.match(/^(LUNA|LEO)\\s*:\\s*(.*)$/i)'),
+            'TTS must recognize LUNA and LEO speaker labels');
+
           const ttsStart = worker.indexOf('if (mode === "tts")');
           const ttsEnd = worker.indexOf('const profile = {', ttsStart);
           assert.ok(ttsStart >= 0 && ttsEnd > ttsStart, 'Missing TTS route');
