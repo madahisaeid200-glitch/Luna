@@ -135,12 +135,13 @@ jobs:
             report['wan_health']={'http':status,'ok':health.get('ok'),'engine':health.get('engine'),'endpointAvailable':health.get('endpointAvailable')}
             print('WAN_HEALTH:',json.dumps(report['wan_health']))
             if not health.get('ok'): raise RuntimeError('Wan public Space is not ready; no video job was submitted.')
-            prompt=('MASTER CAST CONSTRAINT: exactly ONE adult European woman AND exactly ONE adult European MAN, visibly different genders, standing together as a romantic couple in a modern five-star European hotel suite. '
-                    'WOMAN: 27-year-old elegant woman, long glossy chestnut-brown hair worn down past shoulders, hazel eyes, refined feminine facial features, wearing a champagne-silver silk evening gown. '
-                    'MAN: unmistakably adult MALE, 29-year-old European man, short neatly styled dark-brown hair, clearly masculine angular jaw and facial structure, visible subtle beard stubble, broad masculine shoulders and athletic natural male body, wearing a perfectly tailored BLACK tuxedo jacket, white shirt and black trousers. '
-                    'The man must look unmistakably male, NOT a woman, NOT feminine, NOT wearing a dress. The woman must look unmistakably female. Exactly two people total: one woman and one man. No other people, no portraits, no people in mirrors or artwork. '
-                    'Photorealistic live-action luxury editorial film still, realistic skin pores, natural anatomy, warm practical hotel lighting, contemporary suite with floor-to-ceiling windows, cinematic vertical 9:16 composition. '
-                    'NEGATIVE: two women, two girls, female duo, woman in tuxedo, man in gown, feminine male, long-haired man, third person, church, cathedral, stained glass, painting, text, logo, collage.')
+            prompt=('MASTER CAST CONSTRAINT: exactly ONE adult woman and exactly ONE adult man, visibly different genders, a romantic couple photographed INSIDE A MODERN FIVE-STAR HOTEL BEDROOM SUITE. '
+                    'The setting must visibly contain a large king-size bed with a padded upholstered headboard, a beige luxury sofa, a marble coffee table, warm bedside lamps and floor-to-ceiling windows with a modern city skyline. This is a hotel room, absolutely not a church, chapel, cathedral, hall or religious building. '
+                    'WOMAN: 27-year-old elegant woman, very long waist-length warm chestnut-brown hair worn loose over both shoulders, hazel eyes, feminine facial features, champagne-silver silk evening gown. Hair must be long and chestnut brown, not black and not a bob. '
+                    'MAN: unmistakably adult MALE, 29-year-old European man, short neatly styled dark-brown hair, clearly masculine angular jaw, visible subtle beard stubble, broad masculine shoulders and athletic natural male body, perfectly tailored BLACK tuxedo jacket, white shirt and black trousers. '
+                    'The man must look unmistakably male, NOT a woman, NOT feminine, NOT wearing a dress. The woman must look unmistakably female. Exactly two people total: one woman and one man. No other people, no portraits, no human figures in mirrors or artwork. '
+                    'Photorealistic live-action luxury hotel editorial film still, realistic skin pores, natural anatomy, warm practical hotel lighting, contemporary neutral interior, cinematic vertical 9:16 composition. '
+                    'NEGATIVE: two women, two girls, female duo, woman in tuxedo, man in gown, feminine male, long-haired man, short-haired woman, black-haired woman, bob haircut, third person, church, cathedral, chapel, stained glass, pews, altar, painting, text, logo, collage.')
             print('Generating exactly one real image through the Worker image route...')
             status,headers,raw=post({'mode':'image','script':prompt},210)
             data=json.loads(raw)
@@ -178,7 +179,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: luna-real-media-smoke-masculine-cast-retest
+          name: luna-real-media-smoke-hotel-suite-retest
           path: media-smoke/
           if-no-files-found: warn
       - name: Stop local Worker
