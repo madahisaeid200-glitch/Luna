@@ -78,6 +78,7 @@ jobs:
 
           const extractDialogueForVoice = extractFunction('extractDialogueForVoice', '\\(script\\)');
           const validateLunaImageQa = extractFunction('validateLunaImageQa', '\\(analysis,requireTwo=false\\)');
+          const validateLunaIdentityContinuity = extractFunction('validateLunaIdentityContinuity', '\\(analysis\\)');
 
           const dialogue = extractDialogueForVoice(
             'TITLE: Test\nLUNA: Why is the card wrong?\nLEO: I typed the surname incorrectly.\nNARRATOR: Unwanted voice\nLUNA: You did what?'
@@ -103,6 +104,18 @@ jobs:
           const onePersonQa = validTwoPersonQa.replace('VISIBLE PEOPLE: 2', 'VISIBLE PEOPLE: 1');
           assert.equal(validateLunaImageQa(onePersonQa, false).pass, true);
           assert.equal(validateLunaImageQa(onePersonQa, true).pass, false);
+          const validIdentityQa = [
+            'IDENTITY CONSISTENCY: PASS',
+            'LUNA FACE MATCH: YES',
+            'LEO FACE MATCH: YES'
+          ].join('\\n');
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa).pass, true);
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LEO FACE MATCH: YES', 'LEO FACE MATCH: NO')).pass, false);
+          assert.equal(validateLunaIdentityContinuity(validIdentityQa.replace('LUNA FACE MATCH: YES', 'LUNA FACE MATCH: UNCLEAR')).pass, false);
+          assert.match(html, /analyzeLunaImageData\\(dataUrl,generatedImageData\\)/,
+            'Every later scene must be compared against the first approved scene image');
+          assert.match(html, /validateLunaIdentityContinuity\\(sceneQa\\.analysis\\)/,
+            'Later scenes must fail when either lead face does not match the reference');
 
           assert.doesNotMatch(html, /el\('makePreviewVideo'\)\.disabled\s*=\s*false/,
             'Wan video must never be enabled before a passing visual QA result');
