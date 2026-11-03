@@ -398,8 +398,8 @@ el('download').onclick=()=>{const textToDownload=lastProductionPack||lastDraft;i
 
 
  function directorPlanToProductionPack(plan){
-   if(!plan||!Array.isArray(plan.shots)||plan.shots.length<3)return '';
-   const shots=plan.shots.slice(0,12);
+   if(!plan||!Array.isArray(plan.shots)||plan.shots.length<6)return '';
+   const shots=plan.shots.slice(0,6);
    const shotList=shots.map((shot,index)=>{
      const id=index+1;
      const dialogue=Array.isArray(shot.dialogue)?shot.dialogue.map(line=>String(line.speaker||'')+': '+String(line.text||'')).filter(line=>line.trim()!==':').join(' | '):'';
@@ -864,7 +864,7 @@ el('testImageUpload').onclick=async()=>{
        if(!videoSequenceDone)raf=requestAnimationFrame(draw);
      };
      recorder.start(500);raf=requestAnimationFrame(draw);
-     // Start the soundtrack and keep cycling the three real motion clips until
+     // Start the soundtrack and keep cycling the six real motion clips until
      // the dialogue ends. A one-pass sequence would leave a frozen frame for most
      // of a 30–60 second voice track (Wan clips are only a few seconds each).
      let audioEnded=!hasVoice,clipIndex=0,playCount=0;
@@ -1092,9 +1092,27 @@ el('autoProduce').onclick=async()=>{
          'LUNA LOCAL PRODUCTION PACK',
          'EPISODE SUMMARY',title,
          'CHARACTER CONTINUITY',profile.lunaName+': '+profile.lunaLook,profile.leoName+': '+profile.leoLook,
-         'SHOT LIST','1. Luxury hotel establishing shot','2. Luna waits for the surprise','3. Leo reveals the booking mix-up','4. Luna reacts with playful disbelief','5. Luna and Leo reach the romantic comedy payoff','6. A final reaction shot closes the episode',
-         'IMAGE PROMPTS',el('imagePrompt').value,
-         'VIDEO / MOTION PROMPTS','Natural cinematic motion, expressive faces, gentle camera movement; preserve identity and wardrobe.',
+         'SHOT LIST',
+         '1. SCENE 1 — Establish the five-star hotel suite; both leads are visible as LEO prepares the surprise.',
+         '2. SCENE 2 — LUNA notices the reservation card and studies the unfamiliar name.',
+         '3. SCENE 3 — LEO enters carrying the wrapped surprise, unaware of the booking confusion.',
+         '4. SCENE 4 — LUNA turns the card toward LEO and gives him a playful, suspicious look.',
+         '5. SCENE 5 — LEO reveals the harmless booking typo and presents the real surprise.',
+         '6. SCENE 6 — The misunderstanding dissolves; both share a warm, amused reaction.',
+         'IMAGE PROMPTS',
+         '1. Wide establishing two-shot of LUNA and LEO in the same elegant five-star hotel suite; LEO discreetly prepares a romantic surprise.',
+         '2. Medium over-the-shoulder shot of LUNA examining the reservation card; her expression shifts from curiosity to puzzled concern.',
+         '3. Medium doorway shot of LEO entering the same suite with a wrapped surprise, smiling and unaware of the misunderstanding.',
+         '4. Close medium two-shot as LUNA holds up the reservation card and looks at LEO with playful disbelief; LEO reacts, confused.',
+         '5. Intimate medium two-shot as LEO explains the booking typo and reveals the intended romantic surprise; LUNA begins to smile.',
+         '6. Warm final two-shot of LUNA and LEO laughing together beside the surprise in the unchanged suite.',
+         'VIDEO / MOTION PROMPTS',
+         '1. Slow cinematic push-in across the suite as LEO makes a small adjustment to the surprise and LUNA looks around.',
+         '2. Gentle camera drift toward the reservation card, then to LUNA’s eyes as her expression changes to confusion.',
+         '3. Smooth backward tracking as LEO steps into the suite with the wrapped surprise and gives a cheerful glance to LUNA.',
+         '4. Subtle handheld-style push toward the two-shot as LUNA raises the card and LEO responds with a puzzled expression.',
+         '5. Slow arc around the pair as LEO clarifies the typo and reveals the surprise; LUNA’s expression softens.',
+         '6. Gentle pull-back as both leads laugh naturally; finish on a calm, affectionate shared reaction.',
          'VOICE AND SOUND','Warm English romantic-comedy dialogue and subtle hotel ambience.',
          'ON-SCREEN CAPTIONS','Short English captions with safe margins.',
          'EDITING PLAN','Vertical 9:16, concise pacing and a clear comic ending.',
