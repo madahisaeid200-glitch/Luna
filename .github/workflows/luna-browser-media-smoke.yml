@@ -80,8 +80,7 @@ jobs:
               const imgSize=await page.locator('#sceneImage').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
               results.push('IMAGE: PASS ('+imgSize.w+'x'+imgSize.h+')');
               await fs.writeFile('luna-test-output/scene-image.png',Buffer.from((await page.locator('#sceneImage').getAttribute('src')).split(',')[1],'base64'));
-              await page.locator('#analyzeSceneImage').click();
-              await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';const s=document.querySelector('#imageAnalysisStatus')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال کنترل کیفیت|در حال ارسال|در حال آماده‌سازی/.test(s);},135000,'first-scene-visual-qa');
+              await waitFor(()=>{const t=document.querySelector('#imageAnalysisReport')?.textContent||'';const s=document.querySelector('#imageAnalysisStatus')?.textContent||'';return t.length>40&&!/هنوز گزارشی/.test(t)&&!/در حال کنترل کیفیت|در حال ارسال|در حال آماده‌سازی|پس از تولید تصویر/.test(s);},135000,'automatic-first-scene-visual-qa');
               const firstQa=await page.locator('#imageAnalysisReport').innerText();
               if(!/CAST CHECK:\s*PASS/i.test(firstQa)||!/VISIBLE PEOPLE:\s*2\b/i.test(firstQa)||!/FACES IN ARTWORK:\s*NO/i.test(firstQa)||!(/PHOTOREALISM:\s*(?:[7-9]|10)(?:\.\d+)?/i.test(firstQa))||!(/HANDS\/ANATOMY:\s*(?:[6-9]|10)(?:\.\d+)?/i.test(firstQa))) throw new Error('First-scene visual QA rejected the image: '+firstQa);
               results.push('FIRST_SCENE_VISUAL_QA: PASS');
