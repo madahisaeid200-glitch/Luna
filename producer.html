@@ -635,7 +635,7 @@ el('testImageUpload').onclick=async()=>{
    try{
      const profile=saveCharacterProfile(false)||readCharacterProfile();
      const motionPrompt=[
-       'Photorealistic live-action cinematic video, one continuous moving shot, 3.5 seconds, natural human motion.',
+       'Photorealistic live-action cinematic video, one continuous moving shot, 5 seconds, natural human motion.',
        'Animate the exact people and scene in the supplied reference image. Preserve both identities, facial structure, age, hair, eye colour, gender presentation, wardrobe, accessories and location exactly. Do not add or remove people or objects.',
        'Subtle believable movement only: natural breathing, a small eye movement, gentle head turn and a restrained authentic facial reaction; realistic cloth response and slight environmental motion. Smooth controlled camera push-in, natural 24fps film movement, physically consistent light.',
        'No frozen still image, no slideshow, no montage, no scene cut, no face morphing, no identity drift, no wardrobe change, no extra limbs, no text, no subtitles, no logos.',
@@ -646,7 +646,7 @@ el('testImageUpload').onclick=async()=>{
      const timeout=setTimeout(()=>controller.abort(),240000);
      let response;
      try{
-       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:generatedImageData,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:generatedImageData,prompt:motionPrompt,durationSeconds:5,steps:4}),signal:controller.signal});
      }finally{clearTimeout(timeout);}
      if(!response.ok){
        let detail='HTTP '+response.status;
@@ -690,7 +690,7 @@ el('testImageUpload').onclick=async()=>{
        const scene=selected[i],shot=shots[i];
        const shotPrompt=String(shot.motionPrompt||shot.action||shot.raw||'A natural continuous cinematic moment').slice(0,900);
        const motionPrompt=[
-         'Photorealistic live-action continuous cinematic shot, 3.5 seconds, vertical 9:16.',
+         'Photorealistic live-action continuous cinematic shot, 5 seconds, vertical 9:16.',
          'Animate only the supplied reference frame. Preserve the exact visible people, faces, age, hair, gender presentation, wardrobe, accessories, props and location. Do not add or remove people or objects.',
          'Natural believable body movement, subtle facial expression and eye movement, realistic cloth response, smooth restrained camera movement, physically consistent lighting.',
          'No slideshow, no montage, no scene cut, no face morphing, no identity drift, no wardrobe change, no extra limbs, no text or logos.',
@@ -701,7 +701,7 @@ el('testImageUpload').onclick=async()=>{
        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),240000);
        let response;
        try{
-         response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:scene.dataUrl,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+         response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:scene.dataUrl,prompt:motionPrompt,durationSeconds:5,steps:4}),signal:controller.signal});
        }finally{clearTimeout(timer);}
        if(!response.ok){
          let detail='HTTP '+response.status;
