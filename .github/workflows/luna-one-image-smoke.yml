@@ -1,0 +1,91 @@
+name: LUNA one-image generation smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_image_quota:
+        description: "Confirm one real image-generation request; this may use image-provider quota"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  one-image:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_image_quota == true && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Generate exactly one image through the production Worker
+        env:
+          LUNA_WORKER_URL: https://orange-firefly-6434.madahisaeid200.workers.dev
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs/promises');
+          const prompt = [
+            'Photorealistic cinematic luxury hotel suite at night, warm soft practical lighting, elegant neutral stone and champagne-gold interior, tasteful flowers and a small wrapped anniversary gift.',
+            'Exactly two adult people only, one elegant 27-year-old European woman with long glossy chestnut-brown hair and hazel eyes, wearing a refined tasteful evening dress; one elegant 29-year-old European man with neatly styled dark-brown hair and subtle natural stubble, wearing a tailored dark suit.',
+            'They stand together naturally in the same suite, affectionate playful expressions, believable human anatomy, realistic skin texture, natural hands, editorial luxury travel photography, 35mm lens, subtle film grain, vertical 2:3 composition.',
+            'No other people, no portraits, no reflections containing people, no text, no logos, no watermark, no collage, no illustration, no CGI, no waxy skin, no malformed hands or extra fingers.'
+          ].join(' ');
+          const payload = {
+            mode: 'image',
+            script: prompt,
+            characterProfile: {
+              lunaName: 'LUNA',
+              lunaLook: 'Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.',
+              lunaPersonality: 'Confident, warm, witty, romantic, playful, stylish, affectionate.',
+              leoName: 'LEO',
+              leoLook: 'Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.',
+              leoPersonality: 'Affectionate, charming, playful, stylish, and adorably chaotic.'
+            }
+          };
+          (async () => {
+            const response = await fetch(process.env.LUNA_WORKER_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(260000)
+            });
+            const raw = await response.text();
+            let data;
+            try { data = JSON.parse(raw); } catch { throw new Error('Worker returned non-JSON HTTP ' + response.status + ': ' + raw.slice(0, 500)); }
+            if (!response.ok) throw new Error('Image generation failed: HTTP ' + response.status + ' — ' + String(data.error || data.details || raw).slice(0, 1600));
+            if (typeof data.image !== 'string' || data.image.length < 10000) throw new Error('Worker response did not contain a valid image payload.');
+            const bytes = Buffer.from(data.image, 'base64');
+            if (bytes.length < 10000 || bytes.length > 8000000) throw new Error('Image byte size outside safety bounds: ' + bytes.length);
+            const isPng = bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+            const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+            const isWebp = bytes.toString('ascii', 8, 12) === 'WEBP';
+            if (!isPng && !isJpeg && !isWebp) throw new Error('Image payload has an unrecognized file signature.');
+            const ext = isPng ? 'png' : isWebp ? 'webp' : 'jpg';
+            await fs.mkdir('luna-one-image',{recursive:true});
+            await fs.writeFile('luna-one-image/luna-one-image.' + ext, bytes);
+            await fs.writeFile('luna-one-image/result.json', JSON.stringify({
+              success: true,
+              provider: data.provider || 'unknown',
+              model: data.model || 'unknown',
+              mimeType: data.mimeType || 'unknown',
+              bytes: bytes.length,
+              generationMs: data.generationMs || null,
+              fallbackUsed: Boolean(data.fallbackUsed),
+              fallbackReason: data.fallbackReason || null,
+              requestCount: 1
+            }, null, 2));
+            console.log('ONE_IMAGE_TEST: PASS');
+            console.log('PROVIDER:', data.provider || 'unknown');
+            console.log('MODEL:', data.model || 'unknown');
+            console.log('IMAGE_BYTES:', bytes.length);
+            console.log('REQUESTS_SENT_TO_WORKER: 1');
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE
+      - name: Upload the single generated image and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-one-image-smoke-output
+          path: luna-one-image/
+          if-no-files-found: warn
+          retention-days: 7
