@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_instagram_connections_status_expiry
 -- A missing returned row means invalid, expired, or already-used state.
 --
 -- DELETE FROM instagram_oauth_states
--- WHERE state_hash = ?1 AND expires_at > ?2 AND identity_digest = ?3
+-- WHERE state_hash = ?1 AND identity_digest = ?2 AND expires_at > ?3
 -- RETURNING purpose, created_at, expires_at;
 
 -- Expired-state cleanup (run opportunistically; no scheduler required):
