@@ -22,13 +22,13 @@ for (const output of ['luna-final-assembled.webm', 'luna-voiced-animatic.webm'])
 
 
 const validator = fs.readFileSync('tests/media-integrity/validate-media.mjs', 'utf8');
-assert.ok(validator.includes('duration,duration_ts,time_base,start_time'),
-  'Media validation must request stream duration ticks and time base when direct duration is unavailable');
-assert.match(validator, /function streamDurationSeconds\\(stream, label\\)/,
-  'Each media stream must have an independently established duration');
+assert.match(validator, /function packetTiming\\(selector, label\\)/,
+  'Each media stream duration must be measured independently from its packets');
+assert.ok(validator.includes("'-show_packets'"), 'Media validation must inspect packet timestamps and durations');
+assert.ok(validator.includes("packet=pts_time,duration_time"), 'Packet timing must include both timestamps and durations');
 assert.doesNotMatch(validator, /video\\.duration\\s*\\|\\|\\s*formatDuration|audio\\.duration\\s*\\|\\|\\s*formatDuration/,
   'Container duration must never be substituted for missing stream duration');
 assert.match(validator, /refusing to substitute container duration/,
-  'Unknown stream duration must fail closed rather than masking an A/V mismatch');
+  'Unknown stream packet timing must fail closed rather than masking an A/V mismatch');
 
 console.log('LIVE_MEDIA_SMOKE_VALIDATION_GUARD: PASS');
