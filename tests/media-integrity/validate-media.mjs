@@ -71,7 +71,7 @@ function streamDurationSeconds(stream, label) {
   if (Number.isFinite(directDuration) && directDuration > 0) return directDuration;
 
   const ticks = Number(stream.duration_ts);
-  const timeBase = String(stream.time_base || '').match(/^(\\d+)\\/(\\d+)$/);
+  const timeBase = String(stream.time_base || '').match(/^(\d+)\/(\d+)$/);
   if (Number.isFinite(ticks) && ticks > 0 && timeBase) {
     const numerator = Number(timeBase[1]);
     const denominator = Number(timeBase[2]);
