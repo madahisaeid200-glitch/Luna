@@ -127,3 +127,28 @@ A release is not complete until all of these pass:
 - Never send personal messages, account credentials, or unrelated user data to third-party AI providers.
 - Send only the minimum approved media and metadata to Meta.
 - Do not spend Cloudflare AI quota for Instagram OAuth, publishing, or Insights; these are direct API operations.
+
+
+## Authentication boundary decision — Cloudflare Access (design approved, not configured)
+
+The existing Worker also serves public LUNA generation and health endpoints. Protecting the entire Worker behind an interactive login would break those public application paths, while adding a password or bearer token to the GitHub Pages JavaScript would expose a reusable credential. Therefore, do not implement a home-grown browser password flow and do not put an admin secret in the Pages bundle.
+
+Use Cloudflare Access as the identity boundary for Instagram administration:
+
+1. Create a **hostname-and-path scoped** Access self-hosted application for the production Worker hostname and `/api/instagram/*` only. Do not enable Worker-wide Access on the shared Worker: that would also gate unrelated public LUNA endpoints. The Access policy must allow only the explicitly verified administrator email address, not an entire email domain.
+2. Keep the public LUNA endpoints public as they are today. Every Instagram route must additionally fail closed unless the Worker invocation has a valid `ctx.access` identity and the identity email matches the server-side administrator allowlist. Do not trust an email, role, or identity field supplied in JSON, query parameters, or browser storage.
+3. The LUNA UI must start the connection with a top-level browser navigation to the protected `/api/instagram/connect` endpoint. Do not depend on third-party cookies being sent by cross-origin JavaScript `fetch()` from GitHub Pages to `workers.dev`. The Meta callback is also a top-level browser navigation to the protected callback URL; validate this flow in Android Chrome before release.
+4. Bind each OAuth state to the initiating Access identity. Extend the D1 state record with an identity digest (SHA-256 of a normalized, verified Access identity value such as the administrator email) and compare it with the callback's authenticated identity before exchanging the authorization code. Do not persist the raw email in the OAuth-state table. Update the migration, state helper, and tests together before wiring routes.
+5. Require Access on connect, callback, status, disconnect, and every future administrative publishing route. The callback must still consume state atomically, reject replay/expiry/mismatch, and exchange the authorization code only on the server.
+6. Configure a separate Access application/policy for each preview hostname used in testing. Preview must use an isolated D1 database and test Meta credentials; it must never share production tokens or publishing capability.
+7. If Access is unavailable, misconfigured, or identity cannot be verified, return a generic 403 and perform no OAuth, database, or publishing operation.
+
+Cloudflare documents support Access protection for a Worker, a specific `workers.dev` hostname, or a hostname/path; it also exposes the authenticated identity to a directly invoked Worker through `ctx.access`. This is the selected architecture, not a claim that Access has already been enabled in the Cloudflare account.
+
+### Consequences and implementation gates
+
+- Change the Worker handler signature to accept `ctx` and dispatch the Instagram path routes before the existing body-mode dispatcher. Preserve the current public routes and their behavior.
+- Keep the OAuth callback URL fixed and register that exact URL in the Meta app; do not accept caller-supplied redirect URLs or open redirects.
+- Add route tests for absent Access identity, wrong administrator, correct administrator, path/method mismatch, callback state identity mismatch, replay, expired state, and redaction of authorization codes/tokens.
+- Add a real-device test for the Access login → Instagram authorization → protected callback round trip. A mocked `ctx.access` test alone does not prove browser cookie behavior.
+- No Access application, D1 database, secret, Meta app, or live route has been configured or provisioned as part of this documentation decision.
