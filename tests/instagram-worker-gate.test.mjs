@@ -55,7 +55,7 @@ test("allowlisted identity reaches only the disabled configuration gate", async 
   assert.equal((await response.json()).code, "INSTAGRAM_NOT_CONFIGURED");
 });
 
-test("allowlisted identity is still denied when the HMAC secret is absent", async () => {
+test("missing HMAC secret is reported as server configuration failure, not visitor denial", async () => {
   const response = await worker.fetch(
     new Request("https://worker.example/api/instagram/status"),
     { INSTAGRAM_ADMIN_EMAILS: "owner@example.com" },
