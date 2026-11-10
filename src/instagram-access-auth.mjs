@@ -1,5 +1,5 @@
 const encoder = new TextEncoder();
-const EMAIL_PATTERN = /^[^\\s@,]+@[^\\s@,]+\\.[^\\s@,]+$/;
+const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
 
 function normalizeEmail(value) {
   if (typeof value !== "string") return null;
