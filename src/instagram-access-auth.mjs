@@ -1,5 +1,5 @@
 const encoder = new TextEncoder();
-const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+const EMAIL_PATTERN = /^[^\\s@,]+@[^\\s@,]+\\.[^\\s@,]+$/;
 
 function normalizeEmail(value) {
   if (typeof value !== "string") return null;
@@ -19,9 +19,6 @@ function parseAllowlist(value) {
 }
 
 async function identityDigest(email, secret) {
-  if (typeof secret !== "string" || secret.length < 32) {
-    throw new TypeError("Instagram identity HMAC secret is not configured securely");
-  }
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -44,25 +41,37 @@ async function identityDigest(email, secret) {
  *
  * Returns a keyed HMAC digest suitable for binding a one-time OAuth state to
  * the initiating administrator. The dedicated HMAC key must be a Worker secret.
- * All errors fail closed.
+ * Authentication failures and server configuration failures are distinguished
+ * so missing secrets are not misreported as an unauthorized visitor.
  */
 export async function authorizeInstagramAdmin(ctx, env) {
+  if (!ctx?.access || typeof ctx.access.getIdentity !== "function") {
+    return { ok: false, reason: "access_identity_unavailable" };
+  }
+
+  const allowlist = parseAllowlist(env?.INSTAGRAM_ADMIN_EMAILS);
+  if (!allowlist) return { ok: false, reason: "admin_allowlist_misconfigured" };
+
+  const secret = env?.INSTAGRAM_IDENTITY_HMAC_KEY;
+  if (typeof secret !== "string" || secret.length < 32) {
+    return { ok: false, reason: "identity_hmac_misconfigured" };
+  }
+
+  let identity;
   try {
-    if (!ctx?.access || typeof ctx.access.getIdentity !== "function") {
-      return { ok: false, reason: "access_identity_unavailable" };
-    }
-    const allowlist = parseAllowlist(env?.INSTAGRAM_ADMIN_EMAILS);
-    if (!allowlist) return { ok: false, reason: "admin_allowlist_misconfigured" };
-
-    const identity = await ctx.access.getIdentity();
-    const email = normalizeEmail(identity?.email);
-    if (!email || !allowlist.has(email)) {
-      return { ok: false, reason: "admin_identity_not_allowed" };
-    }
-
-    const secret = env?.INSTAGRAM_IDENTITY_HMAC_KEY;
-    return { ok: true, identityDigest: await identityDigest(email, secret) };
+    identity = await ctx.access.getIdentity();
   } catch {
     return { ok: false, reason: "access_identity_unavailable" };
+  }
+
+  const email = normalizeEmail(identity?.email);
+  if (!email || !allowlist.has(email)) {
+    return { ok: false, reason: "admin_identity_not_allowed" };
+  }
+
+  try {
+    return { ok: true, identityDigest: await identityDigest(email, secret) };
+  } catch {
+    return { ok: false, reason: "identity_hmac_misconfigured" };
   }
 }
