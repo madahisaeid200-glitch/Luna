@@ -3,6 +3,8 @@
 -- key management, and OAuth implementation have been reviewed and approved.
 --
 -- Store only SHA-256(state) in this table. Never persist the raw OAuth state.
+-- identity_digest is HMAC-SHA-256 of the verified Access identity, keyed by a
+-- dedicated Worker secret; it is not a plain hash of the administrator email.
 CREATE TABLE IF NOT EXISTS instagram_oauth_states (
   state_hash TEXT PRIMARY KEY NOT NULL
     CHECK (length(state_hash) = 64 AND state_hash NOT GLOB '*[^0-9a-f]*'),
