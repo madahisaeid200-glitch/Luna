@@ -53,7 +53,7 @@ const fields=['title','lane','duration','hook','setup','payoff','caption','hasht
 const checks=['qa1','qa2','qa3','qa4','qa5'];
 const $=id=>document.getElementById(id);
 let items=[];let selected=null;
-try{const raw=JSON.parse(localStorage.getItem('lunaReelsDrafts')||'[]');if(Array.isArray(raw))items=raw}catch{}
+try{const raw=JSON.parse(localStorage.getItem('lunaReelsDrafts')||'[]');if(Array.isArray(raw)){const seen=new Set();items=raw.filter(o=>{if(!o||typeof o!=='object'||Array.isArray(o)||typeof o.id!=='string'||!o.id.trim()||typeof o.updatedAt!=='string'||!Number.isFinite(Date.parse(o.updatedAt))||seen.has(o.id))return false;seen.add(o.id);return true})}}catch{}
 function current(){const o={id:selected||('reel-'+Date.now()),updatedAt:new Date().toISOString(),language:'en',aspectRatio:'9:16'};fields.forEach(k=>o[k]=$(k).value.trim());o.qa={};checks.forEach(k=>o.qa[k]=$(k).checked);return o}
 function fill(o){fields.forEach(k=>$(k).value=o?.[k]??(k==='duration'?'20':k==='lane'?'romcom':''));checks.forEach(k=>$(k).checked=!!o?.qa?.[k]);update()}
 function persist(nextItems=items){try{localStorage.setItem('lunaReelsDrafts',JSON.stringify(nextItems));return true}catch(error){return false}}
