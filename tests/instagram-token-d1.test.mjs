@@ -93,6 +93,7 @@ test("rejects invalid inputs and absent D1 binding without writing", async () =>
   await assert.rejects(() => putEncryptedInstagramConnection(db, connection({ accountType: "PERSONAL" }), key), /BUSINESS or CREATOR/);
   await assert.rejects(() => putEncryptedInstagramConnection(db, connection({ grantedScopes: "scope" }), key), /array/);
   await assert.rejects(() => putEncryptedInstagramConnection(db, connection({ tokenExpiresAt: -1 }), key), /tokenExpiresAt/);
+  await assert.rejects(() => putEncryptedInstagramConnection(db, connection({ tokenExpiresAt: 1_800_000_000 }), key), /later than now/);
   assert.equal(db.rows.size, 0);
 });
 
