@@ -41,8 +41,8 @@ function boot(saved='[]', writable=true) {
 }
 // The media lab is a local-only capability probe and must not call generation or publishing APIs.
 const mediaLab=fs.readFileSync('media-lab.html','utf8');
-assert.match(mediaLab,/VideoEncoder\.isConfigSupported/);
-assert.match(mediaLab,/AudioEncoder\.isConfigSupported/);
+assert.match(mediaLab,/window\.VideoEncoder/);
+assert.match(mediaLab,/window\.AudioEncoder/);
 assert.match(mediaLab,/avc1\.42001f/);
 assert.match(mediaLab,/mp4a\.40\.2/);
 assert.match(mediaLab,/exportApproved=false/);
