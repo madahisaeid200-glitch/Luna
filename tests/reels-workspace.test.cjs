@@ -61,10 +61,14 @@ const reloaded=boot(app.storage.get('lunaReelsDrafts'));
 assert.equal(reloaded.elements.draftCount.textContent,'1 drafts');
 const card=reloaded.elements.drafts.children[0];
 assert.equal(card.children.length,4,'draft card should expose title, metadata, open and delete');
-card.children[2].click();
+const openButton=card.children.find(child=>child.textContent==='باز کردن');
+assert.ok(openButton && typeof openButton.onclick==='function','draft card should expose a working open action');
+openButton.onclick();
 assert.equal(reloaded.elements.title.value,'The Wrong VIP Table','open should restore the selected draft');
 assert.equal(reloaded.elements.qa1.checked,true,'open should restore QA checks');
-card.children[3].click();
+const deleteButton=card.children.find(child=>child.textContent==='حذف');
+assert.ok(deleteButton && typeof deleteButton.onclick==='function','draft card should expose a working delete action');
+deleteButton.onclick();
 assert.equal(JSON.parse(reloaded.storage.get('lunaReelsDrafts')).length,0,'delete should remove the saved draft');
 assert.equal(reloaded.elements.draftCount.textContent,'0 drafts');
 
