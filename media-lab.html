@@ -118,8 +118,8 @@ mp4Button.addEventListener('click',async()=>{
   reportEl.textContent=JSON.stringify(details,null,2);
   if(width!==360||height!==640)throw new Error('Unexpected encoded dimensions: '+width+'x'+height);
   if(duration<1.8||duration>2.2)throw new Error('Unexpected encoded duration: '+duration+' seconds');
-  if(!/^avc1\\./i.test(videoCodec||''))throw new Error('Expected H.264/AVC video, received: '+videoCodec);
-  if(!/^mp4a\\.40\\.2$/i.test(audioCodec||''))throw new Error('Expected AAC-LC audio, received: '+audioCodec);
+  if(!/^avc1\./i.test(videoCodec||''))throw new Error('Expected H.264/AVC video, received: '+videoCodec);
+  if(!/^mp4a\.40\.2$/i.test(audioCodec||''))throw new Error('Expected AAC-LC audio, received: '+audioCodec);
   if(sampleRate!==48000||channels!==2)throw new Error('Expected 48kHz stereo audio, received: '+sampleRate+'Hz / '+channels+' channels');
   if(!videoDecodable||!audioDecodable)throw new Error('Browser decoder could not decode both MP4 tracks');
   lastMp4ObjectUrl=URL.createObjectURL(fileBlob);
