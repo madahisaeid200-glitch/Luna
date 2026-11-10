@@ -14,6 +14,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Refuse non-main deployment
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Production deployment is only allowed from the main branch."
+          exit 1
+
       - name: Prepare Cloudflare Pages bundle
         run: |
           mkdir -p dist
