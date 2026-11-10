@@ -10,7 +10,7 @@ function requireDatabase(db) {
 }
 
 function validateIdentityDigest(value) {
-  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) throw new TypeError("identityDigest must be a 64-character lowercase SHA-256 hex digest");
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) throw new TypeError("identityDigest must be a 64-character lowercase HMAC-SHA-256 hex digest");
 }
 
 function validateNow(now) {
