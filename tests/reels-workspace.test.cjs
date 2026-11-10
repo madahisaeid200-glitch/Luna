@@ -49,7 +49,7 @@ assert.match(mediaLab,/exportApproved=false/);
 assert.match(mediaLab,/هیچ درخواست هوش مصنوعی یا مصرف سهمیه/);
 assert.doesNotMatch(mediaLab,/fetch\s*\(|XMLHttpRequest|instagram_business_content_publish|mode:\s*['"]video['"]/,
   'Media compatibility probe must not call network, AI generation, or Instagram publishing');
-const mediaScripts=[...mediaLab.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(Boolean);
+const mediaScripts=[...mediaLab.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 mediaScripts.forEach((source,index)=>{try{new Function(source)}catch(error){throw new Error('Media lab script '+(index+1)+' syntax error: '+error.message)}});
 assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/reels\.html"/);
 assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/media-lab\.html"/);
