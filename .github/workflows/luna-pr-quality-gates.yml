@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - name: Parse Worker JavaScript
         run: node --check worker.js
+      - name: Guard live provider workflows against automatic quota use
+        run: node tests/live-provider-workflow-guards.test.cjs
       - name: Parse producer scripts and test episode safeguards
         run: |
           node <<'NODE'
