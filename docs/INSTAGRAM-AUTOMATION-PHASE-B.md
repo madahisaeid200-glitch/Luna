@@ -23,15 +23,23 @@ Official references to re-check at implementation time (pin the Graph API versio
 - Content publishing: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/
 - Insights: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/insights/
 
-## Implemented cryptographic building block (not yet connected to OAuth)
+## Implemented token cryptography and isolated D1 repository (not connected to OAuth)
 
-The branch now contains an isolated Web Crypto helper at `src/instagram-token-crypto.mjs`:
+The branch contains an isolated Web Crypto helper at `src/instagram-token-crypto.mjs`:
 - AES-256-GCM with a 256-bit key, 96-bit cryptographically random IV, and 128-bit authentication tag.
 - Authenticated additional data binds ciphertext to the Instagram account ID and encryption-key version, preventing a ciphertext from being silently moved between account rows or key versions.
 - Returns ciphertext and IV as byte arrays suitable for D1 BLOB parameters; it never logs or persists plaintext.
 - Decryption rejects modified ciphertext, wrong keys, wrong account IDs, and mismatched key versions.
 
-Regression coverage is in `tests/instagram-token-crypto.test.mjs` and runs in the PR quality-gates workflow. The helper also validates a canonical standard-Base64 Worker secret that decodes to exactly 32 bytes; this avoids accepting malformed or undersized AES keys. Generate the secret outside the repository and install it only with Cloudflare Worker secret management. Never paste the key into chat, source files, Pages, or logs. This is a tested building block only: the Worker does not yet read the secret, call this helper, write encrypted tokens to D1, rotate keys, or expose OAuth routes. Those integration steps remain release blockers.
+The branch also contains `src/instagram-token-d1.mjs`, a server-side repository adapter:
+- `putEncryptedInstagramConnection` encrypts the token before preparing the D1 INSERT/UPSERT statement; it stores only ciphertext, IV, key version, account type, scopes, and expiry metadata.
+- `getDecryptedInstagramConnection` reads the row and decrypts only for trusted server-side callers.
+- `deleteInstagramConnection` removes the stored connection for disconnect.
+- The adapter validates account type, identifiers, timestamps, scopes, and D1 binding presence. It does not create HTTP routes or expose token values to browser code.
+
+Regression coverage is in `tests/instagram-token-crypto.test.mjs` and `tests/instagram-token-d1.test.mjs`. The repository tests use an in-memory D1-compatible mock and fixed test-only keys; they do not contact Cloudflare or use real credentials. The secret decoder validates canonical standard Base64 containing exactly 32 bytes. Generate the secret outside the repository and install it only with Cloudflare Worker secret management. Never paste the key into chat, source files, Pages, or logs.
+
+Important boundary: this adapter is implemented and mock-tested, but the Worker does not yet read the secret, call the adapter, or have OAuth routes. No D1 resource has been provisioned and no migration has been applied to Cloudflare. Real D1 compatibility and binding isolation remain release blockers; these tests are not proof of a live D1 round trip.
 
 ## OAuth and credential security
 
