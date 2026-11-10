@@ -1,17 +1,20 @@
 name: Diagnose LUNA Worker reachability and FLUX latency
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - ".github/workflows/check-worker.yml"
   workflow_dispatch:
+    inputs:
+      confirm_image_quota:
+        description: "Confirm this diagnostic will perform real image generation and reference-image editing and may consume provider quota"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   check:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_image_quota == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Check GET, small POST, and 58 KB image POST from an independent network
