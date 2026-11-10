@@ -31,7 +31,7 @@ The branch now contains an isolated Web Crypto helper at `src/instagram-token-cr
 - Returns ciphertext and IV as byte arrays suitable for D1 BLOB parameters; it never logs or persists plaintext.
 - Decryption rejects modified ciphertext, wrong keys, wrong account IDs, and mismatched key versions.
 
-Regression coverage is in `tests/instagram-token-crypto.test.mjs` and runs in the PR quality-gates workflow. This is a tested building block only: the Worker does not yet parse the encryption secret, call this helper, write encrypted tokens to D1, rotate keys, or expose OAuth routes. Those integration steps remain release blockers.
+Regression coverage is in `tests/instagram-token-crypto.test.mjs` and runs in the PR quality-gates workflow. The helper also validates a canonical standard-Base64 Worker secret that decodes to exactly 32 bytes; this avoids accepting malformed or undersized AES keys. Generate the secret outside the repository and install it only with Cloudflare Worker secret management. Never paste the key into chat, source files, Pages, or logs. This is a tested building block only: the Worker does not yet read the secret, call this helper, write encrypted tokens to D1, rotate keys, or expose OAuth routes. Those integration steps remain release blockers.
 
 ## OAuth and credential security
 
