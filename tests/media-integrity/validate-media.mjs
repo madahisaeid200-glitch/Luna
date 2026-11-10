@@ -43,7 +43,7 @@ function run(command, commandArgs) {
 
 const probe = JSON.parse(run('ffprobe', [
   '-v', 'error', '-show_entries',
-  'format=format_name,duration:stream=codec_type,codec_name,width,height,duration,start_time',
+  'format=format_name,duration:stream=codec_type,codec_name,width,height,duration,duration_ts,time_base,start_time',
   '-of', 'json', file
 ]));
 const formatNames = String(probe.format?.format_name || '').split(',');
@@ -62,11 +62,27 @@ if (requireAudio && !audio) fail('Audio stream is required but missing');
 if (requireAudio && !audio.codec_name) fail('Audio codec is missing');
 
 const formatDuration = Number(probe.format?.duration);
-const videoDuration = Number(video.duration || formatDuration);
-const audioDuration = audio ? Number(audio.duration || formatDuration) : null;
 if (!Number.isFinite(formatDuration) || formatDuration <= 0) fail('Container duration is missing or invalid');
-if (!Number.isFinite(videoDuration) || videoDuration <= 0) fail('Video duration is missing or invalid');
-if (audio && (!Number.isFinite(audioDuration) || audioDuration <= 0)) fail('Audio duration is missing or invalid');
+
+// Never substitute the container's overall duration for a missing stream duration:
+// doing so can make a shorter audio or video track appear synchronized.
+function streamDurationSeconds(stream, label) {
+  const directDuration = Number(stream.duration);
+  if (Number.isFinite(directDuration) && directDuration > 0) return directDuration;
+
+  const ticks = Number(stream.duration_ts);
+  const timeBase = String(stream.time_base || '').match(/^(\\d+)\\/(\\d+)$/);
+  if (Number.isFinite(ticks) && ticks > 0 && timeBase) {
+    const numerator = Number(timeBase[1]);
+    const denominator = Number(timeBase[2]);
+    const derivedDuration = ticks * numerator / denominator;
+    if (Number.isFinite(derivedDuration) && derivedDuration > 0) return derivedDuration;
+  }
+  fail(`${label} stream duration is missing or invalid; refusing to substitute container duration`);
+}
+
+const videoDuration = streamDurationSeconds(video, 'Video');
+const audioDuration = audio ? streamDurationSeconds(audio, 'Audio') : null;
 if (audio && Math.abs(videoDuration - audioDuration) > 0.5) {
   fail(`Audio/video duration mismatch exceeds 0.5 s (video=${videoDuration}, audio=${audioDuration})`);
 }
