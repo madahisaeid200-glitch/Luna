@@ -13,11 +13,11 @@ Use **Instagram API with Instagram Login / Business Login for Instagram** for th
 Minimum scopes for the planned workflow:
 - `instagram_business_basic` — identify the connected professional account and access its media.
 - `instagram_business_content_publish` — create and publish Reels.
-- `instagram_business_manage_insights` — request account and media insights, after verifying this permission in the Meta App Dashboard for the selected app/API version.
+- `instagram_business_manage_insights` — needed for account/media Insights according to the Insights endpoint references. Important documentation nuance: Meta's Business Login overview's scope list does not consistently show this scope alongside the basic/publish scopes. Treat Insights as a separately gated capability: verify the exact scope and access level in the selected app's current Meta App Dashboard and the current Insights endpoint docs before requesting it; do not block basic publishing on Insights approval.
 
 Do not use deprecated scope names such as `business_content_publish`. Instagram Login does not provide hashtag search; do not promise competitor hashtag discovery or hashtag search through this connection.
 
-Official references to re-check at implementation time:
+Official references to re-check at implementation time (pin the Graph API version explicitly in code; do not silently follow a changing default):
 - Instagram Platform overview: https://developers.facebook.com/docs/instagram-platform/overview/
 - Business Login for Instagram: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/
 - Content publishing: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/
@@ -27,7 +27,7 @@ Official references to re-check at implementation time:
 
 1. Create a Meta developer app and configure Instagram Business Login redirect URI(s).
 2. Start OAuth only from a user click. Generate a cryptographically random, single-use `state`, store its hash and short expiry server-side, and validate it on callback to prevent CSRF.
-3. Exchange the one-time authorization code on the Worker server, never in browser JavaScript.
+3. Exchange the one-time authorization code on the Worker server, never in browser JavaScript. Keep the Instagram Login flow on its documented Instagram host (`graph.instagram.com`) and do not mix its token type, endpoints, or scopes with Facebook Login (`graph.facebook.com`).
 4. Exchange the short-lived token for a long-lived token and track its expiry. Refresh before expiry according to Meta's current documented rules.
 5. Store access tokens encrypted at rest using AES-GCM with a dedicated Cloudflare Worker secret (for example `IG_TOKEN_ENCRYPTION_KEY`). Store ciphertext, IV, account ID, granted scopes, token expiry, and connection status in a private D1 database. Never store tokens in localStorage, browser bundles, Git, logs, analytics, or error messages.
 6. Store Meta App Secret and encryption key only as Worker secrets. Do not expose either to Pages, browser JS, or public API responses.
@@ -38,7 +38,7 @@ Official references to re-check at implementation time:
 
 1. Accept only a finalized, user-approved MP4. Validate container, H.264/AVC video, AAC-LC audio, 9:16 dimensions, duration, frame rate, audio sample rate/channels, file size, and actual decodability. Do not treat a capability probe or synthetic 360x640 test as production approval.
 2. Upload the approved file to a private temporary object in Cloudflare R2. Use an unguessable, short-lived public fetch URL/Worker media route because Meta must fetch the media from a publicly reachable URL during container creation. Do not expose the permanent private object key.
-3. Create a Reel media container using the current Instagram Login publishing endpoint and required parameters.
+3. Create a Reel media container using the current Instagram Login publishing endpoint and required parameters. For this login path, use the documented public `video_url` fetch flow unless the current Meta docs explicitly add another supported upload mode; do not copy the Facebook Login-only `upload_type=resumable` flow into Instagram Login.
 4. Poll container status conservatively until FINISHED, ERROR, or timeout. Never publish while status is IN_PROGRESS or ERROR.
 5. Publish only after a second explicit confirmation in LUNA. Record container ID, published media ID, timestamp, caption, and result without retaining the raw token.
 6. Delete the temporary public media object after a verified terminal outcome or expiry. Make cleanup retryable.
