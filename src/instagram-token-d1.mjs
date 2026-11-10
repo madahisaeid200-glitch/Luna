@@ -34,6 +34,9 @@ function validateConnection(input) {
   }
   validateTimestamp(input.tokenExpiresAt, "tokenExpiresAt");
   validateTimestamp(input.now, "now");
+  if (input.tokenExpiresAt <= input.now) {
+    throw new TypeError("tokenExpiresAt must be later than now");
+  }
   if (input.lastRefreshAt !== undefined && input.lastRefreshAt !== null) {
     validateTimestamp(input.lastRefreshAt, "lastRefreshAt");
   }
