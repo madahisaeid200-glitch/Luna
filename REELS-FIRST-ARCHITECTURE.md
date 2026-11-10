@@ -119,6 +119,10 @@ The recommendation engine should compare the pilot's creative lanes, hooks, leng
 - Keep the first test quota-free: use locally bundled or user-provided synthetic/sample clips, not Wan generation. Do not consume image/video model quotas just to validate container conversion.
 - If the phone lacks compatible WebCodecs encoders or memory, fail clearly and retain the source clips for manual export; never label WebM as MP4 or claim Instagram readiness.
 
+**Quota-free compatibility probe added to the Reels workspace branch:** `media-lab.html` checks WebCodecs H.264/AAC configuration support, MediaCapabilities encoding information and MediaRecorder MIME support locally. It performs no network request, AI generation, upload or publishing. A positive probe is only a preliminary signal; the page deliberately keeps `exportApproved=false` because an actual file must still be encoded and validated.
+
+**AAC fallback caution:** Mediabunny documents an optional `@mediabunny/aac-encoder` package for browsers whose WebCodecs implementation lacks AAC encoding. That add-on uses a WebAssembly AAC-LC encoder. Do not add it automatically: first measure its bundle size, CPU time, memory and thermal impact on the target Android device, and only then compare it with a server-side or alternate audio path.
+
 **Phase B acceptance matrix (must pass on the target Android phone before integration):**
 - Generate/export 15 s, 20 s and 30 s test timelines without calling AI services.
 - Final file is MP4 with H.264 video and AAC audio; 9:16 dimensions are exactly 1080×1920 (or a documented lower-resolution test profile that is not mistaken for release quality).
