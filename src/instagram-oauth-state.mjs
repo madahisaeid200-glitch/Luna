@@ -57,6 +57,9 @@ export async function createInstagramOAuthState(db, now) {
   const state = bytesToBase64Url(random);
   const stateHash = await hashState(encoder.encode(state));
   const expiresAt = now + STATE_TTL_SECONDS;
+  if (!Number.isSafeInteger(expiresAt)) {
+    throw new TypeError("OAuth state expiry exceeds the safe integer range");
+  }
 
   await db.prepare(`
     INSERT INTO instagram_oauth_states (
@@ -75,7 +78,7 @@ export async function createInstagramOAuthState(db, now) {
 export async function consumeInstagramOAuthState(db, state, now) {
   requireDatabase(db);
   validateNow(now);
-  const stateBytes = base64UrlToBytes(state);
+  base64UrlToBytes(state);
   const stateHash = await hashState(encoder.encode(state));
 
   const row = await db.prepare(`
