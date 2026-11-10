@@ -99,6 +99,20 @@ deleteButton.onclick();
 assert.equal(JSON.parse(reloaded.storage.get('lunaReelsDrafts')).length,0,'delete should remove the saved draft');
 assert.equal(reloaded.elements.draftCount.textContent,'0 drafts');
 
+
+// Malformed persisted data must not crash startup or render; keep valid unique drafts only.
+const corrupted=boot(JSON.stringify([
+  null,
+  {id:'missing-date',title:'Broken'},
+  {id:'bad-date',updatedAt:'not-a-date'},
+  {id:'good',title:'Valid draft',updatedAt:'2026-11-10T10:00:00.000Z',lane:'romcom',duration:'20',qa:{}},
+  {id:'good',title:'Duplicate ID',updatedAt:'2026-11-10T11:00:00.000Z',lane:'romcom',duration:'20',qa:{}}
+]));
+assert.equal(corrupted.elements.draftCount.textContent,'1 drafts',
+  'startup should discard malformed records and duplicate IDs without crashing');
+assert.equal(corrupted.elements.drafts.children.length,1);
+assert.equal(corrupted.elements.drafts.children[0].children[0].textContent,'Valid draft');
+
 // Required-field validation must block incomplete drafts.
 const invalid=boot();
 invalid.elements.title.value='Incomplete';
