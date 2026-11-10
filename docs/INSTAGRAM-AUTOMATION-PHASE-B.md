@@ -26,7 +26,7 @@ Official references to re-check at implementation time (pin the Graph API versio
 ## OAuth and credential security
 
 1. Create a Meta developer app and configure Instagram Business Login redirect URI(s).
-2. Start OAuth only from a user click. Generate a cryptographically random, single-use `state`, store its hash and short expiry server-side, and validate it on callback to prevent CSRF.
+2. Start OAuth only from a user click. Generate a cryptographically random, single-use `state`, store its SHA-256 hash and a 10-minute expiry server-side, and validate/atomically consume it on callback to prevent CSRF and replay. Never store the raw state.
 3. Exchange the one-time authorization code on the Worker server, never in browser JavaScript. Keep the Instagram Login flow on its documented Instagram host (`graph.instagram.com`) and do not mix its token type, endpoints, or scopes with Facebook Login (`graph.facebook.com`).
 4. Exchange the short-lived token for a long-lived token and track its expiry. Refresh before expiry according to Meta's current documented rules.
 5. Store access tokens encrypted at rest using AES-GCM with a dedicated Cloudflare Worker secret (for example `IG_TOKEN_ENCRYPTION_KEY`). Store ciphertext, IV, account ID, granted scopes, token expiry, and connection status in a private D1 database. Never store tokens in localStorage, browser bundles, Git, logs, analytics, or error messages.
@@ -56,11 +56,19 @@ Official references to re-check at implementation time (pin the Graph API versio
 ## Cloudflare bindings and deployment
 
 The current `wrangler.toml` on `main` has an AI binding only; it has no D1, KV, or R2 binding. Before OAuth implementation, provision and bind:
-- D1 for encrypted connection records and one-time OAuth state.
+- D1 for encrypted connection records and one-time OAuth state. A draft schema is in `migrations/0001_instagram_oauth.sql`; it stores only a state hash, and stores the token as AES-GCM ciphertext plus a 12-byte IV and key version. The migration is not applied to any environment.
 - R2 for temporary approved media.
 - Worker secrets for Meta App ID/Secret as applicable and the token-encryption key.
 
 Use separate preview and production credentials/bindings. Preview must not be able to publish to the real account. Production publishing must remain disabled until a real account has connected and a full end-to-end test passes.
+
+## D1 schema and migration safety
+
+- The draft migration creates only `instagram_oauth_states` and `instagram_connections`; it does not create publishing queues or media metadata tables yet.
+- Consume OAuth state with a conditional `DELETE ... RETURNING` so a state can succeed only once and only before expiry. Reject callbacks if the state is missing, expired, or already consumed.
+- Encrypt access tokens in the Worker before writing to D1. The database must never receive plaintext tokens. Use a unique AES-GCM IV for every encryption under a given key and retain a key version for planned rotation.
+- Disconnect deletes the stored connection row. Refresh failures set a bounded, sanitized error code; never persist raw provider responses, authorization codes, or tokens.
+- Apply the migration only after reviewing the schema against the actual Worker bindings and testing it in an isolated preview D1 database. Do not run it against production during this design phase.
 
 ## Release gates
 
