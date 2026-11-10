@@ -61,7 +61,18 @@ test("missing HMAC secret is reported as server configuration failure, not visit
     { INSTAGRAM_ADMIN_EMAILS: "owner@example.com" },
     ctx("owner@example.com")
   );
-  assert.equal(response.status, 403);
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "INSTAGRAM_AUTH_NOT_CONFIGURED");
+});
+
+test("missing administrator allowlist is reported as server configuration failure", async () => {
+  const response = await worker.fetch(
+    new Request("https://worker.example/api/instagram/status"),
+    { INSTAGRAM_IDENTITY_HMAC_KEY: env.INSTAGRAM_IDENTITY_HMAC_KEY },
+    ctx("owner@example.com")
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "INSTAGRAM_AUTH_NOT_CONFIGURED");
 });
 
 test("public LUNA health endpoint remains HTTP 200 without Access or Instagram bindings", async () => {
