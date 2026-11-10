@@ -6,6 +6,8 @@ Status: planning baseline only. This document does not claim Instagram publishin
 
 - Primary channel: Instagram Reels.
 - Primary language: English.
+- Recommended Instagram account type: Creator (professional account), because LUNA is being launched as a virtual influencer/content creator rather than a shop or local service business. Business remains a valid later switch if the project becomes primarily a commercial company profile.
+- Account setup sequence: create a normal Instagram account with a dedicated LUNA email, then switch it to a public Creator professional account; choose the closest available creator/digital-creator category. Do not share login credentials with the app; connect later through Meta's official OAuth flow.
 - Brand/story world: LUNA + LEO, luxury European couple, romantic comedy and light misunderstandings.
 - Initial validation: a controlled 15-Reel pilot, with short 9:16 videos (target 15–30 seconds; actual duration chosen per story).
 - Cost rule: free-first. No paid API, rendering, storage, or AI plan is enabled without a measured quality/cost test and explicit approval.
@@ -36,7 +38,7 @@ The pilot should test three repeatable creative lanes: romantic-comedy couple mo
 
 ### 2. Official Instagram connection
 
-Preferred integration to evaluate first: Instagram API with Instagram Login (Business Login for Instagram), because it is designed for professional Creator/Business accounts and does not require the Facebook-Page-linked login path.
+Preferred integration: Instagram API with Instagram Login (Business Login for Instagram). It supports professional Creator and Business accounts and does not require a linked Facebook Page for the publishing/insights use case planned here. Use the current permission names from Meta's live docs; do not copy deprecated scope names from older tutorials.
 
 Expected permissions to request only as needed:
 - instagram_business_basic
