@@ -3,6 +3,31 @@ const KEY_BYTES = 32;
 const TAG_BITS = 128;
 const encoder = new TextEncoder();
 
+/**
+ * Decode a canonical standard-Base64 Worker secret containing exactly 32 key
+ * bytes. Generate the value offline; never put the raw key in source control.
+ */
+export function decodeInstagramEncryptionKey(secret) {
+  if (typeof secret !== "string" || !/^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}= $/.test(secret + " ")) {
+    throw new TypeError("Instagram encryption secret must be canonical Base64");
+  }
+  let binary;
+  try {
+    binary = atob(secret);
+  } catch {
+    throw new TypeError("Instagram encryption secret must be canonical Base64");
+  }
+  if (binary.length !== KEY_BYTES) {
+    throw new TypeError("Instagram encryption secret must decode to exactly 32 bytes");
+  }
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  const canonical = btoa(String.fromCharCode(...bytes));
+  if (canonical !== secret) {
+    throw new TypeError("Instagram encryption secret must be canonical Base64");
+  }
+  return bytes;
+}
+
 function validateContext(accountId, keyVersion) {
   if (typeof accountId !== "string" || !accountId.trim() || accountId.length > 256) {
     throw new TypeError("accountId must be a non-empty string of at most 256 characters");
