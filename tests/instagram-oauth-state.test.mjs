@@ -95,6 +95,7 @@ test("rejects malformed state, invalid timestamps, and missing D1 binding", asyn
   const db = new MockD1();
   await assert.rejects(() => createInstagramOAuthState(null, 1), /D1 database binding/);
   await assert.rejects(() => createInstagramOAuthState(db, -1), /non-negative safe integer/);
+  await assert.rejects(() => createInstagramOAuthState(db, Number.MAX_SAFE_INTEGER), /expiry exceeds the safe integer range/);
   await assert.rejects(() => consumeInstagramOAuthState(db, "not-a-state", 1), /43-character base64url/);
   await assert.rejects(() => consumeInstagramOAuthState(db, "A".repeat(43) + "!", 1), /43-character base64url/);
   await assert.rejects(() => deleteExpiredInstagramOAuthStates(db, 1.5), /non-negative safe integer/);
