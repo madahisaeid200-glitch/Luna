@@ -40,6 +40,17 @@ if node "$ROOT/validate-media.mjs" "$OUT/mismatched-av.mp4" --container mp4 --re
   exit 1
 fi
 
+# Negative test: equal-length tracks with a material start offset must be rejected.
+ffmpeg -hide_banner -loglevel error \\
+  -f lavfi -i "testsrc2=size=320x568:rate=24:duration=2.5" \\
+  -itsoffset 0.3 -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=2.5" \\
+  -c:v libx264 -pix_fmt yuv420p -preset ultrafast -c:a aac -b:a 96k \\
+  "$OUT/offset-av.mp4"
+if node "$ROOT/validate-media.mjs" "$OUT/offset-av.mp4" --container mp4 --require-audio; then
+  echo 'Audio/video start-time offset was incorrectly accepted' >&2
+  exit 1
+fi
+
 # Negative test: a valid video-only MP4 must fail when the product requires narration/audio.
 ffmpeg -hide_banner -loglevel error \
   -f lavfi -i "testsrc2=size=320x568:rate=24" -t 2 \
