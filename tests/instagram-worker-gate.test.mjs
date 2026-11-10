@@ -23,7 +23,10 @@ async function loadWorker() {
 }
 
 const worker = await loadWorker();
-const env = { INSTAGRAM_ADMIN_EMAILS: "owner@example.com" };
+const env = {
+  INSTAGRAM_ADMIN_EMAILS: "owner@example.com",
+  INSTAGRAM_IDENTITY_HMAC_KEY: "test-only-secret-key-with-32-bytes-minimum"
+};
 const ctx = email => ({ access: { getIdentity: async () => ({ email }) } });
 
 test("Instagram namespace fails closed without verified Cloudflare Access identity", async () => {
@@ -43,6 +46,15 @@ test("allowlisted identity reaches only the disabled configuration gate", async 
   const response = await worker.fetch(new Request("https://worker.example/api/instagram/status"), env, ctx(" OWNER@EXAMPLE.COM "));
   assert.equal(response.status, 503);
   assert.equal((await response.json()).code, "INSTAGRAM_NOT_CONFIGURED");
+});
+
+test("allowlisted identity is still denied when the HMAC secret is absent", async () => {
+  const response = await worker.fetch(
+    new Request("https://worker.example/api/instagram/status"),
+    { INSTAGRAM_ADMIN_EMAILS: "owner@example.com" },
+    ctx("owner@example.com")
+  );
+  assert.equal(response.status, 403);
 });
 
 test("public LUNA health endpoint remains HTTP 200 without Access or Instagram bindings", async () => {
