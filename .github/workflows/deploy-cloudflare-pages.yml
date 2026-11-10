@@ -18,6 +18,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html producer.html _worker.js dist/
+          cp reels.html media-lab.html dist/
           if [ -d assets ]; then cp -a assets dist/; fi
           if [ -d images ]; then cp -a images dist/; fi
           if [ -d styles ]; then cp -a styles dist/; fi
