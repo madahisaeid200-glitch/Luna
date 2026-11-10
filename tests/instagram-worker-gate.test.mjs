@@ -44,6 +44,25 @@ test("exact Instagram base path is protected as well as nested routes", async ()
   }
 });
 
+test("non-canonical Instagram paths cannot fall through to public mode handlers", async () => {
+  const encodedSlash = await worker.fetch(new Request("https://worker.example/api/instagram%2Fstatus", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "ping" })
+  }), env, {});
+  assert.equal(encodedSlash.status, 400);
+  assert.notEqual((await encodedSlash.json()).ok, true);
+
+  const encodedLetter = await worker.fetch(new Request("https://worker.example/api/%69nstagram/status"), env, {});
+  assert.equal(encodedLetter.status, 400);
+
+  const uppercase = await worker.fetch(new Request("https://worker.example/API/INSTAGRAM/status"), env, {});
+  assert.equal(uppercase.status, 400);
+
+  const malformed = await worker.fetch(new Request("https://worker.example/api/instagram%ZZ"), env, {});
+  assert.equal(malformed.status, 400);
+});
+
 test("Instagram namespace rejects a non-allowlisted identity", async () => {
   const response = await worker.fetch(new Request("https://worker.example/api/instagram/connect"), env, ctx("attacker@example.net"));
   assert.equal(response.status, 403);
