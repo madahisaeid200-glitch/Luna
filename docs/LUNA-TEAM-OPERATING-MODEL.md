@@ -111,3 +111,32 @@ Every PMO update uses this structure:
 - **Next decision:** the single highest-value action.
 
 **Current management decision:** keep production untouched; do not run live quota-consuming workflows; first complete the P0 workflow-safety audit and P1 quota-free media-integrity test plan. PR #11 and PR #13 remain separate draft workstreams until dependency and regression review is complete.
+
+
+## 7. Verified progress update — 2026-11-10 15:13 UTC
+
+This section supersedes earlier open-risk notes where the corresponding work has since been completed on a feature branch. It does not imply that any draft PR is merged or deployed.
+
+| Workstream | Latest evidence | Status and boundary |
+|---|---|---|
+| PR #15 — live-provider quota guards | Quality-gate run #260 succeeded; `LIVE_PROVIDER_WORKFLOW_GUARDS` step passed. | **Verified on PR branch only.** Adds manual dispatch, explicit boolean confirmation defaulting false, and main-only execution for FLUX/reference-image and Wan live diagnostics. PR remains draft and unmerged; main is not yet protected by this change. |
+| PR #16 — media integrity | Quality-gate run #264 succeeded. Dedicated fixture workflow run #6 was rerun after cancellation and then succeeded. | **Verified on PR branch.** Generated MP4 H.264/AAC (320x568, 2.500 s) and WebM VP9/Opus (320x568, 2.508 s); FFmpeg fully decoded video and audio. Negative cases rejected an invalid file, a 2 s/4 s A/V duration mismatch, and a video-only file when audio was required. The live browser media workflow was not run. |
+| PR #13 — Instagram security foundation | Quality-gate run #254 succeeded, including migration constraints, AES-256-GCM, D1 adapter, single-use OAuth state, fail-closed Access identity, protected route and public-route regression tests. | **Mock/CI verified only.** Worker gate is connected in the feature branch but deliberately returns `INSTAGRAM_NOT_CONFIGURED` for an allowlisted administrator. No OAuth start/callback, real D1 round trip, Access policy, Preview binding, Meta app, or live account connection is proven. |
+| PR #11 — Reels workspace | Quality-gate run #199 succeeded, including Reels draft lifecycle tests. | **CI verified only.** UI/data model remains local-browser storage; no Instagram connection or publishing. |
+| PR #14 — team operating model | This document. | Operating model and release gates remain documentation-only. |
+
+### Integration and release controls
+
+- PR #11 and PR #13 are each **4 commits behind current main** and report a diverged history from their common base. Do not blindly merge or rebase them. First inspect the four mainline commits and perform a controlled branch reconciliation with regression CI.
+- PR #15 and PR #16 are separate draft PRs based on current main. Keep them separate until review is complete; do not merge them automatically.
+- The successful PR #15 guard test does not protect production until that PR is merged. Treat live diagnostic workflows on main as quota-sensitive and do not dispatch them.
+- The successful PR #16 fixture run proves synthetic fixture integrity only. It does not prove real generated footage quality, lip-sync, Android playback, or Instagram's MP4 requirements.
+- No production merge, Pages/Worker deployment, live provider generation, Meta connection, or production database migration has been performed in this progress update.
+
+### Next ordered work
+
+1. SENTINEL: complete independent code review of the PR #16 validator, especially stream-duration evidence when container metadata omits per-stream durations.
+2. ATELIER + SENTINEL: add quota-free Playwright coverage for Producer and Reels draft persistence, reopen/edit/delete, export, and mobile layout; preserve existing production flows.
+3. ATLAS + RELEASE: reconcile PR #11 and PR #13 ancestry against current main in isolated branches and rerun full regression gates before any merge decision.
+4. AEGIS + PULSE: keep OAuth handlers disabled until the Preview hostname is Access-protected and isolated D1/R2 resources and test Meta credentials are actually provisioned.
+5. CINEMA + SENTINEL: only after the above, prepare one tightly budgeted live media acceptance run; require explicit user approval before any provider quota is consumed.
