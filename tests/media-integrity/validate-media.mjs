@@ -64,31 +64,40 @@ if (requireAudio && !audio.codec_name) fail('Audio codec is missing');
 const formatDuration = Number(probe.format?.duration);
 if (!Number.isFinite(formatDuration) || formatDuration <= 0) fail('Container duration is missing or invalid');
 
-// Never substitute the container's overall duration for a missing stream duration:
-// doing so can make a shorter audio or video track appear synchronized.
-function streamDurationSeconds(stream, label) {
-  const directDuration = Number(stream.duration);
-  if (Number.isFinite(directDuration) && directDuration > 0) return directDuration;
-
-  const ticks = Number(stream.duration_ts);
-  const timeBase = String(stream.time_base || '').match(/^(\d+)\/(\d+)$/);
-  if (Number.isFinite(ticks) && ticks > 0 && timeBase) {
-    const numerator = Number(timeBase[1]);
-    const denominator = Number(timeBase[2]);
-    const derivedDuration = ticks * numerator / denominator;
-    if (Number.isFinite(derivedDuration) && derivedDuration > 0) return derivedDuration;
+// Some WebM files omit stream-level duration metadata. Measure each stream from
+// its packet timestamps instead of copying the container duration into both tracks.
+function packetTiming(selector, label) {
+  const output = run('ffprobe', [
+    '-v', 'error', '-select_streams', selector, '-show_packets',
+    '-show_entries', 'packet=pts_time,duration_time', '-of', 'csv=p=0', file
+  ]);
+  let firstTimestamp = Infinity;
+  let lastPacketEnd = -Infinity;
+  for (const line of output.split(/\\r?\\n/)) {
+    if (!line.trim()) continue;
+    const [timestampText, durationText] = line.split(',');
+    const timestamp = Number(timestampText);
+    const duration = Number(durationText);
+    if (!Number.isFinite(timestamp) || !Number.isFinite(duration) || duration <= 0) continue;
+    firstTimestamp = Math.min(firstTimestamp, timestamp);
+    lastPacketEnd = Math.max(lastPacketEnd, timestamp + duration);
   }
-  fail(`${label} stream duration is missing or invalid; refusing to substitute container duration`);
+  const measuredDuration = lastPacketEnd - firstTimestamp;
+  if (!Number.isFinite(measuredDuration) || measuredDuration <= 0) {
+    fail(`${label} stream packet timing is missing or invalid; refusing to substitute container duration`);
+  }
+  return {start: firstTimestamp, duration: measuredDuration};
 }
 
-const videoDuration = streamDurationSeconds(video, 'Video');
-const audioDuration = audio ? streamDurationSeconds(audio, 'Audio') : null;
+const videoTiming = packetTiming('v:0', 'Video');
+const audioTiming = audio ? packetTiming('a:0', 'Audio') : null;
+const videoDuration = videoTiming.duration;
+const audioDuration = audioTiming?.duration ?? null;
 if (audio && Math.abs(videoDuration - audioDuration) > 0.5) {
   fail(`Audio/video duration mismatch exceeds 0.5 s (video=${videoDuration}, audio=${audioDuration})`);
 }
-if (audio && Number.isFinite(Number(video.start_time)) && Number.isFinite(Number(audio.start_time)) &&
-    Math.abs(Number(video.start_time) - Number(audio.start_time)) > 0.25) {
-  fail(`Audio/video start-time offset exceeds 0.25 s (video=${video.start_time}, audio=${audio.start_time})`);
+if (audio && Math.abs(videoTiming.start - audioTiming.start) > 0.25) {
+  fail(`Audio/video start-time offset exceeds 0.25 s (video=${videoTiming.start}, audio=${audioTiming.start})`);
 }
 
 // Decode every frame and every audio sample independently; metadata alone is not sufficient.
