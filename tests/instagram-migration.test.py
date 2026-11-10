@@ -41,7 +41,7 @@ class InstagramOAuthMigrationTests(unittest.TestCase):
           RETURNING purpose, created_at, expires_at
         """
         first = self.db.execute(consume, (good, "b" * 64, 200)).fetchone()
-        second = self.db.execute(consume, (good, 200)).fetchone()
+        second = self.db.execute(consume, (good, "b" * 64, 200)).fetchone()
         self.assertIsNotNone(first)
         self.assertEqual(first["purpose"], "instagram_login")
         self.assertIsNone(second)
