@@ -27,6 +27,8 @@ jobs:
         run: node --test tests/instagram-oauth-state.test.mjs
       - name: Test fail-closed Cloudflare Access administrator authorization
         run: node --test tests/instagram-access-auth.test.mjs
+      - name: Test authenticated Instagram Worker route and public-route regression
+        run: node --test tests/instagram-worker-gate.test.mjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
