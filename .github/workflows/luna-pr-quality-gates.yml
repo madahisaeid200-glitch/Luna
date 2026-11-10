@@ -21,6 +21,8 @@ jobs:
         run: python3 tests/instagram-migration.test.py
       - name: Test Instagram AES-256-GCM token encryption
         run: node --test tests/instagram-token-crypto.test.mjs
+      - name: Test encrypted Instagram D1 repository adapter
+        run: node --test tests/instagram-token-d1.test.mjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
