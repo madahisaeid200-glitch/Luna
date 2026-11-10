@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
  * bytes. Generate the value offline; never put the raw key in source control.
  */
 export function decodeInstagramEncryptionKey(secret) {
-  if (typeof secret !== "string" || !/^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}= $/.test(secret + " ")) {
+  if (typeof secret !== "string" || !/^(?:[A-Za-z0-9+/]{4}){10}[A-Za-z0-9+/]{3}=$/.test(secret)) {
     throw new TypeError("Instagram encryption secret must be canonical Base64");
   }
   let binary;
