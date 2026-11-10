@@ -6,8 +6,28 @@ import { authorizeInstagramAdmin } from "./instagram-access-auth.mjs";
  * OAuth handlers remain disabled until isolated D1/R2 bindings and secrets exist.
  */
 export async function handleInstagramAdminRoute({ request, env, ctx, json }) {
-  const pathname = new URL(request.url).pathname;
-  if (pathname !== "/api/instagram" && !pathname.startsWith("/api/instagram/")) return null;
+  const rawPathname = new URL(request.url).pathname;
+  let decodedPathname;
+  try {
+    decodedPathname = decodeURIComponent(rawPathname);
+  } catch {
+    if (rawPathname.toLowerCase().startsWith("/api/instagram")) {
+      return json({ ok: false, error: "Invalid Instagram administration path." }, 400);
+    }
+    return null;
+  }
+
+  const normalizedCandidate = decodedPathname.toLowerCase();
+  const isInstagramNamespace = normalizedCandidate === "/api/instagram" ||
+    normalizedCandidate.startsWith("/api/instagram/");
+  if (!isInstagramNamespace) return null;
+
+  // Do not let encoded separators, encoded characters, or case variants fall
+  // through to the public mode-based Worker dispatcher.
+  if (rawPathname !== decodedPathname || rawPathname !== normalizedCandidate) {
+    return json({ ok: false, error: "Invalid Instagram administration path." }, 400);
+  }
+
   if (request.method !== "GET" && request.method !== "POST") {
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
