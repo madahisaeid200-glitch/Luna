@@ -9,6 +9,10 @@ function requireDatabase(db) {
   }
 }
 
+function validateIdentityDigest(value) {
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) throw new TypeError("identityDigest must be a 64-character lowercase SHA-256 hex digest");
+}
+
 function validateNow(now) {
   if (!Number.isSafeInteger(now) || now < 0) {
     throw new TypeError("now must be a non-negative safe integer");
@@ -49,9 +53,10 @@ async function hashState(stateBytes) {
  * Only its SHA-256 digest is written to D1; the raw value is returned once
  * for the authorization redirect and must never be logged or persisted.
  */
-export async function createInstagramOAuthState(db, now) {
+export async function createInstagramOAuthState(db, now, identityDigest) {
   requireDatabase(db);
   validateNow(now);
+  validateIdentityDigest(identityDigest);
 
   const random = crypto.getRandomValues(new Uint8Array(STATE_BYTES));
   const state = bytesToBase64Url(random);
@@ -63,9 +68,9 @@ export async function createInstagramOAuthState(db, now) {
 
   await db.prepare(`
     INSERT INTO instagram_oauth_states (
-      state_hash, purpose, created_at, expires_at
-    ) VALUES (?, 'instagram_login', ?, ?)
-  `).bind(stateHash, now, expiresAt).run();
+      state_hash, purpose, identity_digest, created_at, expires_at
+    ) VALUES (?, 'instagram_login', ?, ?, ?)
+  `).bind(stateHash, identityDigest, now, expiresAt).run();
 
   return { state, expiresAt };
 }
@@ -75,17 +80,18 @@ export async function createInstagramOAuthState(db, now) {
  * D1 DELETE ... RETURNING ensures only one concurrent callback can succeed.
  * Invalid, expired, and already-consumed values all return null.
  */
-export async function consumeInstagramOAuthState(db, state, now) {
+export async function consumeInstagramOAuthState(db, state, now, identityDigest) {
   requireDatabase(db);
   validateNow(now);
+  validateIdentityDigest(identityDigest);
   base64UrlToBytes(state);
   const stateHash = await hashState(encoder.encode(state));
 
   const row = await db.prepare(`
     DELETE FROM instagram_oauth_states
-    WHERE state_hash = ? AND expires_at > ?
+    WHERE state_hash = ? AND identity_digest = ? AND expires_at > ?
     RETURNING purpose, created_at, expires_at
-  `).bind(stateHash, now).first();
+  `).bind(stateHash, identityDigest, now).first();
 
   if (!row) return null;
   if (row.purpose !== "instagram_login" ||
