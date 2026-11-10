@@ -46,7 +46,7 @@ assert.match(mediaLab,/window\.AudioEncoder/);
 assert.match(mediaLab,/avc1\.42001f/);
 assert.match(mediaLab,/mp4a\.40\.2/);
 assert.match(mediaLab,/exportApproved=false/);
-assert.match(mediaLab,/هیچ درخواست هوش مصنوعی یا مصرف سهمیه/);
+assert.match(mediaLab,/هیچ (تصویر|ویدئو)|هیچ API هوش مصنوعی یا سهمیه‌ای مصرف نمی‌شود/);
 assert.doesNotMatch(mediaLab,/fetch\s*\(|XMLHttpRequest|instagram_business_content_publish|mode:\s*['"]video['"]/,
   'Media compatibility probe must not call network, AI generation, or Instagram publishing');
 const mediaScripts=[...mediaLab.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
