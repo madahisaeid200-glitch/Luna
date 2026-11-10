@@ -1,17 +1,20 @@
 name: LUNA real Wan 2.2 video proof
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/luna-wan-video-proof.yml"
   workflow_dispatch:
+    inputs:
+      confirm_video_quota:
+        description: "Confirm one real Wan 2.2 video-generation request; this may consume video-provider quota"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   wan-video-proof:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_video_quota == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
