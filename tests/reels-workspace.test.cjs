@@ -16,7 +16,7 @@ class Element {
   click() { if (this.onclick) this.onclick(); }
   removeAttribute(name) { delete this.attributes[name]; if(name==='href')this.href=''; }
 }
-function boot(saved='[]') {
+function boot(saved='[]', writable=true) {
   const ids=['title','lane','duration','hook','setup','payoff','caption','hashtags','cover','notes',
     'qa1','qa2','qa3','qa4','qa5','pvHook','pvSetup','pvPayoff','pvDuration','pvLane',
     'durationRead','wordCount','status','save','new','export','download','draftCount','drafts'];
@@ -30,7 +30,7 @@ function boot(saved='[]') {
   const context={
     document, localStorage:{
       getItem:key=>storage.has(key)?storage.get(key):null,
-      setItem:(key,value)=>storage.set(key,String(value))
+      setItem:(key,value)=>{if(!writable)throw new Error('storage unavailable');storage.set(key,String(value))}
     },
     confirm:()=>true, Date, JSON, Blob:class Blob{constructor(parts,opts){this.parts=parts;this.type=opts?.type}},
     URL:{createObjectURL:()=> 'blob:test',revokeObjectURL:()=>{}},
@@ -79,6 +79,23 @@ invalid.elements.hook.value='Hook';
 invalid.elements.save.click();
 assert.equal(JSON.parse(invalid.storage.get('lunaReelsDrafts')).length,0);
 assert.match(invalid.elements.status.textContent,/ضروری/);
+
+// Storage failures must not claim success or mutate the visible draft library.
+const blockedSave=boot('[]',false);
+blockedSave.elements.title.value='Storage blocked';
+blockedSave.elements.hook.value='Hook';
+blockedSave.elements.setup.value='Setup';
+blockedSave.elements.payoff.value='Payoff';
+blockedSave.elements.save.click();
+assert.equal(blockedSave.storage.get('lunaReelsDrafts'),'[]');
+assert.match(blockedSave.elements.status.textContent,/ذخیره نشد/);
+assert.equal(blockedSave.elements.draftCount.textContent,'0 drafts');
+
+const blockedDelete=boot(JSON.stringify([{id:'keep',title:'Keep me',updatedAt:new Date().toISOString(),lane:'romcom',duration:'20',qa:{}}]),false);
+const blockedCard=blockedDelete.elements.drafts.children[0];
+blockedCard.children.find(child=>child.textContent==='حذف').onclick();
+assert.equal(blockedDelete.elements.draftCount.textContent,'1 drafts','failed deletion must preserve the visible draft');
+assert.match(blockedDelete.elements.status.textContent,/حذف نشد/);
 
 // Export controls should create the expected downloadable brief formats.
 e.export.click();
