@@ -144,6 +144,7 @@ export async function getDecryptedInstagramConnection(db, instagramUserId, keyBy
     accessToken,
     grantedScopes: scopes,
     tokenExpiresAt: row.token_expires_at,
+    encryptionKeyVersion: row.encryption_key_version,
     status: row.status,
     connectedAt: row.connected_at,
     updatedAt: row.updated_at,
