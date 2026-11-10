@@ -39,7 +39,17 @@ The branch also contains `src/instagram-token-d1.mjs`, a server-side repository 
 
 Regression coverage is in `tests/instagram-token-crypto.test.mjs` and `tests/instagram-token-d1.test.mjs`. The repository tests use an in-memory D1-compatible mock and fixed test-only keys; they do not contact Cloudflare or use real credentials. The secret decoder validates canonical standard Base64 containing exactly 32 bytes. Generate the secret outside the repository and install it only with Cloudflare Worker secret management. Never paste the key into chat, source files, Pages, or logs.
 
-Important boundary: this adapter is implemented and mock-tested, but the Worker does not yet read the secret, call the adapter, or have OAuth routes. No D1 resource has been provisioned and no migration has been applied to Cloudflare. Real D1 compatibility and binding isolation remain release blockers; these tests are not proof of a live D1 round trip.
+## Implemented OAuth state lifecycle (not yet wired to Worker routes)
+
+The branch contains `src/instagram-oauth-state.mjs`:
+- `createInstagramOAuthState` generates 32 cryptographically random bytes, encodes them as a 43-character base64url state, and persists only its SHA-256 digest with purpose, creation time, and a 10-minute expiry.
+- `consumeInstagramOAuthState` uses a single `DELETE ... WHERE state_hash = ? AND expires_at > ? RETURNING ...` statement so the state is consumed as part of the callback validation and cannot be replayed.
+- `deleteExpiredInstagramOAuthStates` provides opportunistic cleanup without requiring a scheduled trigger.
+- Malformed state, invalid timestamps, absent D1 binding, expired values, and replay attempts are rejected or return no match.
+
+The five tests in `tests/instagram-oauth-state.test.mjs` run against an in-memory D1-compatible mock. The concurrency test verifies the adapter's intended single-use contract in the mock; it does not replace a concurrency test against real Cloudflare D1.
+
+Important boundary: the token repository and OAuth state helper are implemented and mock-tested, but the Worker does not yet read secrets, call these modules, or expose OAuth routes. No D1 resource has been provisioned and no migration has been applied to Cloudflare. Real D1 compatibility, atomic RETURNING behavior, and binding isolation remain release blockers; these tests are not proof of a live D1 round trip.
 
 ## OAuth and credential security
 
