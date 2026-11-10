@@ -37,6 +37,13 @@ test("Instagram namespace fails closed without verified Cloudflare Access identi
   assert.equal(JSON.stringify(body).includes("owner@example.com"), false);
 });
 
+test("exact Instagram base path is protected as well as nested routes", async () => {
+  for (const pathname of ["/api/instagram", "/api/instagram/"]) {
+    const response = await worker.fetch(new Request("https://worker.example" + pathname), env, {});
+    assert.equal(response.status, 403, pathname + " must fail closed without Access identity");
+  }
+});
+
 test("Instagram namespace rejects a non-allowlisted identity", async () => {
   const response = await worker.fetch(new Request("https://worker.example/api/instagram/connect"), env, ctx("attacker@example.net"));
   assert.equal(response.status, 403);
