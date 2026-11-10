@@ -32,7 +32,7 @@ class InstagramOAuthMigrationTests(unittest.TestCase):
     def test_oauth_state_constraints_and_single_use_consumption(self):
         good = "a" * 64
         self.db.execute(
-            "INSERT INTO instagram_oauth_states(state_hash, created_at, expires_at) VALUES (?, ?, ?)",
+            "INSERT INTO instagram_oauth_states(state_hash, identity_digest, created_at, expires_at) VALUES (?, ?, ?, ?)",
             (good, 100, 700),
         )
         consume = """
@@ -48,14 +48,14 @@ class InstagramOAuthMigrationTests(unittest.TestCase):
 
         self.db.execute(
             "INSERT INTO instagram_oauth_states(state_hash, created_at, expires_at) VALUES (?, ?, ?)",
-            ("b" * 64, 100, 150),
+            ("b" * 64, "c" * 64, 100, 150),
         )
         self.assertIsNone(self.db.execute(consume, ("b" * 64, 150)).fetchone())
 
         invalid_rows = [
-            ("short", 100, 200),
-            ("G" * 64, 100, 200),
-            ("c" * 64, 200, 100),
+            ("short", "d" * 64, 100, 200),
+            ("G" * 64, "d" * 64, 100, 200),
+            ("c" * 64, "d" * 64, 200, 100),
         ]
         for row in invalid_rows:
             with self.subTest(row=row):
