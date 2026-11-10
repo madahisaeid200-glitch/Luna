@@ -39,6 +39,21 @@ function boot(saved='[]', writable=true) {
   vm.runInNewContext(fs.readFileSync('reels.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1],context);
   return {elements,storage,downloads};
 }
+// The media lab is a local-only capability probe and must not call generation or publishing APIs.
+const mediaLab=fs.readFileSync('media-lab.html','utf8');
+assert.match(mediaLab,/VideoEncoder\.isConfigSupported/);
+assert.match(mediaLab,/AudioEncoder\.isConfigSupported/);
+assert.match(mediaLab,/avc1\.42001f/);
+assert.match(mediaLab,/mp4a\.40\.2/);
+assert.match(mediaLab,/exportApproved=false/);
+assert.match(mediaLab,/هیچ درخواست هوش مصنوعی یا مصرف سهمیه/);
+assert.doesNotMatch(mediaLab,/fetch\s*\(|XMLHttpRequest|instagram_business_content_publish|mode:\s*['"]video['"]/,
+  'Media compatibility probe must not call network, AI generation, or Instagram publishing');
+const mediaScripts=[...mediaLab.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(Boolean);
+mediaScripts.forEach((source,index)=>{try{new Function(source)}catch(error){throw new Error('Media lab script '+(index+1)+' syntax error: '+error.message)}});
+assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/reels\.html"/);
+assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/media-lab\.html"/);
+assert.match(mediaLab,/href="\.\/reels\.html"/);
 const app=boot();
 const e=app.elements;
 assert.equal(e.draftCount.textContent,'0 drafts');
