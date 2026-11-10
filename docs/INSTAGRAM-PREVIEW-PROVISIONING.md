@@ -16,7 +16,7 @@ Status: instructions only. Nothing in this document has been provisioned or appl
 - `wrangler.toml` currently declares Worker `orange-firefly-6434`, entry point `worker.js`, compatibility date `2026-10-26`, Workers AI binding `AI`, and an empty `[previews]` block.
 - The root repository has no `package.json` and therefore no project-pinned Wrangler dependency.
 - The current Preview configuration intentionally omits the production AI binding. That is acceptable for the current Instagram-authentication scaffold; it is not evidence that the Instagram runtime is ready.
-- The PR's latest Cloudflare Preview comment (2026-11-10 10:52 UTC) reports a successful build and deployment for commit `00c506c`. This confirms deployment creation only; runtime behavior, Access policy enforcement, and isolated D1/R2 bindings have not yet been verified.
+- Treat the latest Cloudflare Preview comment on PR #13 as the deployment source of truth. Before every test, confirm that its reported commit SHA matches the current feature-branch HEAD and that both Build and Deployment show Success. A successful deployment confirms artifact publication only; it does not prove runtime behavior, Access policy enforcement, or isolated D1/R2 bindings.
 - The Instagram Worker namespace currently fails closed. OAuth routes are not implemented.
 
 ## 1. Pin the Preview tooling before relying on it
