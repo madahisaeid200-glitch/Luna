@@ -73,7 +73,7 @@ function packetTiming(selector, label) {
   ]);
   let firstTimestamp = Infinity;
   let lastPacketEnd = -Infinity;
-  for (const line of output.split(/\\r?\\n/)) {
+  for (const line of output.split(/\r?\n/)) {
     if (!line.trim()) continue;
     const [timestampText, durationText] = line.split(',');
     const timestamp = Number(timestampText);
