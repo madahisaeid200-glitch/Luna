@@ -107,6 +107,8 @@ class InstagramOAuthMigrationTests(unittest.TestCase):
                                 '["instagram_business_basic"]', 900, "publishing", 100, 100)),
             ("zero key version", ("ig-invalid", "CREATOR", b"cipher", b"123456789012", 0,
                                   '["instagram_business_basic"]', 900, "active", 100, 100)),
+            ("expired token", ("ig-invalid", "CREATOR", b"cipher", b"123456789012", 1,
+                               '["instagram_business_basic"]', 100, "active", 100, 100)),
         ]:
             with self.subTest(case=label):
                 with self.assertRaises(sqlite3.IntegrityError):
