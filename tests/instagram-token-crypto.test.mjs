@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { decryptInstagramToken, encryptInstagramToken } from "../src/instagram-token-crypto.mjs";
+import { decodeInstagramEncryptionKey, decryptInstagramToken, encryptInstagramToken } from "../src/instagram-token-crypto.mjs";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
@@ -44,4 +44,16 @@ test("invalid keys, IVs, contexts, and empty tokens are rejected", async () => {
   await assert.rejects(() => encryptInstagramToken("token", key, "", 1), /accountId/);
   await assert.rejects(() => encryptInstagramToken("token", key, "account-1", 0), /keyVersion/);
   await assert.rejects(() => decryptInstagramToken({ ciphertext: new Uint8Array(32), iv: new Uint8Array(8), keyVersion: 1 }, key, "account-1"), /12 bytes/);
+});
+
+test("Worker encryption secret decoder accepts canonical Base64 for exactly 32 bytes", () => {
+  const raw = new Uint8Array(32).fill(0xa5);
+  const encoded = btoa(String.fromCharCode(...raw));
+  assert.deepEqual(decodeInstagramEncryptionKey(encoded), raw);
+});
+
+test("Worker encryption secret decoder rejects malformed or wrong-length secrets", () => {
+  assert.throws(() => decodeInstagramEncryptionKey("not-base64"), /canonical Base64/);
+  assert.throws(() => decodeInstagramEncryptionKey(btoa("short")), /exactly 32 bytes/);
+  assert.throws(() => decodeInstagramEncryptionKey(btoa(String.fromCharCode(...new Uint8Array(33)))), /canonical Base64|exactly 32 bytes/);
 });
