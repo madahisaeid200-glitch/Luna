@@ -108,6 +108,25 @@ The recommendation engine should compare the pilot's creative lanes, hooks, leng
 - Acceptance: UI works on Android-sized viewport; saved draft survives reload; no generation quota is consumed by UI smoke tests.
 
 ### Phase B — Output compatibility
+
+**Current implementation finding (2026-11-10 source audit):** the Worker returns the individual Wan result as an MP4 download, but the existing six-clip browser assembly uses `MediaRecorder` with VP9/VP8 WebM. The separate voiced-canvas path also records WebM. Therefore, the existence of individual MP4 scene clips does not mean the assembled final file is an Instagram-ready MP4.
+
+**Preferred experiment before choosing a renderer:** evaluate Mediabunny with the browser WebCodecs API for joining/processing the existing scene clips and writing an MP4 container. Mediabunny is an open-source TypeScript media toolkit (MPL-2.0) with MP4/WebM read-write support, streaming I/O, and WebCodecs-backed hardware-accelerated media processing. This is a candidate, not an approved production dependency yet.
+
+- Probe actual device support at runtime for the exact H.264/AVC video and AAC audio encoder configurations; WebCodecs codec support varies by browser and device. Do not assume Android Chrome supports every requested profile.
+- Prefer a no-reencode/remux path only when all source tracks are already compatible with the target MP4 profile and timestamps/audio are verified. Otherwise benchmark a short transcode on the actual target phone.
+- Do not make FFmpeg.wasm the default mobile path. Its published desktop benchmark reports a much slower WebAssembly conversion than native FFmpeg; that is a warning signal, not an Android performance prediction.
+- Keep the first test quota-free: use locally bundled or user-provided synthetic/sample clips, not Wan generation. Do not consume image/video model quotas just to validate container conversion.
+- If the phone lacks compatible WebCodecs encoders or memory, fail clearly and retain the source clips for manual export; never label WebM as MP4 or claim Instagram readiness.
+
+**Phase B acceptance matrix (must pass on the target Android phone before integration):**
+- Generate/export 15 s, 20 s and 30 s test timelines without calling AI services.
+- Final file is MP4 with H.264 video and AAC audio; 9:16 dimensions are exactly 1080×1920 (or a documented lower-resolution test profile that is not mistaken for release quality).
+- Verify actual codec, container, dimensions, frame rate, duration, audio track, audio/video sync, orientation, first/last frame and playback in Android Chrome and the device gallery.
+- Measure wall-clock export time, peak memory/thermal behavior, file size and failure rate; repeat after reload and with low available storage.
+- Run an explicit compatibility probe before enabling export. Unsupported devices must receive a clear explanation and a non-destructive fallback.
+- Do not advance to Instagram publishing until a real finished MP4 has passed this matrix.
+
 - Produce a real MP4/H.264/AAC artifact from the chosen footage pipeline.
 - Verify codec, dimensions, duration, audio and file size automatically.
 - Acceptance: test file passes a media probe and plays on a phone; no AI quota used by format-only tests.
