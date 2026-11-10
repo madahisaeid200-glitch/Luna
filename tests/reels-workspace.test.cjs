@@ -1,3 +1,4 @@
+// Behavioral regression coverage for the quota-free Reels workspace.
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
