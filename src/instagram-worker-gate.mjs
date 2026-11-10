@@ -13,6 +13,15 @@ export async function handleInstagramAdminRoute({ request, env, ctx, json }) {
   }
   const authorization = await authorizeInstagramAdmin(ctx, env);
   if (!authorization.ok) {
+    const configurationFailure = authorization.reason === "admin_allowlist_misconfigured" ||
+      authorization.reason === "identity_hmac_misconfigured";
+    if (configurationFailure) {
+      return json({
+        ok: false,
+        error: "Instagram administration authentication is not configured.",
+        code: "INSTAGRAM_AUTH_NOT_CONFIGURED"
+      }, 503);
+    }
     return json({ ok: false, error: "Instagram administration is not authorized." }, 403);
   }
   return json({
