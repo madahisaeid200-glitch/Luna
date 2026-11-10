@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS instagram_oauth_states (
     CHECK (length(state_hash) = 64 AND state_hash NOT GLOB '*[^0-9a-f]*'),
   purpose TEXT NOT NULL DEFAULT 'instagram_login'
     CHECK (purpose IN ('instagram_login')),
+  identity_digest TEXT NOT NULL
+    CHECK (length(identity_digest) = 64 AND identity_digest NOT GLOB '*[^0-9a-f]*'),
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,
   CHECK (expires_at > created_at)
@@ -46,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_instagram_connections_status_expiry
 -- A missing returned row means invalid, expired, or already-used state.
 --
 -- DELETE FROM instagram_oauth_states
--- WHERE state_hash = ?1 AND expires_at > ?2
+-- WHERE state_hash = ?1 AND expires_at > ?2 AND identity_digest = ?3
 -- RETURNING purpose, created_at, expires_at;
 
 -- Expired-state cleanup (run opportunistically; no scheduler required):
