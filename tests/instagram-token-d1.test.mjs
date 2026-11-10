@@ -63,7 +63,7 @@ test("stores ciphertext in D1 and retrieves the original token only after authen
   const loaded = await getDecryptedInstagramConnection(db, "17840000000000000", key);
   assert.equal(loaded.accessToken, "mock-access-token-do-not-log");
   assert.deepEqual(loaded.grantedScopes, connection().grantedScopes);
-  assert.equal(loaded.encryptionKeyVersion, undefined);
+  assert.equal(loaded.encryptionKeyVersion, 2);
   assert.equal(loaded.accountType, "CREATOR");
 });
 
