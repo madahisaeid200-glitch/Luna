@@ -33,35 +33,36 @@ class InstagramOAuthMigrationTests(unittest.TestCase):
         good = "a" * 64
         self.db.execute(
             "INSERT INTO instagram_oauth_states(state_hash, identity_digest, created_at, expires_at) VALUES (?, ?, ?, ?)",
-            (good, 100, 700),
+            (good, "b" * 64, 100, 700),
         )
         consume = """
           DELETE FROM instagram_oauth_states
-          WHERE state_hash = ? AND expires_at > ?
+          WHERE state_hash = ? AND identity_digest = ? AND expires_at > ?
           RETURNING purpose, created_at, expires_at
         """
-        first = self.db.execute(consume, (good, 200)).fetchone()
+        first = self.db.execute(consume, (good, "b" * 64, 200)).fetchone()
         second = self.db.execute(consume, (good, 200)).fetchone()
         self.assertIsNotNone(first)
         self.assertEqual(first["purpose"], "instagram_login")
         self.assertIsNone(second)
 
         self.db.execute(
-            "INSERT INTO instagram_oauth_states(state_hash, created_at, expires_at) VALUES (?, ?, ?)",
+            "INSERT INTO instagram_oauth_states(state_hash, identity_digest, created_at, expires_at) VALUES (?, ?, ?, ?)",
             ("b" * 64, "c" * 64, 100, 150),
         )
-        self.assertIsNone(self.db.execute(consume, ("b" * 64, 150)).fetchone())
+        self.assertIsNone(self.db.execute(consume, ("b" * 64, "c" * 64, 150)).fetchone())
 
         invalid_rows = [
             ("short", "d" * 64, 100, 200),
             ("G" * 64, "d" * 64, 100, 200),
             ("c" * 64, "d" * 64, 200, 100),
+            ("e" * 64, "not-a-digest", 100, 200),
         ]
         for row in invalid_rows:
             with self.subTest(row=row):
                 with self.assertRaises(sqlite3.IntegrityError):
                     self.db.execute(
-                        "INSERT INTO instagram_oauth_states(state_hash, created_at, expires_at) VALUES (?, ?, ?)",
+                        "INSERT INTO instagram_oauth_states(state_hash, identity_digest, created_at, expires_at) VALUES (?, ?, ?, ?)",
                         row,
                     )
 
