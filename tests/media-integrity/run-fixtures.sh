@@ -38,4 +38,6 @@ if node "$ROOT/validate-media.mjs" "$OUT/silent.mp4" --container mp4 --require-a
   exit 1
 fi
 
+node "$ROOT/workflow-guard.test.cjs"
+
 echo 'LUNA media-integrity fixtures: all positive and negative cases passed.'
