@@ -152,3 +152,15 @@ Cloudflare documents support Access protection for a Worker, a specific `workers
 - Add route tests for absent Access identity, wrong administrator, correct administrator, path/method mismatch, callback state identity mismatch, replay, expired state, and redaction of authorization codes/tokens.
 - Add a real-device test for the Access login → Instagram authorization → protected callback round trip. A mocked `ctx.access` test alone does not prove browser cookie behavior.
 - No Access application, D1 database, secret, Meta app, or live route has been configured or provisioned as part of this documentation decision.
+
+
+### Browser transport constraint for the admin UI
+
+The current public LUNA UI is hosted on GitHub Pages (`github.io`), while the Worker Preview is hosted on `workers.dev`. These are different sites. Do not assume a cross-origin browser `fetch()` from the existing Pages UI can send the Cloudflare Access session cookie, and do not solve this by putting an Access token or administrator secret in browser storage or the Pages bundle.
+
+Before implementing the Instagram status, disconnect, or publishing controls, choose and test one of these transport designs:
+
+- **Preferred:** serve the authenticated Instagram admin surface from the same protected Worker origin (or a deliberately configured same-site custom-domain architecture), so browser requests use the Access session in a first-party context.
+- **Alternative:** use explicit top-level browser navigations for protected actions and return to a safe, fixed LUNA URL. This requires navigation-friendly responses and must not expose OAuth codes or tokens in the return URL.
+
+Do not enable credentialed cross-origin CORS as a speculative workaround. If a cross-origin design is later selected, prove Access cookie behavior, exact-origin CORS, preflight behavior, and Android Chrome behavior with a real-device test before relying on it. The existing CORS allowlist is not proof that Access cookies will be sent by the browser.
