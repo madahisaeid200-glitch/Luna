@@ -43,7 +43,7 @@ function run(command, commandArgs) {
 
 const probe = JSON.parse(run('ffprobe', [
   '-v', 'error', '-show_entries',
-  'format=format_name,duration:stream=codec_type,codec_name,width,height,duration,duration_ts,time_base,start_time',
+  'format=format_name,duration:stream=codec_type,codec_name,width,height',
   '-of', 'json', file
 ]));
 const formatNames = String(probe.format?.format_name || '').split(',');
@@ -93,8 +93,8 @@ const videoTiming = packetTiming('v:0', 'Video');
 const audioTiming = audio ? packetTiming('a:0', 'Audio') : null;
 const videoDuration = videoTiming.duration;
 const audioDuration = audioTiming?.duration ?? null;
-if (audio && Math.abs(videoDuration - audioDuration) > 0.5) {
-  fail(`Audio/video duration mismatch exceeds 0.5 s (video=${videoDuration}, audio=${audioDuration})`);
+if (audio && Math.abs(videoDuration - audioDuration) > 0.25) {
+  fail(`Audio/video duration mismatch exceeds 0.25 s (video=${videoDuration}, audio=${audioDuration})`);
 }
 if (audio && Math.abs(videoTiming.start - audioTiming.start) > 0.25) {
   fail(`Audio/video start-time offset exceeds 0.25 s (video=${videoTiming.start}, audio=${audioTiming.start})`);
