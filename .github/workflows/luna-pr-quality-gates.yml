@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - name: Test Instagram OAuth D1 migration constraints and one-time state
         run: python3 tests/instagram-migration.test.py
+      - name: Test Instagram AES-256-GCM token encryption
+        run: node --test tests/instagram-token-crypto.test.mjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
