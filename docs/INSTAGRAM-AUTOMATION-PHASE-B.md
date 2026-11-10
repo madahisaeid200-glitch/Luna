@@ -23,6 +23,16 @@ Official references to re-check at implementation time (pin the Graph API versio
 - Content publishing: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/
 - Insights: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/insights/
 
+## Implemented cryptographic building block (not yet connected to OAuth)
+
+The branch now contains an isolated Web Crypto helper at `src/instagram-token-crypto.mjs`:
+- AES-256-GCM with a 256-bit key, 96-bit cryptographically random IV, and 128-bit authentication tag.
+- Authenticated additional data binds ciphertext to the Instagram account ID and encryption-key version, preventing a ciphertext from being silently moved between account rows or key versions.
+- Returns ciphertext and IV as byte arrays suitable for D1 BLOB parameters; it never logs or persists plaintext.
+- Decryption rejects modified ciphertext, wrong keys, wrong account IDs, and mismatched key versions.
+
+Regression coverage is in `tests/instagram-token-crypto.test.mjs` and runs in the PR quality-gates workflow. This is a tested building block only: the Worker does not yet parse the encryption secret, call this helper, write encrypted tokens to D1, rotate keys, or expose OAuth routes. Those integration steps remain release blockers.
+
 ## OAuth and credential security
 
 1. Create a Meta developer app and configure Instagram Business Login redirect URI(s).
