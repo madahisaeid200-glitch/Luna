@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS instagram_connections (
   updated_at INTEGER NOT NULL,
   last_refresh_at INTEGER,
   last_error_code TEXT
-    CHECK (last_error_code IS NULL OR length(last_error_code) <= 80)
+    CHECK (last_error_code IS NULL OR length(last_error_code) <= 80),
+  CHECK (token_expires_at > connected_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_instagram_connections_status_expiry
