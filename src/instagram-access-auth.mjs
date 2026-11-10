@@ -1,5 +1,5 @@
 const encoder = new TextEncoder();
-const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+const EMAIL_PATTERN = /^[^\\s@,]+@[^\\s@,]+\\.[^\\s@,]+$/;
 
 function normalizeEmail(value) {
   if (typeof value !== "string") return null;
@@ -18,12 +18,23 @@ function parseAllowlist(value) {
   return new Set(normalized);
 }
 
-async function identityDigest(email) {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
+async function identityDigest(email, secret) {
+  if (typeof secret !== "string" || secret.length < 32) {
+    throw new TypeError("Instagram identity HMAC secret is not configured securely");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
     encoder.encode("LUNA/instagram-access-identity/v1/" + email)
   );
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -31,8 +42,8 @@ async function identityDigest(email) {
  * The Access JWT is validated by Cloudflare before ctx.access exposes identity.
  * Never accept identity, email, or authorization claims from request data.
  *
- * Returns a digest suitable for binding a one-time OAuth state to the
- * initiating administrator, without returning or persisting their raw email.
+ * Returns a keyed HMAC digest suitable for binding a one-time OAuth state to
+ * the initiating administrator. The dedicated HMAC key must be a Worker secret.
  * All errors fail closed.
  */
 export async function authorizeInstagramAdmin(ctx, env) {
@@ -49,7 +60,8 @@ export async function authorizeInstagramAdmin(ctx, env) {
       return { ok: false, reason: "admin_identity_not_allowed" };
     }
 
-    return { ok: true, identityDigest: await identityDigest(email) };
+    const secret = env?.INSTAGRAM_IDENTITY_HMAC_KEY;
+    return { ok: true, identityDigest: await identityDigest(email, secret) };
   } catch {
     return { ok: false, reason: "access_identity_unavailable" };
   }
