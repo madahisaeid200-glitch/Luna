@@ -64,13 +64,15 @@ async function run(){
 $('run').addEventListener('click',()=>run().catch(error=>{$('status').textContent='آزمایش ناموفق بود: '+String(error);$('run').disabled=false}));
 $('copy').addEventListener('click',async()=>{if(!lastReport)return;try{await navigator.clipboard.writeText(JSON.stringify(lastReport,null,2));$('status').textContent='گزارش کپی شد.'}catch(error){$('status').textContent='کپی خودکار در دسترس نیست؛ گزارش را از کادر انتخاب و کپی کنید.'}});
 
+let lastMp4ObjectUrl=null;
 const mp4Button=$('makeMp4');
 mp4Button.addEventListener('click',async()=>{
  mp4Button.disabled=true;
  const status=$('mp4Status'),reportEl=$('mp4Report'),preview=$('mp4Preview'),download=$('mp4Download');
  status.textContent='در حال بارگذاری کتابخانه و ساخت فایل آزمایشی…';
  download.style.display='none';preview.style.display='none';
- let audioContext=null,output=null;
+ if(lastMp4ObjectUrl){URL.revokeObjectURL(lastMp4ObjectUrl);lastMp4ObjectUrl=null}
+ let audioContext=null,output=null,input=null;
  try{
   const mb=await import('https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/+esm');
   const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,AudioBufferSource,Quality,Input,ALL_FORMATS,BlobSource}=mb;
@@ -103,25 +105,30 @@ mp4Button.addEventListener('click',async()=>{
   if(fileBlob.size<1000)throw new Error('Generated MP4 is unexpectedly small');
   const signature=new TextDecoder().decode(new Uint8Array(await fileBlob.slice(4,8).arrayBuffer()));
   if(signature!=='ftyp')throw new Error('MP4 ftyp signature not found');
-  const input=new Input({source:new BlobSource(fileBlob),formats:ALL_FORMATS});
-  const duration=await input.computeDuration();
+  input=new Input({source:new BlobSource(fileBlob),formats:ALL_FORMATS});
   const videoTrack=await input.getPrimaryVideoTrack();
   const audioTrack=await input.getPrimaryAudioTrack();
   if(!videoTrack||!audioTrack)throw new Error('Expected both video and audio tracks were not found');
-  const width=await videoTrack.getDisplayWidth(),height=await videoTrack.getDisplayHeight();
-  const sampleRate=await audioTrack.getSampleRate(),channels=await audioTrack.getNumberOfChannels();
-  const videoDecodable=await videoTrack.canDecode(),audioDecodable=await audioTrack.canDecode();
-  const details={fileBytes:fileBlob.size,containerSignature:signature,durationSeconds:duration,video:{width,height,decodable:videoDecodable},audio:{sampleRate,channels,decodable:audioDecodable},mimeType:fileBlob.type,library:'mediabunny@1.65.2',networkNote:'Only the library module was fetched; no media was uploaded.',exportApproved:false};
+  const [duration,width,height,videoCodec,audioCodec,videoDecodable,audioDecodable,sampleRate,channels]=await Promise.all([
+   input.computeDuration(),videoTrack.getDisplayWidth(),videoTrack.getDisplayHeight(),
+   videoTrack.getCodecParameterString(),audioTrack.getCodecParameterString(),
+   videoTrack.canDecode(),audioTrack.canDecode(),audioTrack.getSampleRate(),audioTrack.getNumberOfChannels()
+  ]);
+  const details={fileBytes:fileBlob.size,containerSignature:signature,durationSeconds:duration,video:{codec:videoCodec,width,height,decodable:videoDecodable},audio:{codec:audioCodec,sampleRate,channels,decodable:audioDecodable},mimeType:fileBlob.type,library:'mediabunny@1.65.2',networkNote:'Only the library module was fetched; no media was uploaded.',exportApproved:false};
   reportEl.textContent=JSON.stringify(details,null,2);
-  const url=URL.createObjectURL(fileBlob);
-  preview.src=url;preview.style.display='block';
-  download.href=url;download.style.display='inline-block';
-  status.textContent='فایل MP4 ساخته و دوباره خوانده شد. لطفاً پخش آن را در همین صفحه و سپس در گالری گوشی بررسی کنید.';
+  if(width!==360||height!==640)throw new Error('Unexpected encoded dimensions: '+width+'x'+height);
+  if(duration<1.8||duration>2.2)throw new Error('Unexpected encoded duration: '+duration+' seconds');
+  if(!videoDecodable||!audioDecodable)throw new Error('Browser decoder could not decode both MP4 tracks');
+  lastMp4ObjectUrl=URL.createObjectURL(fileBlob);
+  preview.src=lastMp4ObjectUrl;preview.style.display='block';
+  download.href=lastMp4ObjectUrl;download.style.display='inline-block';
+  status.textContent='فایل MP4 با موفقیت ساخته شد و هر دو ترک دوباره Decode شدند. پخش همین صفحه و گالری گوشی را هم بررسی کنید.';
  }catch(error){
   try{if(output&&output.state!=='finalized'&&output.state!=='canceled')await output.cancel()}catch(_){}
   status.textContent='ساخت یا اعتبارسنجی MP4 ناموفق بود: '+String(error);
-  reportEl.textContent=String(error&&error.stack||error);
+  reportEl.textContent+=(reportEl.textContent==='No MP4 test yet.'?'':'\\n\\n')+String(error&&error.stack||error);
  }finally{
+  if(input)try{input.dispose()}catch(_){}
   if(audioContext)try{await audioContext.close()}catch(_){}
   mp4Button.disabled=false;
  }
