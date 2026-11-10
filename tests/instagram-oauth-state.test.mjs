@@ -84,7 +84,7 @@ test("expired state cannot be consumed and can be cleaned up", async () => {
   assert.equal(await consumeInstagramOAuthState(db, created.state, created.expiresAt, identityDigest), null);
   assert.equal(db.rows.size, 1);
   assert.deepEqual(await deleteExpiredInstagramOAuthStates(db, created.expiresAt), { deleted: 1 });
-  await assert.rejects(() => createInstagramOAuthState(db, 1, "bad"), /64-character lowercase SHA-256/);
+  await assert.rejects(() => createInstagramOAuthState(db, 1, "bad"), /64-character lowercase HMAC-SHA-256/);
   assert.equal(db.rows.size, 0);
 });
 
