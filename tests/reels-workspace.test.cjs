@@ -77,7 +77,7 @@ assert.match(dashboardHtml,/paragraph\.textContent=line/,
   'Episode story lines must be rendered as inert text');
 assert.match(dashboardHtml,/box\.replaceChildren\(\)/,
   'Dashboard episode cards must be rebuilt without HTML string parsing');
-const dashboardScripts=[...dashboardHtml.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+const dashboardScripts=[...dashboardHtml.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
   .map(match=>match[1]).filter(source=>source.trim());
 assert.ok(dashboardScripts.length>0,'Dashboard inline application script must exist');
 dashboardScripts.forEach((source,index)=>{
