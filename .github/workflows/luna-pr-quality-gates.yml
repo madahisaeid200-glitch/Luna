@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - name: Parse Worker JavaScript
         run: node --check worker.js
+      - name: Guard Cloudflare production deployment branch
+        run: node tests/deploy-workflow-guard.test.cjs
       - name: Parse producer scripts and test episode safeguards
         run: |
           node <<'NODE'

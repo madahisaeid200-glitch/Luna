@@ -23,6 +23,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Refuse non-main Worker deployment
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Production Worker deployment is only allowed from the main branch."
+          exit 1
+
       - name: Deploy existing LUNA Worker to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
