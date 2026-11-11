@@ -29,11 +29,11 @@ if node "$ROOT/validate-media.mjs" "$OUT/invalid.mp4" --container mp4 --require-
   exit 1
 fi
 
-# Negative test: equal audio/video tracks with deliberately corrupted MP4 movie
+# Negative test: equal audio/video tracks with a corrupted WebM Segment Info
 # duration must fail the container-vs-packet-timeline consistency check.
-cp "$OUT/valid.mp4" "$OUT/container-duration-mismatch.mp4"
-node "$ROOT/corrupt-mp4-container-duration.mjs" "$OUT/container-duration-mismatch.mp4"
-if node "$ROOT/validate-media.mjs" "$OUT/container-duration-mismatch.mp4" --container mp4 --require-audio; then
+cp "$OUT/valid.webm" "$OUT/container-duration-mismatch.webm"
+node "$ROOT/corrupt-webm-container-duration.mjs" "$OUT/container-duration-mismatch.webm"
+if node "$ROOT/validate-media.mjs" "$OUT/container-duration-mismatch.webm" --container webm --require-audio; then
   echo 'Container/stream duration mismatch was incorrectly accepted' >&2
   exit 1
 fi
