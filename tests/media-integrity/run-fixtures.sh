@@ -22,6 +22,15 @@ ffmpeg -hide_banner -loglevel error \
 node "$ROOT/validate-media.mjs" "$OUT/valid.mp4" --container mp4 --require-audio
 node "$ROOT/validate-media.mjs" "$OUT/valid.webm" --container webm --require-audio
 
+# Negative test: corrupt only MP4 mvhd duration while preserving encoded packets
+# and track headers. This must be caught by the independent movie-header parser.
+cp "$OUT/valid.mp4" "$OUT/mp4-movie-duration-mismatch.mp4"
+node "$ROOT/corrupt-mp4-movie-duration.mjs" "$OUT/mp4-movie-duration-mismatch.mp4"
+if node "$ROOT/validate-media.mjs" "$OUT/mp4-movie-duration-mismatch.mp4" --container mp4 --require-audio; then
+  echo 'MP4 mvhd/container duration mismatch was incorrectly accepted' >&2
+  exit 1
+fi
+
 # Negative test: a text file with an MP4 extension must never pass as a media output.
 printf 'not a video container' > "$OUT/invalid.mp4"
 if node "$ROOT/validate-media.mjs" "$OUT/invalid.mp4" --container mp4 --require-audio; then
