@@ -66,6 +66,97 @@ if (!Number.isFinite(formatDuration) || formatDuration <= 0) fail('Container dur
 const formatStart = Number(probe.format?.start_time);
 const hasFormatStart = Number.isFinite(formatStart);
 
+// FFprobe's MP4 format duration can be packet-derived and may hide a corrupt
+// movie-header duration. Read only the moov atom and validate mvhd independently.
+function readExact(fd, length, position) {
+  const buffer = Buffer.alloc(length);
+  const bytesRead = fs.readSync(fd, buffer, 0, length, position);
+  if (bytesRead !== length) fail('MP4 metadata is truncated');
+  return buffer;
+}
+function parseBoxes(buffer, start, end) {
+  const boxes = [];
+  let cursor = start;
+  while (cursor + 8 <= end) {
+    const size32 = buffer.readUInt32BE(cursor);
+    const type = buffer.toString('ascii', cursor + 4, cursor + 8);
+    let size = size32;
+    let headerSize = 8;
+    if (size32 === 1) {
+      if (cursor + 16 > end) fail('MP4 extended atom header is truncated');
+      const extendedSize = buffer.readBigUInt64BE(cursor + 8);
+      if (extendedSize > BigInt(Number.MAX_SAFE_INTEGER)) fail('MP4 atom exceeds safe size limits');
+      size = Number(extendedSize);
+      headerSize = 16;
+    } else if (size32 === 0) {
+      size = end - cursor;
+    }
+    if (size < headerSize || cursor + size > end) fail('MP4 atom has invalid bounds: ' + type);
+    boxes.push({type, payload: cursor + headerSize, end: cursor + size, size});
+    cursor += size;
+  }
+  if (cursor !== end) fail('MP4 atom table has trailing bytes');
+  return boxes;
+}
+function readMp4MovieDuration(path) {
+  const fd = fs.openSync(path, 'r');
+  try {
+    const fileSize = fs.fstatSync(fd).size;
+    let cursor = 0;
+    let movie = null;
+    while (cursor + 8 <= fileSize) {
+      const header = readExact(fd, 8, cursor);
+      const size32 = header.readUInt32BE(0);
+      const type = header.toString('ascii', 4, 8);
+      let atomSize = size32;
+      let headerSize = 8;
+      if (size32 === 1) {
+        const extended = readExact(fd, 8, cursor + 8).readBigUInt64BE(0);
+        if (extended > BigInt(Number.MAX_SAFE_INTEGER)) fail('MP4 top-level atom exceeds safe size limits');
+        atomSize = Number(extended);
+        headerSize = 16;
+      } else if (size32 === 0) {
+        atomSize = fileSize - cursor;
+      }
+      if (atomSize < headerSize || cursor + atomSize > fileSize) fail('MP4 top-level atom has invalid bounds: ' + type);
+      if (type === 'moov') {
+        if (atomSize > 32 * 1024 * 1024) fail('MP4 moov metadata exceeds 32 MiB safety limit');
+        movie = readExact(fd, atomSize - headerSize, cursor + headerSize);
+        break;
+      }
+      cursor += atomSize;
+    }
+    if (!movie) fail('MP4 moov atom is missing');
+    const mvhd = parseBoxes(movie, 0, movie.length).find(atom => atom.type === 'mvhd');
+    if (!mvhd) fail('MP4 movie header (mvhd) is missing');
+    const version = movie[mvhd.payload];
+    let timescale;
+    let duration;
+    if (version === 0) {
+      if (mvhd.end - mvhd.payload < 20) fail('MP4 version-0 mvhd is truncated');
+      timescale = movie.readUInt32BE(mvhd.payload + 12);
+      duration = movie.readUInt32BE(mvhd.payload + 16);
+    } else if (version === 1) {
+      if (mvhd.end - mvhd.payload < 32) fail('MP4 version-1 mvhd is truncated');
+      timescale = movie.readUInt32BE(mvhd.payload + 20);
+      const rawDuration = movie.readBigUInt64BE(mvhd.payload + 24);
+      if (rawDuration > BigInt(Number.MAX_SAFE_INTEGER)) fail('MP4 mvhd duration exceeds safe numeric range');
+      duration = Number(rawDuration);
+    } else {
+      fail('Unsupported MP4 mvhd version: ' + version);
+    }
+    if (!timescale || duration === 0xffffffff || duration === Number.MAX_SAFE_INTEGER) {
+      fail('MP4 mvhd duration or timescale is invalid/unknown');
+    }
+    const seconds = duration / timescale;
+    if (!Number.isFinite(seconds) || seconds <= 0) fail('MP4 mvhd duration is invalid');
+    return seconds;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+const mp4MovieDuration = expectedContainer === 'mp4' ? readMp4MovieDuration(file) : null;
+
 // Some WebM files omit stream-level duration metadata. Measure each stream from
 // its packet timestamps instead of copying the container duration into both tracks.
 function packetTiming(selector, label) {
@@ -107,6 +198,9 @@ if (audio && Math.abs(videoTiming.start - audioTiming.start) > 0.25) {
 const timelineStart = audioTiming ? Math.min(videoTiming.start, audioTiming.start) : videoTiming.start;
 const timelineEnd = audioTiming ? Math.max(videoTiming.end, audioTiming.end) : videoTiming.end;
 const timelineDuration = timelineEnd - timelineStart;
+if (expectedContainer === 'mp4' && Math.abs(mp4MovieDuration - timelineDuration) > 0.25) {
+  fail(`MP4 mvhd/container duration mismatch exceeds 0.25 s (mvhd=${mp4MovieDuration}, streams=${timelineDuration})`);
+}
 if (hasFormatStart && Math.abs(formatStart - timelineStart) > 0.25) {
   fail(`Container start-time mismatch exceeds 0.25 s (container=${formatStart}, streams=${timelineStart})`);
 }
