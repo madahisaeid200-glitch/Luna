@@ -30,7 +30,7 @@ assert.ok(!validator.includes('video.duration || formatDuration') && !validator.
   'Container duration must never be substituted for missing stream duration');
 assert.ok(validator.includes('refusing to substitute container duration'),
   'Unknown stream packet timing must fail closed rather than masking an A/V mismatch');
-assert.ok(validator.includes('format=start_time,duration'),
+assert.ok(validator.includes('start_time,duration:stream='),
   'FFprobe must expose the container start time and duration');
 assert.ok(validator.includes('const timelineStart = audioTiming ? Math.min(videoTiming.start, audioTiming.start) : videoTiming.start;'),
   'Container timing must be compared against the complete stream timeline');
