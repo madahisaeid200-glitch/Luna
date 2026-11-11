@@ -11,6 +11,7 @@ class Element {
   }
   addEventListener(name, fn) { this.handlers[name]=fn; }
   append(...nodes) { this.children.push(...nodes); }
+  replaceChildren(...nodes) { this.children=[...nodes]; }
   set innerHTML(value) { this._innerHTML=value; this.children=[]; }
   get innerHTML() { return this._innerHTML; }
   click() { if (this.onclick) this.onclick(); }
@@ -67,6 +68,10 @@ assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/reels\.html"/);
 const dashboardHtml=fs.readFileSync('index.html','utf8');
 assert.match(dashboardHtml,/href="\.\/media-lab\.html"/);
 assert.match(mediaLab,/href="\.\/reels\.html"/);
+assert.doesNotMatch(fs.readFileSync('reels.html','utf8'),/\.innerHTML\s*=/,
+  'Reels draft rendering must not use HTML parsing sinks');
+assert.match(fs.readFileSync('reels.html','utf8'),/box\.replaceChildren\(\)/,
+  'Reels draft rendering must replace children using DOM nodes');
 // Saved episode titles and story lines are user-controlled localStorage data.
 // They must only enter the DOM through textContent, never HTML parsing sinks.
 assert.doesNotMatch(dashboardHtml,/\.innerHTML\s*=/,
