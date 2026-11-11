@@ -5,7 +5,7 @@ import { authorizeInstagramAdmin } from "./instagram-access-auth.mjs";
  * the public LUNA health, generation, media, or producer routes.
  * OAuth handlers remain disabled until isolated D1/R2 bindings and secrets exist.
  */
-export async function handleInstagramAdminRoute({ request, env, ctx, json }) {
+export async function handleInstagramAdminRoute({ request, env, ctx, json, cors }) {
   const rawPathname = new URL(request.url).pathname;
   let decodedPathname;
   try {
@@ -28,7 +28,7 @@ export async function handleInstagramAdminRoute({ request, env, ctx, json }) {
     return json({ ok: false, error: "Invalid Instagram administration path." }, 400);
   }
 
-  if (request.method !== "GET" && request.method !== "POST") {
+  if (request.method !== "GET" && request.method !== "POST" && request.method !== "OPTIONS") {
     return json({ ok: false, error: "Method not allowed." }, 405);
   }
   const authorization = await authorizeInstagramAdmin(ctx, env);
@@ -43,6 +43,9 @@ export async function handleInstagramAdminRoute({ request, env, ctx, json }) {
       }, 503);
     }
     return json({ ok: false, error: "Instagram administration is not authorized." }, 403);
+  }
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors });
   }
   return json({
     ok: false,
