@@ -164,7 +164,7 @@ assert.equal(app.downloads[0].download,'luna-reel-brief.json');
 assert.equal(app.downloads[1].download,'luna-reel-brief.txt');
 // Producer AI endpoint validation must be shared by save, reload and test flows.
 const producerHtml=fs.readFileSync('producer.html','utf8');
-const endpointValidator=producerHtml.match(/function normalizeAllowedAiEndpoint\\(value\\)\\{[\\s\\S]*?\\n\\}/);
+const endpointValidator=producerHtml.match(/function normalizeAllowedAiEndpoint\(value\)\{[\s\S]*?\n\}/);
 assert.ok(endpointValidator,'Producer must define a single endpoint allowlist validator');
 const endpointContext={URL};
 vm.runInNewContext(endpointValidator[0],endpointContext);
@@ -184,8 +184,8 @@ for(const rejected of [
   assert.equal(normalizeEndpoint(rejected),null,'Unsafe or unsupported endpoint must be rejected: '+rejected);
 }
 const producerTestHandler=producerHtml.slice(producerHtml.indexOf("el('testAiEndpoint').onclick="),producerHtml.indexOf("el('diagnoseBrowser').onclick="));
-assert.match(producerTestHandler,/normalizeAllowedAiEndpoint\\(rawEndpoint\\)/,
+assert.match(producerTestHandler,/normalizeAllowedAiEndpoint\(rawEndpoint\)/,
   'Test connection must validate the endpoint before network access');
-assert.match(producerHtml,/const normalized=normalizeAllowedAiEndpoint\\(storedEndpoint\\)/,
+assert.match(producerHtml,/const normalized=normalizeAllowedAiEndpoint\(storedEndpoint\)/,
   'Reload must restore only validated saved endpoints');
 console.log('LUNA Reels workspace: save/reload/open/delete/validation/QA/export assertions passed.');
