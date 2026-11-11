@@ -18,15 +18,16 @@ export default {
       status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
     });
 
-    if (request.method === "OPTIONS") {
-      if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
-      return new Response(null, { status: 204, headers: cors });
-    }
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
-    // Instagram administration is isolated behind Cloudflare Access; public LUNA routes remain unchanged.
-    const instagramAdminResponse = await handleInstagramAdminRoute({ request, env, ctx, json });
+    // Instagram administration is isolated behind Cloudflare Access; even CORS preflight
+    // must pass its identity gate before the Worker returns a response.
+    const instagramAdminResponse = await handleInstagramAdminRoute({ request, env, ctx, json, cors });
     if (instagramAdminResponse) return instagramAdminResponse;
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature, timeoutOverride) => {
