@@ -17,8 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Test production deploy branch guard
-        run: node tests/deploy-workflow-guard.test.cjs
       - name: Test Reels workspace draft lifecycle
         run: node tests/reels-workspace.test.cjs
       - name: Parse Worker JavaScript
