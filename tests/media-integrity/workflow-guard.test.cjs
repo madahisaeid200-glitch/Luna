@@ -39,7 +39,7 @@ assert.ok(validator.includes('Container/stream duration mismatch exceeds 0.25 s'
 assert.ok(validator.includes('Container end-time mismatch exceeds 0.25 s'),
   'Container end time must be checked when its start time is available');
 const fixtures = fs.readFileSync('tests/media-integrity/run-fixtures.sh', 'utf8');
-assert.ok(fixtures.includes('container-duration-mismatch.mp4'),
+assert.ok(fixtures.includes('container-duration-mismatch.webm'),
   'Fixture suite must include a container/stream duration mismatch');
 assert.ok(fixtures.includes('corrupt-webm-container-duration.mjs'),
   'Container mismatch fixture must alter container metadata without changing media packets');
