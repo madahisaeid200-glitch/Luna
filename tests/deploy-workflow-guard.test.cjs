@@ -32,7 +32,7 @@ assert.ok(workerCheckout >= 0 && workerGuard > workerCheckout,
 assert.ok(workerDeploy > workerGuard,
   'Worker branch guard must run before the Wrangler deployment action');
 const workerGuardBlock = workerWorkflow.slice(workerGuard, workerDeploy);
-assert.match(workerGuardBlock, /if: github\\.ref != 'refs\\/heads\\/main'/,
+assert.ok(workerGuardBlock.includes("if: github.ref != 'refs/heads/main'"),
   'Worker deployment must reject every ref other than refs/heads/main');
 assert.match(workerGuardBlock, /exit 1/,
   'A rejected Worker deployment must fail before Wrangler runs');
