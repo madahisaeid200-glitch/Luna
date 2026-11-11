@@ -64,8 +64,26 @@ assert.doesNotMatch(mediaLab,/fetch\s*\(|XMLHttpRequest|instagram_business_conte
 const mediaScripts=[...mediaLab.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 mediaScripts.forEach((source,index)=>{try{new Function(source)}catch(error){throw new Error('Media lab script '+(index+1)+' syntax error: '+error.message)}});
 assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/reels\.html"/);
-assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/media-lab\.html"/);
+const dashboardHtml=fs.readFileSync('index.html','utf8');
+assert.match(dashboardHtml,/href="\.\/media-lab\.html"/);
 assert.match(mediaLab,/href="\.\/reels\.html"/);
+// Saved episode titles and story lines are user-controlled localStorage data.
+// They must only enter the DOM through textContent, never HTML parsing sinks.
+assert.doesNotMatch(dashboardHtml,/\.innerHTML\s*=/,
+  'Dashboard must not inject episode or story data through innerHTML');
+assert.match(dashboardHtml,/heading\.textContent=fa\?e\.fa:e\.en/,
+  'Episode titles must be rendered as inert text');
+assert.match(dashboardHtml,/paragraph\.textContent=line/,
+  'Episode story lines must be rendered as inert text');
+assert.match(dashboardHtml,/box\.replaceChildren\(\)/,
+  'Dashboard episode cards must be rebuilt without HTML string parsing');
+const dashboardScripts=[...dashboardHtml.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+  .map(match=>match[1]).filter(source=>source.trim());
+assert.ok(dashboardScripts.length>0,'Dashboard inline application script must exist');
+dashboardScripts.forEach((source,index)=>{
+  try { new Function(source); }
+  catch(error) { throw new Error('Dashboard inline script '+(index+1)+' syntax error: '+error.message); }
+});
 const app=boot();
 const e=app.elements;
 assert.equal(e.draftCount.textContent,'0 drafts');
