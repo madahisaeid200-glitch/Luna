@@ -108,7 +108,7 @@ export async function putEncryptedInstagramConnection(db, input, keyBytes, keyVe
  * Load and decrypt a connection for trusted server-side use only.
  * Returns null when the account has no stored connection.
  */
-export async function getDecryptedInstagramConnection(db, instagramUserId, keyBytes) {
+export async function getDecryptedInstagramConnection(db, instagramUserId, keyBytes, now = Math.floor(Date.now() / 1000)) {
   requireDatabase(db);
   validateAccountId(instagramUserId);
   const row = await db.prepare(`
@@ -123,6 +123,13 @@ export async function getDecryptedInstagramConnection(db, instagramUserId, keyBy
   if (!row) return null;
   if (!ACCOUNT_TYPES.has(row.account_type) || row.status !== "active") {
     throw new TypeError("Stored Instagram connection is not active or has invalid metadata");
+  }
+  validateTimestamp(now, "now");
+  validateTimestamp(row.token_expires_at, "Stored token_expires_at");
+  if (row.token_expires_at <= now) {
+    const error = new Error("Instagram access token has expired; reconnect is required");
+    error.code = "INSTAGRAM_RECONNECT_REQUIRED";
+    throw error;
   }
 
   let scopes;
