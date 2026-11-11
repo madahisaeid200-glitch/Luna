@@ -29,6 +29,16 @@ const env = {
 };
 const ctx = email => ({ access: { getIdentity: async () => ({ email }) } });
 
+test("Instagram CORS preflight cannot bypass the administrator identity gate", async () => {
+  const denied = await worker.fetch(new Request("https://worker.example/api/instagram/connect", { method: "OPTIONS" }), env, {});
+  assert.equal(denied.status, 403);
+
+  const allowed = await worker.fetch(new Request("https://worker.example/api/instagram/connect", {
+    method: "OPTIONS", headers: { Origin: "https://madahisaeid200-glitch.github.io" }
+  }), env, ctx("owner@example.com"));
+  assert.equal(allowed.status, 204);
+});
+
 test("Instagram namespace fails closed without verified Cloudflare Access identity", async () => {
   const response = await worker.fetch(new Request("https://worker.example/api/instagram/status"), env, {});
   assert.equal(response.status, 403);
