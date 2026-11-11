@@ -43,7 +43,7 @@ function run(command, commandArgs) {
 
 const probe = JSON.parse(run('ffprobe', [
   '-v', 'error', '-show_entries',
-  'format=format_name,duration:stream=codec_type,codec_name,width,height',
+  'format=format_name,start_time,duration:stream=codec_type,codec_name,width,height',
   '-of', 'json', file
 ]));
 const formatNames = String(probe.format?.format_name || '').split(',');
@@ -63,6 +63,8 @@ if (requireAudio && !audio.codec_name) fail('Audio codec is missing');
 
 const formatDuration = Number(probe.format?.duration);
 if (!Number.isFinite(formatDuration) || formatDuration <= 0) fail('Container duration is missing or invalid');
+const formatStart = Number(probe.format?.start_time);
+const hasFormatStart = Number.isFinite(formatStart);
 
 // Some WebM files omit stream-level duration metadata. Measure each stream from
 // its packet timestamps instead of copying the container duration into both tracks.
@@ -86,18 +88,33 @@ function packetTiming(selector, label) {
   if (!Number.isFinite(measuredDuration) || measuredDuration <= 0) {
     fail(`${label} stream packet timing is missing or invalid; refusing to substitute container duration`);
   }
-  return {start: firstTimestamp, duration: measuredDuration};
+  return {start: firstTimestamp, end: lastPacketEnd, duration: measuredDuration};
 }
 
 const videoTiming = packetTiming('v:0', 'Video');
 const audioTiming = audio ? packetTiming('a:0', 'Audio') : null;
-const videoDuration = videoTiming.duration;
 const audioDuration = audioTiming?.duration ?? null;
-if (audio && Math.abs(videoDuration - audioDuration) > 0.25) {
-  fail(`Audio/video duration mismatch exceeds 0.25 s (video=${videoDuration}, audio=${audioDuration})`);
+if (audio && Math.abs(videoTiming.duration - audioDuration) > 0.25) {
+  fail(`Audio/video duration mismatch exceeds 0.25 s (video=${videoTiming.duration}, audio=${audioDuration})`);
 }
 if (audio && Math.abs(videoTiming.start - audioTiming.start) > 0.25) {
   fail(`Audio/video start-time offset exceeds 0.25 s (video=${videoTiming.start}, audio=${audioTiming.start})`);
+}
+
+// Container timing is checked against the complete packet timeline, not just
+// the difference between the audio and video tracks. A 250 ms tolerance allows
+// normal codec/container time-base rounding while rejecting material metadata drift.
+const timelineStart = audioTiming ? Math.min(videoTiming.start, audioTiming.start) : videoTiming.start;
+const timelineEnd = audioTiming ? Math.max(videoTiming.end, audioTiming.end) : videoTiming.end;
+const timelineDuration = timelineEnd - timelineStart;
+if (hasFormatStart && Math.abs(formatStart - timelineStart) > 0.25) {
+  fail(`Container start-time mismatch exceeds 0.25 s (container=${formatStart}, streams=${timelineStart})`);
+}
+if (Math.abs(formatDuration - timelineDuration) > 0.25) {
+  fail(`Container/stream duration mismatch exceeds 0.25 s (container=${formatDuration}, streams=${timelineDuration})`);
+}
+if (hasFormatStart && Math.abs((formatStart + formatDuration) - timelineEnd) > 0.25) {
+  fail(`Container end-time mismatch exceeds 0.25 s (container=${formatStart + formatDuration}, streams=${timelineEnd})`);
 }
 
 // Decode every frame and every audio sample independently; metadata alone is not sufficient.
@@ -108,7 +125,8 @@ console.log([
   'MEDIA_INTEGRITY: PASS',
   `container=${expectedContainer}`,
   `size=${stat.size}`,
-  `video=${video.codec_name} ${video.width}x${video.height} ${videoDuration.toFixed(3)}s`,
+  `video=${video.codec_name} ${video.width}x${video.height} ${videoTiming.duration.toFixed(3)}s`,
   audio ? `audio=${audio.codec_name} ${audioDuration.toFixed(3)}s` : 'audio=absent (allowed)',
+  `containerTimeline=${formatDuration.toFixed(3)}s`,
   'decode=full video and available audio streams'
 ].join(' | '));
