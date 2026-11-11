@@ -14,10 +14,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # Temporary safety guard: this feature branch must never deploy to production.
+      # PR17 owns the canonical regression test for the production-main guard.
+      - name: Refuse non-main deployment
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Production deployment is only allowed from the main branch."
+          exit 1
+
       - name: Prepare Cloudflare Pages bundle
         run: |
           mkdir -p dist
           cp index.html producer.html _worker.js dist/
+          cp reels.html media-lab.html dist/
           if [ -d assets ]; then cp -a assets dist/; fi
           if [ -d images ]; then cp -a images dist/; fi
           if [ -d styles ]; then cp -a styles dist/; fi

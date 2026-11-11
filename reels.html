@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#211a28">
+<title>LUNA Studio — Reels Workspace</title>
+<style>
+:root{--bg:#f7f3f0;--ink:#201a24;--muted:#746b78;--accent:#9b6b8d;--line:#e8dfe7;--dark:#211a28;--soft:#f4eaf2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--dark);color:#fff;padding:16px clamp(16px,5vw,48px);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:900;letter-spacing:.15em}.brand span{color:#e2b9d5}.sub{font-size:.8rem;color:#c9bdce}
+a,button{font:inherit}a{color:inherit;text-decoration:none}.link,button{border:1px solid #d7c6d5;border-radius:11px;padding:9px 13px;background:#fff;color:var(--ink);font-weight:750;cursor:pointer}.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{max-width:1100px;margin:auto;padding:22px 15px 55px}.hero,.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(16px,3vw,25px);margin-bottom:14px}.hero{background:linear-gradient(120deg,#f0e3ed,#f9eee2)}.eyebrow{font-size:.72rem;letter-spacing:.12em;font-weight:900;color:var(--accent)}h1{font-size:clamp(1.7rem,4vw,2.5rem);margin:5px 0}.muted,.hint{color:var(--muted)}.hint{font-size:.84rem}.layout{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.field{display:grid;gap:5px;margin:11px 0}.field label{font-weight:800;font-size:.9rem}.field input,.field textarea,.field select{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}textarea{min-height:78px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.preview{background:#211a28;color:white;border-radius:16px;padding:16px;min-height:260px;display:flex;flex-direction:column;justify-content:space-between}.preview .tag{color:#e2b9d5;font-size:.75rem}.preview h2{font-size:1.35rem;line-height:1.3}.preview p{color:#eee}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:var(--soft);border-radius:12px;padding:10px;text-align:center}.stat strong{display:block;font-size:1.2rem}.drafts{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.draft{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}.draft.active{outline:2px solid var(--accent)}.draft button{margin-top:8px}.check{display:flex;align-items:flex-start;gap:8px;margin:8px 0}.check input{margin-top:6px;accent-color:var(--accent)}footer{text-align:center;color:var(--muted);padding:18px;font-size:.8rem}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.drafts{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
+</style></head>
+<body>
+<header><div><div class="brand">L<span>U</span>NA STUDIO</div><div class="sub">REELS WORKSPACE · PHASE A</div></div><div class="actions" style="margin:0"><a class="link" href="./index.html">داشبورد</a><a class="link" href="./producer.html">تولیدکننده قدیمی</a><a class="link" href="./media-lab.html">آزمایشگاه MP4</a></div></header>
+<main>
+<section class="hero"><div class="eyebrow">ENGLISH-FIRST · INSTAGRAM REELS</div><h1>کارگاه اختصاصی Reels لونا</h1><p class="muted">ایده‌ها را به پیش‌نویس‌های کوتاه و قابل ارزیابی تبدیل کن. این نسخه فقط متن و اطلاعات تولید را ذخیره می‌کند؛ هیچ تصویر یا ویدئویی تولید نمی‌کند و هیچ سهمیه هوش مصنوعی مصرف نمی‌کند.</p><p class="hint">پیش‌فرض: ویدئوی عمودی ۹:۱۶، زبان انگلیسی، مدت ۱۵ تا ۳۰ ثانیه. انتشار خودکار هنوز فعال نیست.</p></section>
+<div class="layout">
+<section class="panel">
+<div class="eyebrow">REEL BRIEF</div><h2>مشخصات Reel</h2>
+<div class="field"><label for="title">عنوان داخلی</label><input id="title" maxlength="90" placeholder="The Wrong VIP Table"></div>
+<div class="field"><label for="lane">مسیر محتوایی</label><select id="lane"><option value="romcom">Romantic comedy</option><option value="luxury">Luxury lifestyle</option><option value="misunderstanding">Funny misunderstanding</option></select></div>
+<div class="field"><label for="duration">مدت هدف</label><select id="duration"><option value="15">15 seconds</option><option value="20" selected>20 seconds</option><option value="30">30 seconds</option></select></div>
+<div class="field"><label for="hook">Hook — جمله/تصویر ۱ تا ۲ ثانیه اول (English)</label><textarea id="hook" maxlength="240" placeholder="LUNA: Why is there a tiny VIP chair at our table?"></textarea></div>
+<div class="field"><label for="setup">Setup — موقعیت و شروع ماجرا (English)</label><textarea id="setup" maxlength="600" placeholder="LUNA and LEO arrive at an exclusive restaurant..."></textarea></div>
+<div class="field"><label for="payoff">Payoff — شوخی یا پایان غافلگیرکننده (English)</label><textarea id="payoff" maxlength="400" placeholder="The VIP chair was reserved for the restaurant's celebrity cat."></textarea></div>
+<div class="field"><label for="caption">Instagram caption (English)</label><textarea id="caption" maxlength="1000" placeholder="When your date comes with unexpected VIP guests..."></textarea></div>
+<div class="field"><label for="hashtags">Hashtags</label><input id="hashtags" maxlength="300" placeholder="#LunaAndLeo #RomCom #LuxuryComedy"></div>
+<div class="field"><label for="cover">Cover frame idea (English)</label><input id="cover" maxlength="240" placeholder="LUNA giving LEO a confused look beside a tiny VIP chair"></div>
+<div class="field"><label for="notes">یادداشت تولید / QA</label><textarea id="notes" maxlength="800" placeholder="Character continuity, wardrobe, location, sound..."></textarea></div>
+<div class="actions"><button class="primary" id="save">ذخیره پیش‌نویس</button><button id="new">پیش‌نویس جدید</button><button id="export">خروجی JSON</button><button id="download">دانلود brief متنی</button></div>
+<p class="hint" id="status" role="status">هنوز پیش‌نویسی ذخیره نشده است.</p>
+</section>
+<section class="panel">
+<div class="eyebrow">LIVE PREVIEW</div><h2>پیش‌نمایش ساختار Reel</h2>
+<div class="preview"><div><div class="tag">LUNA + LEO · <span id="pvLane">ROMANTIC COMEDY</span></div><h2 id="pvHook">Your opening hook appears here</h2><p id="pvSetup">Your setup appears here.</p></div><div><p id="pvPayoff">Your payoff appears here.</p><div class="tag">9:16 VERTICAL · ENGLISH · <span id="pvDuration">20</span>s</div></div></div>
+<div class="stats" style="margin-top:12px"><div class="stat"><strong id="wordCount">0</strong><span class="hint">Script words</span></div><div class="stat"><strong id="durationRead">20s</strong><span class="hint">Target length</span></div><div class="stat"><strong>9:16</strong><span class="hint">Aspect ratio</span></div></div>
+<h3>چک‌لیست تأیید انسانی</h3>
+<label class="check"><input type="checkbox" id="qa1"> Hook در ۱ تا ۲ ثانیه اول قابل فهم و جذاب است.</label>
+<label class="check"><input type="checkbox" id="qa2"> فقط یک موقعیت و یک شوخی اصلی وجود دارد.</label>
+<label class="check"><input type="checkbox" id="qa3"> ظاهر و رفتار LUNA و LEO پیوسته و ثابت است.</label>
+<label class="check"><input type="checkbox" id="qa4"> متن، زیرنویس و صدا برای مخاطب انگلیسی طبیعی‌اند.</label>
+<label class="check"><input type="checkbox" id="qa5"> موسیقی و دارایی‌های صوتی مجاز یا ساخته خودمان هستند.</label>
+<p class="hint">چک‌لیست و brief فقط در حافظه همین مرورگر ذخیره می‌شوند؛ هنوز به حساب Instagram متصل نیست.</p>
+</section>
+</div>
+<section class="panel"><div class="panel-head"><div><div class="eyebrow">LOCAL DRAFT LIBRARY</div><h2>پیش‌نویس‌های ذخیره‌شده</h2></div><span class="hint" id="draftCount">0 drafts</span></div><div class="drafts" id="drafts"><p class="muted">هنوز پیش‌نویسی وجود ندارد.</p></div></section>
+</main><footer>LUNA Studio · Reels Workspace · Phase A · Local-only prototype</footer>
+<script>
+(()=>{'use strict';
+const fields=['title','lane','duration','hook','setup','payoff','caption','hashtags','cover','notes'];
+const checks=['qa1','qa2','qa3','qa4','qa5'];
+const $=id=>document.getElementById(id);
+let items=[];let selected=null;
+try{const raw=JSON.parse(localStorage.getItem('lunaReelsDrafts')||'[]');if(Array.isArray(raw)){const seen=new Set();items=raw.filter(o=>{if(!o||typeof o!=='object'||Array.isArray(o)||typeof o.id!=='string'||!o.id.trim()||typeof o.updatedAt!=='string'||!Number.isFinite(Date.parse(o.updatedAt))||seen.has(o.id))return false;seen.add(o.id);return true})}}catch{}
+function current(){const o={id:selected||('reel-'+Date.now()),updatedAt:new Date().toISOString(),language:'en',aspectRatio:'9:16'};fields.forEach(k=>o[k]=$(k).value.trim());o.qa={};checks.forEach(k=>o.qa[k]=$(k).checked);return o}
+function fill(o){fields.forEach(k=>$(k).value=o?.[k]??(k==='duration'?'20':k==='lane'?'romcom':''));checks.forEach(k=>$(k).checked=!!o?.qa?.[k]);update()}
+function persist(nextItems=items){try{localStorage.setItem('lunaReelsDrafts',JSON.stringify(nextItems));return true}catch(error){return false}}
+function update(){const o=current();$('pvHook').textContent=o.hook||'Your opening hook appears here';$('pvSetup').textContent=o.setup||'Your setup appears here.';$('pvPayoff').textContent=o.payoff||'Your payoff appears here.';$('pvDuration').textContent=o.duration;$('durationRead').textContent=o.duration+'s';$('pvLane').textContent=({romcom:'ROMANTIC COMEDY',luxury:'LUXURY LIFESTYLE',misunderstanding:'FUNNY MISUNDERSTANDING'})[o.lane];$('wordCount').textContent=[o.hook,o.setup,o.payoff].join(' ').trim().split(/\s+/).filter(Boolean).length}
+function render(){const box=$('drafts');box.replaceChildren();$('draftCount').textContent=items.length+' drafts';if(!items.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='هنوز پیش‌نویسی وجود ندارد.';box.append(empty);return}items.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).forEach(o=>{const card=document.createElement('article');card.className='draft'+(o.id===selected?' active':'');const title=document.createElement('strong');title.textContent=o.title||'Untitled Reel';const meta=document.createElement('p');meta.className='hint';meta.textContent=(o.lane||'')+' · '+(o.duration||'20')+'s · '+new Date(o.updatedAt).toLocaleString();const open=document.createElement('button');open.textContent='باز کردن';open.onclick=()=>{selected=o.id;fill(o);render()};const del=document.createElement('button');del.textContent='حذف';del.onclick=()=>{if(!confirm('این پیش‌نویس حذف شود؟'))return;const nextItems=items.filter(x=>x.id!==o.id);if(!persist(nextItems)){$('status').textContent='ذخیره‌سازی مرورگر در دسترس نیست؛ پیش‌نویس حذف نشد.';return}items=nextItems;if(selected===o.id){selected=null;fill(null)}render()};card.append(title,meta,open,del);box.append(card)})}
+fields.concat(checks).forEach(k=>$(k).addEventListener('input',update));
+$('save').onclick=()=>{const o=current();if(!o.title||!o.hook||!o.setup||!o.payoff){$('status').textContent='عنوان، Hook، Setup و Payoff ضروری هستند.';return}const nextItems=items.slice();const i=nextItems.findIndex(x=>x.id===o.id);if(i>=0)nextItems[i]=o;else nextItems.push(o);if(!persist(nextItems)){$('status').textContent='ذخیره‌سازی مرورگر در دسترس نیست یا فضا کافی نیست؛ پیش‌نویس ذخیره نشد.';return}items=nextItems;selected=o.id;render();$('status').textContent='پیش‌نویس در همین مرورگر ذخیره شد؛ تولید یا انتشار انجام نشده است.'};
+$('new').onclick=()=>{selected=null;fill(null);$('status').textContent='پیش‌نویس تازه آماده است.';render()};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify(current(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='luna-reel-brief.json';a.click();URL.revokeObjectURL(a.href)};
+$('download').onclick=()=>{const o=current();const body=['LUNA REEL BRIEF',...fields.map(k=>k.toUpperCase()+':\n'+o[k]),'QA:\n'+checks.map(k=>k+': '+o.qa[k]).join('\n')].join('\n\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body],{type:'text/plain;charset=utf-8'}));a.download='luna-reel-brief.txt';a.click();URL.revokeObjectURL(a.href)};
+fill(null);render();
+})();
+</script></body></html>

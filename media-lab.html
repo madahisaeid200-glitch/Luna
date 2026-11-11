@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#211a28"><title>LUNA Studio — Media Compatibility Lab</title>
+<style>
+:root{--bg:#f7f3f0;--ink:#201a24;--muted:#746b78;--accent:#9b6b8d;--line:#e8dfe7;--dark:#211a28}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--dark);color:#fff;padding:16px clamp(16px,5vw,48px);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:900;letter-spacing:.15em}.brand span{color:#e2b9d5}.sub{font-size:.8rem;color:#c9bdce}
+a,button{font:inherit}a{color:inherit;text-decoration:none}.link,button{border:1px solid #d7c6d5;border-radius:11px;padding:9px 13px;background:#fff;color:var(--ink);font-weight:750;cursor:pointer}.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{max-width:900px;margin:auto;padding:22px 15px 55px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(16px,3vw,25px);margin-bottom:14px}
+.eyebrow{font-size:.72rem;letter-spacing:.12em;font-weight:900;color:var(--accent)}h1{font-size:clamp(1.7rem,4vw,2.4rem);margin:5px 0}.muted,.hint{color:var(--muted)}.hint{font-size:.84rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.results{display:grid;gap:9px}.result{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}.result small{display:block;color:var(--muted);word-break:break-word}.state{font-weight:850;font-size:.82rem}.ok{color:#18794e}.bad{color:#a33b35}.warn{color:#946200}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f3f0;border-radius:10px;padding:12px;font-size:.8rem}footer{text-align:center;color:var(--muted);padding:18px;font-size:.8rem}
+</style></head>
+<body>
+<header><div><div class="brand">L<span>U</span>NA STUDIO</div><div class="sub">MEDIA COMPATIBILITY · PHASE B</div></div><div class="actions" style="margin:0"><a class="link" href="./index.html">داشبورد</a><a class="link" href="./reels.html">کارگاه Reels</a></div></header>
+<main>
+<section class="panel"><div class="eyebrow">QUOTA-FREE DEVICE CHECK</div><h1>آزمایشگاه سازگاری MP4</h1>
+<p class="muted">این صفحه ابتدا قابلیت‌های دستگاه را بررسی می‌کند و سپس در صورت تمایل یک فایل آزمایشی مصنوعی می‌سازد. هیچ تصویر، صدا یا ویدئوی شخصی آپلود نمی‌شود و هیچ API هوش مصنوعی یا سهمیه‌ای مصرف نمی‌شود.</p>
+<p class="hint">پروفایل هدف: MP4 · H.264/AVC · AAC-LC · عمودی 1080×1920 · 30fps · صدای 48kHz استریو. نتیجه این بررسی به‌تنهایی تضمین نمی‌کند که خروجی نهایی بدون خطا ساخته شود.</p>
+<div class="actions"><button class="primary" id="run">اجرای آزمایش روی همین دستگاه</button><button id="copy" disabled>کپی گزارش</button></div><div class="actions"><button class="primary" id="makeMp4">ساخت فایل MP4 آزمایشی ۲ ثانیه‌ای</button></div><p class="hint">این آزمایش یک انیمیشن ساده 360×640 با صدای سکوت می‌سازد؛ برای سنجش مسیر واقعی H.264/AAC است، نه کیفیت نهایی ویدئوی LUNA. برای بارگذاری کتابخانه فقط کد Mediabunny از CDN دریافت می‌شود؛ فایل ساخته‌شده روی همین دستگاه می‌ماند مگر خودتان آن را دانلود کنید.</p><p id="mp4Status" class="hint" role="status">پس از اجرای بررسی سازگاری، می‌توانید ساخت MP4 آزمایشی را امتحان کنید.</p><pre id="mp4Report">No MP4 test yet.</pre><video id="mp4Preview" controls playsinline style="display:none;width:100%;max-width:360px;border-radius:12px;background:#111"></video><a id="mp4Download" class="link" style="display:none" download="luna-synthetic-test.mp4">دانلود فایل MP4 آزمایشی</a><p id="status" class="hint" role="status">برای شروع، دکمه آزمایش را بزنید.</p></section>
+<section class="panel"><div class="eyebrow">CAPABILITY RESULTS</div><h2>نتایج قابلیت‌ها</h2><div id="results" class="results"><p class="muted">هنوز آزمایشی اجرا نشده است.</p></div></section>
+<section class="panel"><div class="eyebrow">DIAGNOSTIC REPORT</div><h2>گزارش فنی</h2><pre id="report">No diagnostic run yet.</pre></section>
+<section class="panel"><div class="eyebrow">IMPORTANT LIMITATION</div><p>حتی اگر H.264 و AAC پشتیبانی شوند، هنوز باید یک فایل واقعی آزمایشی ساخته و کدک، ابعاد، مدت، صدا، هم‌زمانی، حجم و پخش آن در Chrome و گالری گوشی بررسی شود. تا عبور از آن آزمون، خروجی MP4 برای انتشار تأییدشده محسوب نمی‌شود.</p></section>
+</main><footer>LUNA Studio · Local device capability check · No AI quota used</footer>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);let lastReport=null;
+function add(rows,name,detail,ok,level){rows.push({name,detail,level:level||(ok?'ok':'bad')})}
+async function run(){
+ const button=$('run');button.disabled=true;$('copy').disabled=true;$('status').textContent='در حال بررسی قابلیت‌های مرورگر…';
+ const rows=[],report={checkedAt:new Date().toISOString(),userAgent:navigator.userAgent,secureContext:!!window.isSecureContext,videoEncoder:typeof VideoEncoder!=='undefined',audioEncoder:typeof AudioEncoder!=='undefined',mediaCapabilities:!!navigator.mediaCapabilities,tests:{}};
+ add(rows,'Secure context',report.secureContext?'محیط امن فعال است':'محیط امن HTTPS در دسترس نیست',report.secureContext);
+ add(rows,'WebCodecs VideoEncoder',report.videoEncoder?'VideoEncoder در دسترس است':'VideoEncoder موجود نیست',report.videoEncoder);
+ add(rows,'WebCodecs AudioEncoder',report.audioEncoder?'AudioEncoder در دسترس است':'AudioEncoder موجود نیست',report.audioEncoder);
+ const videoConfig={codec:'avc1.42001f',width:1080,height:1920,bitrate:4500000,framerate:30,latencyMode:'quality',hardwareAcceleration:'no-preference'};
+ const audioConfig={codec:'mp4a.40.2',sampleRate:48000,numberOfChannels:2,bitrate:128000};
+ async function probe(label,ctor,config){
+  if(!ctor){report.tests[label]={supported:false,reason:'API unavailable'};add(rows,label,'API در دسترس نیست',false);return}
+  try{const result=await ctor.isConfigSupported(config);report.tests[label]={supported:!!result.supported,config:result.config||config};add(rows,label,result.supported?'پیکربندی موردنظر پشتیبانی می‌شود':'پیکربندی موردنظر پشتیبانی نمی‌شود',!!result.supported)}
+  catch(error){report.tests[label]={supported:false,error:String(error)};add(rows,label,'بررسی ناموفق: '+String(error),false)}
+ }
+ await probe('H264 1080x1920 30fps',window.VideoEncoder,videoConfig);
+ await probe('AAC-LC 48kHz stereo',window.AudioEncoder,audioConfig);
+ if(navigator.mediaCapabilities&&navigator.mediaCapabilities.encodingInfo){
+  for(const [label,config] of [['MediaCapabilities H264',{type:'record',video:{contentType:'video/mp4; codecs="avc1.42001f"',width:1080,height:1920,bitrate:4500000,framerate:30}}],['MediaCapabilities AAC',{type:'record',audio:{contentType:'audio/mp4; codecs="mp4a.40.2"',channels:'2',bitrate:128000,samplerate:48000}}]]){
+   try{const r=await navigator.mediaCapabilities.encodingInfo(config);report.tests[label]={supported:r.supported,smooth:r.smooth,powerEfficient:r.powerEfficient};add(rows,label,'supported='+r.supported+', smooth='+r.smooth+', powerEfficient='+r.powerEfficient,!!r.supported,r.supported?(r.smooth&&r.powerEfficient?'ok':'warn'):'bad')}
+   catch(error){report.tests[label]={error:String(error)};add(rows,label,'خطا: '+String(error),false)}
+  }
+ }else add(rows,'MediaCapabilities encodingInfo','این API در دسترس نیست',false,'warn');
+ report.tests.webmMediaRecorder=typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus');
+ report.tests.mp4MediaRecorder=typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported('video/mp4;codecs="avc1.42001f,mp4a.40.2"');
+ add(rows,'WebM MediaRecorder',report.tests.webmMediaRecorder?'WebM VP9/Opus ضبط را پشتیبانی می‌کند':'WebM VP9/Opus در دسترس نیست',report.tests.webmMediaRecorder,report.tests.webmMediaRecorder?'ok':'warn');
+ add(rows,'MP4 MediaRecorder',report.tests.mp4MediaRecorder?'MediaRecorder این MIME را می‌پذیرد':'MediaRecorder برای MP4 این MIME را نمی‌پذیرد',report.tests.mp4MediaRecorder,report.tests.mp4MediaRecorder?'ok':'warn');
+ const required=['H264 1080x1920 30fps','AAC-LC 48kHz stereo'];
+ report.tests.minimumEncoderGate=required.every(k=>report.tests[k]?.supported===true);report.tests.exportApproved=false;
+ report.decision=report.tests.minimumEncoderGate?'ENCODER_APIS_PRESENT — REAL_FILE_TEST_REQUIRED':'ENCODER_REQUIREMENTS_NOT_MET — DO_NOT_ENABLE_MP4_EXPORT';
+ lastReport=report;$('results').replaceChildren();
+ rows.forEach(row=>{const el=document.createElement('div');el.className='result';const label=document.createElement('div');label.textContent=row.name;const detail=document.createElement('small');detail.textContent=row.detail;label.append(detail);const state=document.createElement('span');state.className='state '+row.level;state.textContent=row.level==='ok'?'SUPPORTED':row.level==='warn'?'PARTIAL':'NOT SUPPORTED';el.append(label,state);$('results').append(el)});
+ $('report').textContent=JSON.stringify(report,null,2);$('copy').disabled=false;
+ $('status').textContent=report.tests.minimumEncoderGate?'انکودرهای پایه در دسترس‌اند؛ هنوز آزمایش فایل واقعی لازم است.':'پیکربندی لازم کامل پشتیبانی نشد؛ خروجی MP4 را فعال نمی‌کنیم.';
+ button.disabled=false;
+}
+$('run').addEventListener('click',()=>run().catch(error=>{$('status').textContent='آزمایش ناموفق بود: '+String(error);$('run').disabled=false}));
+$('copy').addEventListener('click',async()=>{if(!lastReport)return;try{await navigator.clipboard.writeText(JSON.stringify(lastReport,null,2));$('status').textContent='گزارش کپی شد.'}catch(error){$('status').textContent='کپی خودکار در دسترس نیست؛ گزارش را از کادر انتخاب و کپی کنید.'}});
+
+let lastMp4ObjectUrl=null;
+const mp4Button=$('makeMp4');
+mp4Button.addEventListener('click',async()=>{
+ mp4Button.disabled=true;
+ const status=$('mp4Status'),reportEl=$('mp4Report'),preview=$('mp4Preview'),download=$('mp4Download');
+ status.textContent='در حال بارگذاری کتابخانه و ساخت فایل آزمایشی…';
+ download.style.display='none';preview.style.display='none';
+ if(lastMp4ObjectUrl){URL.revokeObjectURL(lastMp4ObjectUrl);lastMp4ObjectUrl=null}
+ let audioContext=null,output=null,input=null;
+ try{
+  const mb=await import('https://cdn.jsdelivr.net/npm/mediabunny@1.65.2/+esm');
+  const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,AudioBufferSource,Quality,Input,ALL_FORMATS,BlobSource}=mb;
+  const canvas=document.createElement('canvas');canvas.width=360;canvas.height=640;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw new Error('Canvas 2D context is unavailable');
+  output=new Output({format:new Mp4OutputFormat(),target:new BufferTarget()});
+  const videoSource=new CanvasSource(canvas,{codec:'avc',quality:new Quality('low')});
+  const audioSource=new AudioBufferSource({codec:'aac',quality:new Quality('low')});
+  output.addVideoTrack(videoSource,{frameRate:24});
+  output.addAudioTrack(audioSource);
+  audioContext=new AudioContext({sampleRate:48000});
+  const audioBuffer=audioContext.createBuffer(2,48000*2,48000);
+  await output.start();
+  const totalFrames=48;
+  for(let frame=0;frame<totalFrames;frame++){
+   const t=frame/24;
+   const gradient=ctx.createLinearGradient(0,0,360,640);
+   gradient.addColorStop(0,'#211a28');gradient.addColorStop(1,'#9b6b8d');
+   ctx.fillStyle=gradient;ctx.fillRect(0,0,360,640);
+   ctx.fillStyle='#e2b9d5';ctx.beginPath();ctx.arc(180,230+Math.sin(t*3)*18,70,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.font='bold 25px system-ui';ctx.fillText('LUNA MP4 TEST',180,390);
+   ctx.font='16px system-ui';ctx.fillText('Frame '+(frame+1)+' / '+totalFrames,180,425);
+   await videoSource.add(t,1/24);
+   if(frame%12===0)status.textContent='در حال کدگذاری فریم '+(frame+1)+' از '+totalFrames+'…';
+  }
+  await audioSource.add(audioBuffer);
+  await output.finalize();
+  const fileBlob=new Blob([output.target.buffer],{type:'video/mp4'});
+  if(fileBlob.size<1000)throw new Error('Generated MP4 is unexpectedly small');
+  const signature=new TextDecoder().decode(new Uint8Array(await fileBlob.slice(4,8).arrayBuffer()));
+  if(signature!=='ftyp')throw new Error('MP4 ftyp signature not found');
+  input=new Input({source:new BlobSource(fileBlob),formats:ALL_FORMATS});
+  const videoTrack=await input.getPrimaryVideoTrack();
+  const audioTrack=await input.getPrimaryAudioTrack();
+  if(!videoTrack||!audioTrack)throw new Error('Expected both video and audio tracks were not found');
+  const [duration,width,height,videoCodec,audioCodec,videoDecodable,audioDecodable,sampleRate,channels]=await Promise.all([
+   input.computeDuration(),videoTrack.getDisplayWidth(),videoTrack.getDisplayHeight(),
+   videoTrack.getCodecParameterString(),audioTrack.getCodecParameterString(),
+   videoTrack.canDecode(),audioTrack.canDecode(),audioTrack.getSampleRate(),audioTrack.getNumberOfChannels()
+  ]);
+  const details={fileBytes:fileBlob.size,containerSignature:signature,durationSeconds:duration,video:{codec:videoCodec,width,height,decodable:videoDecodable},audio:{codec:audioCodec,sampleRate,channels,decodable:audioDecodable},mimeType:fileBlob.type,library:'mediabunny@1.65.2',networkNote:'Only the library module was fetched; no media was uploaded.',exportApproved:false};
+  reportEl.textContent=JSON.stringify(details,null,2);
+  if(width!==360||height!==640)throw new Error('Unexpected encoded dimensions: '+width+'x'+height);
+  if(duration<1.8||duration>2.2)throw new Error('Unexpected encoded duration: '+duration+' seconds');
+  if(!/^avc1\./i.test(videoCodec||''))throw new Error('Expected H.264/AVC video, received: '+videoCodec);
+  if(!/^mp4a\.40\.2$/i.test(audioCodec||''))throw new Error('Expected AAC-LC audio, received: '+audioCodec);
+  if(sampleRate!==48000||channels!==2)throw new Error('Expected 48kHz stereo audio, received: '+sampleRate+'Hz / '+channels+' channels');
+  if(!videoDecodable||!audioDecodable)throw new Error('Browser decoder could not decode both MP4 tracks');
+  lastMp4ObjectUrl=URL.createObjectURL(fileBlob);
+  preview.src=lastMp4ObjectUrl;preview.style.display='block';
+  download.href=lastMp4ObjectUrl;download.style.display='inline-block';
+  status.textContent='فایل MP4 با موفقیت ساخته شد و هر دو ترک دوباره Decode شدند. پخش همین صفحه و گالری گوشی را هم بررسی کنید.';
+ }catch(error){
+  try{if(output&&output.state!=='finalized'&&output.state!=='canceled')await output.cancel()}catch(_){}
+  status.textContent='ساخت یا اعتبارسنجی MP4 ناموفق بود: '+String(error);
+  reportEl.textContent+=(reportEl.textContent==='No MP4 test yet.'?'':'\\n\\n')+String(error&&error.stack||error);
+ }finally{
+  if(input)try{input.dispose()}catch(_){}
+  if(audioContext)try{await audioContext.close()}catch(_){}
+  mp4Button.disabled=false;
+ }
+});
+})();
+</script></body></html>
