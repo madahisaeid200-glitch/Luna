@@ -317,3 +317,15 @@ jobs:
           console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
           console.log('WAN_PRE_QA_LOCK: PASS (new image, edited image, and restored image paths)');
           NODE
+      - name: Test Instagram OAuth D1 migration constraints and one-time state
+        run: python3 tests/instagram-migration.test.py
+      - name: Test Instagram AES-256-GCM token encryption
+        run: node --test tests/instagram-token-crypto.test.mjs
+      - name: Test encrypted Instagram D1 repository adapter
+        run: node --test tests/instagram-token-d1.test.mjs
+      - name: Test single-use Instagram OAuth state lifecycle
+        run: node --test tests/instagram-oauth-state.test.mjs
+      - name: Test fail-closed Cloudflare Access administrator authorization
+        run: node --test tests/instagram-access-auth.test.mjs
+      - name: Test authenticated Instagram Worker route and public-route regression
+        run: node --test tests/instagram-worker-gate.test.mjs

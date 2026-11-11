@@ -1,9 +1,10 @@
+import { handleInstagramAdminRoute } from "./src/instagram-worker-gate.mjs";
 const ALLOWED_ORIGIN = "https://madahisaeid200-glitch.github.io";
 const DEFAULT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const allowedOrigin = !origin || origin === ALLOWED_ORIGIN;
     const cors = {
@@ -17,11 +18,16 @@ export default {
       status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
     });
 
+    if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+
+    // Instagram administration is isolated behind Cloudflare Access; even CORS preflight
+    // must pass its identity gate before the Worker returns a response.
+    const instagramAdminResponse = await handleInstagramAdminRoute({ request, env, ctx, json, cors });
+    if (instagramAdminResponse) return instagramAdminResponse;
+
     if (request.method === "OPTIONS") {
-      if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
       return new Response(null, { status: 204, headers: cors });
     }
-    if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature, timeoutOverride) => {
