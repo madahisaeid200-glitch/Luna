@@ -22,4 +22,19 @@ const deploy = workflow.slice(deployStart);
 assert.match(deploy, /wrangler@4 pages deploy dist --project-name=luna-studio --branch=main/,
   'The approved production target must remain the main Pages branch');
 
+
+const workerWorkflow = fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8');
+const workerCheckout = workerWorkflow.indexOf('      - name: Checkout repository');
+const workerGuard = workerWorkflow.indexOf('      - name: Refuse non-main Worker deployment');
+const workerDeploy = workerWorkflow.indexOf('      - name: Deploy existing LUNA Worker to Cloudflare');
+assert.ok(workerCheckout >= 0 && workerGuard > workerCheckout,
+  'Worker deployment must have a branch guard after checkout');
+assert.ok(workerDeploy > workerGuard,
+  'Worker branch guard must run before the Wrangler deployment action');
+const workerGuardBlock = workerWorkflow.slice(workerGuard, workerDeploy);
+assert.match(workerGuardBlock, /if: github\\.ref != 'refs\\/heads\\/main'/,
+  'Worker deployment must reject every ref other than refs/heads/main');
+assert.match(workerGuardBlock, /exit 1/,
+  'A rejected Worker deployment must fail before Wrangler runs');
+
 console.log('Cloudflare production branch guard: PASS');
