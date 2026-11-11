@@ -124,3 +124,19 @@ test("unsupported methods on the Instagram namespace are rejected", async () => 
   const response = await worker.fetch(new Request("https://worker.example/api/instagram/status", { method: "DELETE" }), env, ctx("owner@example.com"));
   assert.equal(response.status, 405);
 });
+
+test("allowed-origin Instagram preflight still requires an allowlisted Access identity", async () => {
+  const request = new Request("https://worker.example/api/instagram/connect", {
+    method: "OPTIONS",
+    headers: { Origin: "https://madahisaeid200-glitch.github.io" }
+  });
+
+  const anonymous = await worker.fetch(request, env, {});
+  assert.equal(anonymous.status, 403);
+
+  const wrongIdentity = await worker.fetch(request, env, ctx("attacker@example.net"));
+  assert.equal(wrongIdentity.status, 403);
+
+  const authorized = await worker.fetch(request, env, ctx("owner@example.com"));
+  assert.equal(authorized.status, 204);
+});
