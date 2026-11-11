@@ -78,6 +78,29 @@ test("upsert rotates ciphertext without resetting original connected_at", async 
   assert.equal((await getDecryptedInstagramConnection(db, "17840000000000000", key)).accessToken, "refreshed-token");
 });
 
+test("token is usable immediately before expiry", async () => {
+  const db = new MockD1();
+  await putEncryptedInstagramConnection(db, connection(), key);
+  const loaded = await getDecryptedInstagramConnection(db, "17840000000000000", key, 1_999_999_999);
+  assert.equal(loaded.accessToken, "mock-access-token-do-not-log");
+});
+
+for (const [label, now] of [
+  ["at the exact expiry second", 2_000_000_000],
+  ["after the expiry second", 2_000_000_001]
+]) {
+  test("expired token is rejected " + label + " before decryption", async () => {
+    const db = new MockD1();
+    await putEncryptedInstagramConnection(db, connection(), key);
+    // If decryption were attempted, this deliberately corrupted ciphertext would fail differently.
+    db.rows.get("17840000000000000").token_ciphertext = new Uint8Array([1, 2, 3]);
+    await assert.rejects(
+      () => getDecryptedInstagramConnection(db, "17840000000000000", key, now),
+      error => error?.code === "INSTAGRAM_RECONNECT_REQUIRED"
+    );
+  });
+}
+
 test("missing rows return null and disconnect deletes credentials", async () => {
   const db = new MockD1();
   assert.equal(await getDecryptedInstagramConnection(db, "missing", key), null);
