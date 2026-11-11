@@ -30,5 +30,18 @@ assert.ok(!validator.includes('video.duration || formatDuration') && !validator.
   'Container duration must never be substituted for missing stream duration');
 assert.ok(validator.includes('refusing to substitute container duration'),
   'Unknown stream packet timing must fail closed rather than masking an A/V mismatch');
+assert.ok(validator.includes('format=start_time,duration'),
+  'FFprobe must expose the container start time and duration');
+assert.ok(validator.includes('const timelineStart = audioTiming ? Math.min(videoTiming.start, audioTiming.start) : videoTiming.start;'),
+  'Container timing must be compared against the complete stream timeline');
+assert.ok(validator.includes('Container/stream duration mismatch exceeds 0.25 s'),
+  'Material container-versus-stream duration drift must fail closed');
+assert.ok(validator.includes('Container end-time mismatch exceeds 0.25 s'),
+  'Container end time must be checked when its start time is available');
+const fixtures = fs.readFileSync('tests/media-integrity/run-fixtures.sh', 'utf8');
+assert.ok(fixtures.includes('container-duration-mismatch.mp4'),
+  'Fixture suite must include a container/stream duration mismatch');
+assert.ok(fixtures.includes('corrupt-mp4-container-duration.mjs'),
+  'Container mismatch fixture must alter container metadata without changing media packets');
 
 console.log('LIVE_MEDIA_SMOKE_VALIDATION_GUARD: PASS');
