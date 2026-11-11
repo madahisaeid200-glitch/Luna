@@ -29,6 +29,15 @@ if node "$ROOT/validate-media.mjs" "$OUT/invalid.mp4" --container mp4 --require-
   exit 1
 fi
 
+# Negative test: equal audio/video tracks with deliberately corrupted MP4 movie
+# duration must fail the container-vs-packet-timeline consistency check.
+cp "$OUT/valid.mp4" "$OUT/container-duration-mismatch.mp4"
+node "$ROOT/corrupt-mp4-container-duration.mjs" "$OUT/container-duration-mismatch.mp4"
+if node "$ROOT/validate-media.mjs" "$OUT/container-duration-mismatch.mp4" --container mp4 --require-audio; then
+  echo 'Container/stream duration mismatch was incorrectly accepted' >&2
+  exit 1
+fi
+
 # Negative test: a file with materially different audio and video durations must be rejected.
 ffmpeg -hide_banner -loglevel error \
   -f lavfi -i "testsrc2=size=320x568:rate=24:duration=2" \
