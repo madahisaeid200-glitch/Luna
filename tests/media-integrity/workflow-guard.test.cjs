@@ -41,7 +41,7 @@ assert.ok(validator.includes('Container end-time mismatch exceeds 0.25 s'),
 const fixtures = fs.readFileSync('tests/media-integrity/run-fixtures.sh', 'utf8');
 assert.ok(fixtures.includes('container-duration-mismatch.mp4'),
   'Fixture suite must include a container/stream duration mismatch');
-assert.ok(fixtures.includes('corrupt-mp4-container-duration.mjs'),
+assert.ok(fixtures.includes('corrupt-webm-container-duration.mjs'),
   'Container mismatch fixture must alter container metadata without changing media packets');
 
 console.log('LIVE_MEDIA_SMOKE_VALIDATION_GUARD: PASS');
