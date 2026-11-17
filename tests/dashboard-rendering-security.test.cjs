@@ -8,6 +8,27 @@ const start = html.indexOf('function render(){');
 const end = html.indexOf('\nconst storyIdeas=', start);
 assert.ok(start >= 0 && end > start, 'Dashboard render function must exist');
 const renderSource = html.slice(start, end);
+const loadStart = html.indexOf('function loadEpisodes(){');
+const loadEnd = html.indexOf('\\nlet episodes=', loadStart);
+assert.ok(loadStart >= 0 && loadEnd > loadStart, 'Dashboard must isolate persisted episode loading');
+const loadSource = html.slice(loadStart, loadEnd);
+const fallback = [{id:99,fa:'Fallback',en:'Fallback',storyFa:['fallback'],storyEn:['fallback']}];
+function loadPersisted(raw, shouldThrow=false) {
+  const storage = {getItem:()=>{if(shouldThrow)throw new Error('storage blocked');return raw}};
+  return vm.runInNewContext(loadSource+'\\nloadEpisodes()', {seed:fallback,localStorage:storage,Number,Array,JSON});
+}
+assert.equal(loadPersisted('{broken').length,1,'Malformed JSON must fall back to seed episodes');
+assert.equal(loadPersisted(null,true).length,1,'Blocked localStorage access must not crash startup');
+assert.equal(loadPersisted(JSON.stringify([{id:1,fa:'bad',en:'bad',storyFa:[],storyEn:['x']}] ))[0].id,99,
+  'Records with missing story lines must be discarded');
+const safeRecord={id:2,fa:'Safe',en:'Safe',storyFa:['fa'],storyEn:['en']};
+const loaded=loadPersisted(JSON.stringify([null,{id:3,fa:'bad'},safeRecord]));
+assert.equal(loaded.length,1,'Only schema-valid episode records should load');
+assert.equal(loaded[0].id,2);
+assert.match(html,/try\\{localStorage\\.setItem\\('lunaEpisodes',JSON\\.stringify\\(nextEpisodes\\)\\)\\}catch/,
+  'Dashboard save must handle browser storage failures before mutating in-memory episodes');
+assert.match(html,/try\\{localStorage\\.removeItem\\('lunaEpisodes'\\)\\}catch/,
+  'Dashboard reset must handle browser storage failures');
 assert.doesNotMatch(renderSource, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=|document\.write/,
   'Dashboard render must not use HTML parsing or insertion sinks');
 assert.match(renderSource, /heading\.textContent=fa\?e\.fa:e\.en/);
