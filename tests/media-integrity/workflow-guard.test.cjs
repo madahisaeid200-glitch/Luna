@@ -36,15 +36,11 @@ assert.ok(validator.includes("profile === 'instagram-mp4'"),
   'The validator must expose an explicit Instagram MP4 compatibility profile');
 assert.ok(validator.includes("video.codec_name !== 'h264'") && validator.includes("audio.codec_name !== 'aac'"),
   'Instagram MP4 compatibility must require H.264 video and AAC audio');
-assert.ok(fixtures.includes('--profile instagram-mp4'),
-  'Fixture suite must exercise the Instagram MP4 compatibility profile');
-assert.ok(fixtures.includes('incompatible-codec.mp4'),
-  'Fixture suite must reject an MP4 with an incompatible video codec');
 assert.ok(validator.includes('packet=pts_time,duration_time'), 'Packet timing must include both timestamps and durations');
 assert.ok(!validator.includes('video.duration || formatDuration') && !validator.includes('audio.duration || formatDuration'),
   'Container duration must never be substituted for missing stream duration');
-assert.ok(validator.includes('refusing to substitute container duration'),
-  'Unknown stream packet timing must fail closed rather than masking an A/V mismatch');
+assert.ok(validator.includes('refusing partial-timeline validation'),
+  'Unknown packet timing must fail closed rather than masking an A/V mismatch');
 assert.ok(validator.includes('start_time,duration:stream='),
   'FFprobe must expose the container start time and duration');
 assert.ok(validator.includes('const timelineStart = audioTiming ? Math.min(videoTiming.start, audioTiming.start) : videoTiming.start;'),
@@ -54,6 +50,10 @@ assert.ok(validator.includes('Container/stream duration mismatch exceeds 0.25 s'
 assert.ok(validator.includes('Container end-time mismatch exceeds 0.25 s'),
   'Container end time must be checked when its start time is available');
 const fixtures = fs.readFileSync('tests/media-integrity/run-fixtures.sh', 'utf8');
+assert.ok(fixtures.includes('--profile instagram-mp4'),
+  'Fixture suite must exercise the Instagram MP4 compatibility profile');
+assert.ok(fixtures.includes('incompatible-codec.mp4'),
+  'Fixture suite must reject an MP4 with an incompatible video codec');
 assert.ok(fixtures.includes('multiple-audio.mp4'),
   'Fixture suite must include a multi-audio output that is rejected');
 assert.ok(fixtures.includes('container-duration-mismatch.webm'),
