@@ -9,13 +9,13 @@ const end = html.indexOf('\nconst storyIdeas=', start);
 assert.ok(start >= 0 && end > start, 'Dashboard render function must exist');
 const renderSource = html.slice(start, end);
 const loadStart = html.indexOf('function loadEpisodes(){');
-const loadEnd = html.indexOf('\\nlet episodes=', loadStart);
+const loadEnd = html.indexOf('let episodes=', loadStart);
 assert.ok(loadStart >= 0 && loadEnd > loadStart, 'Dashboard must isolate persisted episode loading');
 const loadSource = html.slice(loadStart, loadEnd);
 const fallback = [{id:99,fa:'Fallback',en:'Fallback',storyFa:['fallback'],storyEn:['fallback']}];
 function loadPersisted(raw, shouldThrow=false) {
   const storage = {getItem:()=>{if(shouldThrow)throw new Error('storage blocked');return raw}};
-  return vm.runInNewContext(loadSource+'\\nloadEpisodes()', {seed:fallback,localStorage:storage,Number,Array,JSON});
+  return vm.runInNewContext(loadSource + String.fromCharCode(10) + 'loadEpisodes()', {seed:fallback,localStorage:storage,Number,Array,JSON});
 }
 assert.equal(loadPersisted('{broken').length,1,'Malformed JSON must fall back to seed episodes');
 assert.equal(loadPersisted(null,true).length,1,'Blocked localStorage access must not crash startup');
