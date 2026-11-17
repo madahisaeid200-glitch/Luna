@@ -25,9 +25,9 @@ const safeRecord={id:2,fa:'Safe',en:'Safe',storyFa:['fa'],storyEn:['en']};
 const loaded=loadPersisted(JSON.stringify([null,{id:3,fa:'bad'},safeRecord]));
 assert.equal(loaded.length,1,'Only schema-valid episode records should load');
 assert.equal(loaded[0].id,2);
-assert.match(html,/try\\{localStorage\\.setItem\\('lunaEpisodes',JSON\\.stringify\\(nextEpisodes\\)\\)\\}catch/,
+assert.ok(html.includes("try{localStorage.setItem('lunaEpisodes',JSON.stringify(nextEpisodes))}catch"),
   'Dashboard save must handle browser storage failures before mutating in-memory episodes');
-assert.match(html,/try\\{localStorage\\.removeItem\\('lunaEpisodes'\\)\\}catch/,
+assert.ok(html.includes("try{localStorage.removeItem('lunaEpisodes')}catch"),
   'Dashboard reset must handle browser storage failures');
 assert.doesNotMatch(renderSource, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=|document\.write/,
   'Dashboard render must not use HTML parsing or insertion sinks');
