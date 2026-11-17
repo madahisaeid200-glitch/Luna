@@ -15,9 +15,12 @@ const option = (name) => {
 };
 const expectedContainer = option('--container');
 const requireAudio = args.includes('--require-audio');
+const profile = option('--profile');
 
-if (!file) fail('Usage: node validate-media.mjs <file> --container mp4|webm [--require-audio]');
+if (!file) fail('Usage: node validate-media.mjs <file> --container mp4|webm [--require-audio] [--profile instagram-mp4]');
 if (!['mp4', 'webm'].includes(expectedContainer)) fail('Expected --container mp4 or webm');
+if (profile && profile !== 'instagram-mp4') fail('Expected --profile instagram-mp4 when a profile is supplied');
+if (profile === 'instagram-mp4' && expectedContainer !== 'mp4') fail('The instagram-mp4 profile requires an MP4 container');
 if (!fs.existsSync(file)) fail(`File does not exist: ${file}`);
 
 const stat = fs.statSync(file);
@@ -68,6 +71,11 @@ if (!Number.isInteger(video.width) || !Number.isInteger(video.height) || video.w
 if (!video.codec_name) fail('Video codec is missing');
 if (requireAudio && !audio) fail('Audio stream is required but missing');
 if (requireAudio && !audio.codec_name) fail('Audio codec is missing');
+if (profile === 'instagram-mp4') {
+  if (!audio) fail('The instagram-mp4 profile requires an audio stream');
+  if (video.codec_name !== 'h264') fail(`The instagram-mp4 profile requires H.264 video; found ${video.codec_name}`);
+  if (audio.codec_name !== 'aac') fail(`The instagram-mp4 profile requires AAC audio; found ${audio.codec_name}`);
+}
 
 const formatDuration = Number(probe.format?.duration);
 if (!Number.isFinite(formatDuration) || formatDuration <= 0) fail('Container duration is missing or invalid');
@@ -242,6 +250,7 @@ console.log([
   `containerTimeline=${formatDuration.toFixed(3)}s`,
   'decode=full video and available audio streams',
   'streamPolicy=exactly one video and at most one audio',
+  profile ? `profile=${profile}` : 'profile=generic-integrity',
   `videoPackets=${videoTiming.packetCount}`,
   audio ? `audioPackets=${audioTiming.packetCount}` : 'audioPackets=0'
 ].join(' | '));
