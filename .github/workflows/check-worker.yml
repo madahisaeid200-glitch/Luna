@@ -14,11 +14,13 @@ permissions:
 
 jobs:
   check:
-    if: github.event_name == 'workflow_dispatch' && inputs.confirm_image_quota == true && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Check GET, small POST, and 58 KB image POST from an independent network
         shell: bash
+        env:
+          CONFIRM_IMAGE_QUOTA: ${{ inputs.confirm_image_quota }}
         run: |
           set -euo pipefail
           URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
@@ -58,6 +60,11 @@ jobs:
           print("PASS: Worker accepted the full image-shaped request.")
           PY
           grep -qi "access-control-allow-origin: $ORIGIN" /tmp/image.headers
+
+          if [[ "${CONFIRM_IMAGE_QUOTA}" != "true" ]]; then
+            echo "SKIP: real FLUX generation and reference-image editing require explicit quota confirmation."
+            exit 0
+          fi
 
           echo "4/4 Real FLUX image generation timing test (4 steps, after Worker deploy)"
           printf '%s' '{"mode":"image","script":"Photorealistic editorial photograph of an elegant adult couple in a luxury European hotel suite, natural skin texture, candid expressions, soft window light, realistic anatomy, vertical portrait."}' >/tmp/flux.json
