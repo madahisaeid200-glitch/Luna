@@ -141,15 +141,27 @@ const workerEndpoint='https://orange-firefly-6434.madahisaeid200.workers.dev';
 // a Worker URL the user has explicitly saved in this browser. This allows a
 // replacement Worker (for example super-wave-0504) to survive page reloads.
 const defaultEndpoint=workerEndpoint;
+// Only allow HTTPS endpoints on Cloudflare's supported public hostnames.
+// Reject credentials, custom ports, query strings and fragments.
+function normalizeAllowedAiEndpoint(value){
+  if(typeof value!=='string'||!value.trim())return '';
+  let parsed;
+  try{parsed=new URL(value.trim());}catch(e){return null;}
+  if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.port||parsed.search||parsed.hash)return null;
+  const workerUrl=parsed.hostname.endsWith('.workers.dev')&&(parsed.pathname===''||parsed.pathname==='/');
+  const pagesProxyUrl=parsed.hostname.endsWith('.pages.dev')&&parsed.pathname.replace(/\/$/,'')==='/api';
+  if(!workerUrl&&!pagesProxyUrl)return null;
+  return parsed.origin+(pagesProxyUrl?'/api':'');
+}
 let savedEndpoint=workerEndpoint;
 try {
   const storedEndpoint=localStorage.getItem('lunaAiEndpoint');
-  if (storedEndpoint && /super-wave-0504\.madahisaeid200\.workers\.dev/i.test(storedEndpoint)) {
+  if(storedEndpoint&&/super-wave-0504\.madahisaeid200\.workers\.dev/i.test(storedEndpoint)){
     localStorage.setItem('lunaAiEndpoint',workerEndpoint);
-  }
-  if (storedEndpoint && !/super-wave-0504\.madahisaeid200\.workers\.dev/i.test(storedEndpoint) && /^https:\/\/[a-z0-9-]+\.madahisaeid200\.workers\.dev$/i.test(storedEndpoint)) {
-    savedEndpoint=storedEndpoint;
-  } else if (!storedEndpoint) {
+  }else if(storedEndpoint){
+    const normalized=normalizeAllowedAiEndpoint(storedEndpoint);
+    if(normalized)savedEndpoint=normalized;
+  }else{
     localStorage.setItem('lunaAiEndpoint',workerEndpoint);
   }
 } catch(storageError) {
@@ -161,21 +173,19 @@ updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده اس
 el('saveAiEndpoint').onclick=()=>{
  const value=endpointInput.value.trim();
  if(value){
-   let parsed;
-   try { parsed = new URL(value); } catch(e) { updateAiStatus('آدرس معتبر نیست؛ URL کامل با https:// وارد کن.'); return; }
-   const workerUrl = parsed.protocol === 'https:' && parsed.hostname.endsWith('.workers.dev') && (parsed.pathname === '/' || parsed.pathname === '');
-   const pagesProxyUrl = parsed.protocol === 'https:' && parsed.hostname.endsWith('.pages.dev') && parsed.pathname.replace(/\/$/,'') === '/api';
-   if(!workerUrl && !pagesProxyUrl){
-     updateAiStatus('آدرس باید Worker از نوع workers.dev یا آدرس API از نوع https://نام-پروژه.pages.dev/api باشد.'); return;
-   }
- }
- if(value){localStorage.setItem('lunaAiEndpoint',value.replace(/\/$/,''));updateAiStatus('آدرس ذخیره شد. حالا «ساخت پیش‌نویس» را بزن تا اتصال آزمایش شود.');}
- else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
+   const normalized=normalizeAllowedAiEndpoint(value);
+   if(!normalized){updateAiStatus('آدرس نامعتبر است؛ فقط HTTPS روی workers.dev یا مسیر /api در pages.dev مجاز است و پورت، رمز، query و fragment پذیرفته نمی‌شود.');return;}
+   localStorage.setItem('lunaAiEndpoint',normalized);
+   endpointInput.value=normalized;
+   updateAiStatus('آدرس امن ذخیره شد. حالا «ساخت پیش‌نویس» را بزن تا اتصال آزمایش شود.');
+ }else{localStorage.removeItem('lunaAiEndpoint');updateAiStatus('اتصال پاک شد؛ تولید از قالب‌های داخلی انجام می‌شود.');}
 };
 el('testAiEndpoint').onclick=async()=>{
- const endpoint=endpointInput.value.trim()||defaultEndpoint;
- localStorage.setItem('lunaAiEndpoint',endpoint.replace(/\/$/,''));
- if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
+ const rawEndpoint=endpointInput.value.trim()||defaultEndpoint;
+ const endpoint=normalizeAllowedAiEndpoint(rawEndpoint);
+ if(!endpoint){updateAiStatus('آدرس نامعتبر است؛ ابتدا یک HTTPS Worker یا Pages API مجاز وارد و ذخیره کن.');return;}
+ localStorage.setItem('lunaAiEndpoint',endpoint);
+ endpointInput.value=endpoint;
  const button=el('testAiEndpoint');button.disabled=true;
  updateAiStatus('در حال آزمایش GET و سپس POST ساده…');
  try{
