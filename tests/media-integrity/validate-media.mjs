@@ -43,7 +43,7 @@ function run(command, commandArgs) {
 
 const probe = JSON.parse(run('ffprobe', [
   '-v', 'error', '-show_entries',
-  'format=format_name,start_time,duration:stream=codec_type,codec_name,width,height',
+  'format=format_name,start_time,duration:stream=index,codec_type,codec_name,width,height',
   '-of', 'json', file
 ]));
 const formatNames = String(probe.format?.format_name || '').split(',');
@@ -51,8 +51,16 @@ const expectedFormat = expectedContainer === 'mp4' ? 'mp4' : 'webm';
 if (!formatNames.includes(expectedFormat)) fail(`Container mismatch: expected ${expectedFormat}, got ${formatNames.join(',') || 'unknown'}`);
 
 const streams = probe.streams || [];
-const video = streams.find((stream) => stream.codec_type === 'video');
-const audio = streams.find((stream) => stream.codec_type === 'audio');
+const videoStreams = streams.filter((stream) => stream.codec_type === 'video');
+const audioStreams = streams.filter((stream) => stream.codec_type === 'audio');
+if (videoStreams.length !== 1) {
+  fail(`Expected exactly one video stream; found ${videoStreams.length}. Multi-video outputs are not supported by this profile`);
+}
+if (audioStreams.length > 1) {
+  fail(`Expected at most one audio stream; found ${audioStreams.length}. Multi-audio outputs must be normalized before validation`);
+}
+const video = videoStreams[0];
+const audio = audioStreams[0] || null;
 if (!video) fail('No video stream found');
 if (!Number.isInteger(video.width) || !Number.isInteger(video.height) || video.width < 2 || video.height < 2) {
   fail('Video dimensions are missing or invalid');
@@ -162,24 +170,34 @@ const mp4MovieDuration = expectedContainer === 'mp4' ? readMp4MovieDuration(file
 function packetTiming(selector, label) {
   const output = run('ffprobe', [
     '-v', 'error', '-select_streams', selector, '-show_packets',
-    '-show_entries', 'packet=pts_time,duration_time', '-of', 'csv=p=0', file
+    '-show_entries', 'packet=pts_time,duration_time', '-of', 'json', file
   ]);
+  let packets;
+  try {
+    packets = JSON.parse(output).packets;
+  } catch {
+    fail(`${label} stream packet timing is not valid FFprobe JSON`);
+  }
+  if (!Array.isArray(packets) || packets.length === 0) {
+    fail(`${label} stream contains no measurable packets`);
+  }
   let firstTimestamp = Infinity;
   let lastPacketEnd = -Infinity;
-  for (const line of output.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const [timestampText, durationText] = line.split(',');
-    const timestamp = Number(timestampText);
-    const duration = Number(durationText);
-    if (!Number.isFinite(timestamp) || !Number.isFinite(duration) || duration <= 0) continue;
+  for (let index = 0; index < packets.length; index += 1) {
+    const packet = packets[index];
+    const timestamp = Number(packet.pts_time);
+    const duration = Number(packet.duration_time);
+    if (!Number.isFinite(timestamp) || !Number.isFinite(duration) || duration <= 0) {
+      fail(`${label} stream packet ${index} has missing or invalid PTS/duration; refusing partial-timeline validation`);
+    }
     firstTimestamp = Math.min(firstTimestamp, timestamp);
     lastPacketEnd = Math.max(lastPacketEnd, timestamp + duration);
   }
   const measuredDuration = lastPacketEnd - firstTimestamp;
   if (!Number.isFinite(measuredDuration) || measuredDuration <= 0) {
-    fail(`${label} stream packet timing is missing or invalid; refusing to substitute container duration`);
+    fail(`${label} stream packet timeline is invalid; refusing to substitute container duration`);
   }
-  return {start: firstTimestamp, end: lastPacketEnd, duration: measuredDuration};
+  return {start: firstTimestamp, end: lastPacketEnd, duration: measuredDuration, packetCount: packets.length};
 }
 
 const videoTiming = packetTiming('v:0', 'Video');
@@ -222,5 +240,8 @@ console.log([
   `video=${video.codec_name} ${video.width}x${video.height} ${videoTiming.duration.toFixed(3)}s`,
   audio ? `audio=${audio.codec_name} ${audioDuration.toFixed(3)}s` : 'audio=absent (allowed)',
   `containerTimeline=${formatDuration.toFixed(3)}s`,
-  'decode=full video and available audio streams'
+  'decode=full video and available audio streams',
+  'streamPolicy=exactly one video and at most one audio',
+  `videoPackets=${videoTiming.packetCount}`,
+  audio ? `audioPackets=${audioTiming.packetCount}` : 'audioPackets=0'
 ].join(' | '));
