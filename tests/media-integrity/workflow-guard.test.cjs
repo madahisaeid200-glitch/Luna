@@ -25,6 +25,15 @@ const validator = fs.readFileSync('tests/media-integrity/validate-media.mjs', 'u
 assert.ok(validator.includes('function packetTiming(selector, label)'),
   'Each media stream duration must be measured independently from its packets');
 assert.ok(validator.includes("'-show_packets'"), 'Media validation must inspect packet timestamps and durations');
+assert.ok(validator.includes("'-of', 'json'"), 'Packet timing must use structured JSON rather than lossy CSV rows');
+assert.ok(validator.includes('has missing or invalid PTS/duration; refusing partial-timeline validation'),
+  'Any packet with missing timing must fail closed rather than be silently skipped');
+assert.ok(validator.includes('videoStreams.length !== 1'),
+  'Media validation must reject ambiguous multiple video streams');
+assert.ok(validator.includes('audioStreams.length > 1'),
+  'Media validation must reject ambiguous multiple audio streams');
+assert.ok(fixtures.includes('multiple-audio.mp4'),
+  'Fixture suite must include a multi-audio output that is rejected');
 assert.ok(validator.includes('packet=pts_time,duration_time'), 'Packet timing must include both timestamps and durations');
 assert.ok(!validator.includes('video.duration || formatDuration') && !validator.includes('audio.duration || formatDuration'),
   'Container duration must never be substituted for missing stream duration');
