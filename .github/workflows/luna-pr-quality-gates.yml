@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - name: Test Reels workspace draft lifecycle
         run: node tests/reels-workspace.test.cjs
+      - name: Test dashboard rendering and persisted storage security
+        run: node tests/dashboard-rendering-security.test.cjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
