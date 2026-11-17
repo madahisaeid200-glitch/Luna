@@ -21,6 +21,8 @@ jobs:
         run: node tests/reels-workspace.test.cjs
       - name: Test dashboard rendering and persisted storage security
         run: node tests/dashboard-rendering-security.test.cjs
+      - name: Test media lab capability gate and local MP4 safeguards
+        run: node tests/media-lab-safety.test.cjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
