@@ -20,6 +20,7 @@ ffmpeg -hide_banner -loglevel error \
   -c:a libopus -b:a 64k "$OUT/valid.webm"
 
 node "$ROOT/validate-media.mjs" "$OUT/valid.mp4" --container mp4 --require-audio
+node "$ROOT/validate-media.mjs" "$OUT/valid.mp4" --container mp4 --require-audio --profile instagram-mp4
 node "$ROOT/validate-media.mjs" "$OUT/valid.webm" --container webm --require-audio
 
 # Negative test: corrupt only MP4 mvhd duration while preserving encoded packets
@@ -66,6 +67,16 @@ ffmpeg -hide_banner -loglevel error \
   "$OUT/offset-av.mp4"
 if node "$ROOT/validate-media.mjs" "$OUT/offset-av.mp4" --container mp4 --require-audio; then
   echo 'Audio/video start-time offset was incorrectly accepted' >&2
+  exit 1
+fi
+
+# Negative test: Instagram hand-off profile must reject non-H.264 video even when the MP4 decodes.
+ffmpeg -hide_banner -loglevel error \
+  -f lavfi -i "testsrc2=size=320x568:rate=24:duration=2.5" \
+  -f lavfi -i "sine=frequency=660:sample_rate=48000:duration=2.5" \
+  -c:v mpeg4 -q:v 5 -c:a aac -b:a 96k "$OUT/incompatible-codec.mp4"
+if node "$ROOT/validate-media.mjs" "$OUT/incompatible-codec.mp4" --container mp4 --require-audio --profile instagram-mp4; then
+  echo 'Instagram MP4 profile incorrectly accepted non-H.264 video' >&2
   exit 1
 fi
 
