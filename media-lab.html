@@ -18,7 +18,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f3f0;border-radius
 <section class="panel"><div class="eyebrow">QUOTA-FREE DEVICE CHECK</div><h1>آزمایشگاه سازگاری MP4</h1>
 <p class="muted">این صفحه ابتدا قابلیت‌های دستگاه را بررسی می‌کند و سپس در صورت تمایل یک فایل آزمایشی مصنوعی می‌سازد. هیچ تصویر، صدا یا ویدئوی شخصی آپلود نمی‌شود و هیچ API هوش مصنوعی یا سهمیه‌ای مصرف نمی‌شود.</p>
 <p class="hint">پروفایل هدف: MP4 · H.264/AVC · AAC-LC · عمودی 1080×1920 · 30fps · صدای 48kHz استریو. نتیجه این بررسی به‌تنهایی تضمین نمی‌کند که خروجی نهایی بدون خطا ساخته شود.</p>
-<div class="actions"><button class="primary" id="run">اجرای آزمایش روی همین دستگاه</button><button id="copy" disabled>کپی گزارش</button></div><div class="actions"><button class="primary" id="makeMp4">ساخت فایل MP4 آزمایشی ۲ ثانیه‌ای</button></div><p class="hint">این آزمایش یک انیمیشن ساده 360×640 با صدای سکوت می‌سازد؛ برای سنجش مسیر واقعی H.264/AAC است، نه کیفیت نهایی ویدئوی LUNA. برای بارگذاری کتابخانه فقط کد Mediabunny از CDN دریافت می‌شود؛ فایل ساخته‌شده روی همین دستگاه می‌ماند مگر خودتان آن را دانلود کنید.</p><p id="mp4Status" class="hint" role="status">پس از اجرای بررسی سازگاری، می‌توانید ساخت MP4 آزمایشی را امتحان کنید.</p><pre id="mp4Report">No MP4 test yet.</pre><video id="mp4Preview" controls playsinline style="display:none;width:100%;max-width:360px;border-radius:12px;background:#111"></video><a id="mp4Download" class="link" style="display:none" download="luna-synthetic-test.mp4">دانلود فایل MP4 آزمایشی</a><p id="status" class="hint" role="status">برای شروع، دکمه آزمایش را بزنید.</p></section>
+<div class="actions"><button class="primary" id="run">اجرای آزمایش روی همین دستگاه</button><button id="copy" disabled>کپی گزارش</button></div><div class="actions"><button class="primary" id="makeMp4" disabled>ساخت فایل MP4 آزمایشی ۲ ثانیه‌ای</button></div><p class="hint">این آزمایش یک انیمیشن ساده 360×640 با صدای سکوت می‌سازد؛ برای سنجش مسیر واقعی H.264/AAC است، نه کیفیت نهایی ویدئوی LUNA. برای بارگذاری کتابخانه فقط کد Mediabunny از CDN دریافت می‌شود؛ فایل ساخته‌شده روی همین دستگاه می‌ماند مگر خودتان آن را دانلود کنید.</p><p id="mp4Status" class="hint" role="status">پس از اجرای بررسی سازگاری، می‌توانید ساخت MP4 آزمایشی را امتحان کنید.</p><pre id="mp4Report">No MP4 test yet.</pre><video id="mp4Preview" controls playsinline style="display:none;width:100%;max-width:360px;border-radius:12px;background:#111"></video><a id="mp4Download" class="link" style="display:none" download="luna-synthetic-test.mp4">دانلود فایل MP4 آزمایشی</a><p id="status" class="hint" role="status">برای شروع، دکمه آزمایش را بزنید.</p></section>
 <section class="panel"><div class="eyebrow">CAPABILITY RESULTS</div><h2>نتایج قابلیت‌ها</h2><div id="results" class="results"><p class="muted">هنوز آزمایشی اجرا نشده است.</p></div></section>
 <section class="panel"><div class="eyebrow">DIAGNOSTIC REPORT</div><h2>گزارش فنی</h2><pre id="report">No diagnostic run yet.</pre></section>
 <section class="panel"><div class="eyebrow">IMPORTANT LIMITATION</div><p>حتی اگر H.264 و AAC پشتیبانی شوند، هنوز باید یک فایل واقعی آزمایشی ساخته و کدک، ابعاد، مدت، صدا، هم‌زمانی، حجم و پخش آن در Chrome و گالری گوشی بررسی شود. تا عبور از آن آزمون، خروجی MP4 برای انتشار تأییدشده محسوب نمی‌شود.</p></section>
@@ -55,18 +55,19 @@ async function run(){
  const required=['H264 1080x1920 30fps','AAC-LC 48kHz stereo'];
  report.tests.minimumEncoderGate=required.every(k=>report.tests[k]?.supported===true);report.tests.exportApproved=false;
  report.decision=report.tests.minimumEncoderGate?'ENCODER_APIS_PRESENT — REAL_FILE_TEST_REQUIRED':'ENCODER_REQUIREMENTS_NOT_MET — DO_NOT_ENABLE_MP4_EXPORT';
- lastReport=report;$('results').replaceChildren();
+ lastReport=report;mp4Button.disabled=!report.tests.minimumEncoderGate;$('results').replaceChildren();
  rows.forEach(row=>{const el=document.createElement('div');el.className='result';const label=document.createElement('div');label.textContent=row.name;const detail=document.createElement('small');detail.textContent=row.detail;label.append(detail);const state=document.createElement('span');state.className='state '+row.level;state.textContent=row.level==='ok'?'SUPPORTED':row.level==='warn'?'PARTIAL':'NOT SUPPORTED';el.append(label,state);$('results').append(el)});
  $('report').textContent=JSON.stringify(report,null,2);$('copy').disabled=false;
  $('status').textContent=report.tests.minimumEncoderGate?'انکودرهای پایه در دسترس‌اند؛ هنوز آزمایش فایل واقعی لازم است.':'پیکربندی لازم کامل پشتیبانی نشد؛ خروجی MP4 را فعال نمی‌کنیم.';
  button.disabled=false;
 }
-$('run').addEventListener('click',()=>run().catch(error=>{$('status').textContent='آزمایش ناموفق بود: '+String(error);$('run').disabled=false}));
+$('run').addEventListener('click',()=>run().catch(error=>{$('status').textContent='آزمایش ناموفق بود: '+String(error);$('run').disabled=false;mp4Button.disabled=true}));
 $('copy').addEventListener('click',async()=>{if(!lastReport)return;try{await navigator.clipboard.writeText(JSON.stringify(lastReport,null,2));$('status').textContent='گزارش کپی شد.'}catch(error){$('status').textContent='کپی خودکار در دسترس نیست؛ گزارش را از کادر انتخاب و کپی کنید.'}});
 
 let lastMp4ObjectUrl=null;
 const mp4Button=$('makeMp4');
 mp4Button.addEventListener('click',async()=>{
+ if(!lastReport||lastReport.tests?.minimumEncoderGate!==true){$('mp4Status').textContent='ابتدا آزمایش سازگاری را اجرا کنید و فقط در صورت عبور از حداقل شرایط، ساخت MP4 فعال می‌شود.';return}
  mp4Button.disabled=true;
  const status=$('mp4Status'),reportEl=$('mp4Report'),preview=$('mp4Preview'),download=$('mp4Download');
  status.textContent='در حال بارگذاری کتابخانه و ساخت فایل آزمایشی…';
