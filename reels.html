@@ -62,8 +62,9 @@ function render(){const box=$('drafts');box.replaceChildren();$('draftCount').te
 fields.concat(checks).forEach(k=>$(k).addEventListener('input',update));
 $('save').onclick=()=>{const o=current();if(!o.title||!o.hook||!o.setup||!o.payoff){$('status').textContent='عنوان، Hook، Setup و Payoff ضروری هستند.';return}const nextItems=items.slice();const i=nextItems.findIndex(x=>x.id===o.id);if(i>=0)nextItems[i]=o;else nextItems.push(o);if(!persist(nextItems)){$('status').textContent='ذخیره‌سازی مرورگر در دسترس نیست یا فضا کافی نیست؛ پیش‌نویس ذخیره نشد.';return}items=nextItems;selected=o.id;render();$('status').textContent='پیش‌نویس در همین مرورگر ذخیره شد؛ تولید یا انتشار انجام نشده است.'};
 $('new').onclick=()=>{selected=null;fill(null);$('status').textContent='پیش‌نویس تازه آماده است.';render()};
-$('export').onclick=()=>{const blob=new Blob([JSON.stringify(current(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='luna-reel-brief.json';a.click();URL.revokeObjectURL(a.href)};
-$('download').onclick=()=>{const o=current();const body=['LUNA REEL BRIEF',...fields.map(k=>k.toUpperCase()+':\n'+o[k]),'QA:\n'+checks.map(k=>k+': '+o.qa[k]).join('\n')].join('\n\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body],{type:'text/plain;charset=utf-8'}));a.download='luna-reel-brief.txt';a.click();URL.revokeObjectURL(a.href)};
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$('export').onclick=()=>downloadBlob(new Blob([JSON.stringify(current(),null,2)],{type:'application/json'}),'luna-reel-brief.json');
+$('download').onclick=()=>{const o=current();const body=['LUNA REEL BRIEF',...fields.map(k=>k.toUpperCase()+':\\n'+o[k]),'QA:\\n'+checks.map(k=>k+': '+o.qa[k]).join('\\n')].join('\\n\\n');downloadBlob(new Blob([body],{type:'text/plain;charset=utf-8'}),'luna-reel-brief.txt')};
 fill(null);render();
 })();
 </script></body></html>
