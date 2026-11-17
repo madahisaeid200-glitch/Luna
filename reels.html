@@ -64,7 +64,7 @@ $('save').onclick=()=>{const o=current();if(!o.title||!o.hook||!o.setup||!o.payo
 $('new').onclick=()=>{selected=null;fill(null);$('status').textContent='پیش‌نویس تازه آماده است.';render()};
 function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('export').onclick=()=>downloadBlob(new Blob([JSON.stringify(current(),null,2)],{type:'application/json'}),'luna-reel-brief.json');
-$('download').onclick=()=>{const o=current();const body=['LUNA REEL BRIEF',...fields.map(k=>k.toUpperCase()+':\\n'+o[k]),'QA:\\n'+checks.map(k=>k+': '+o.qa[k]).join('\\n')].join('\\n\\n');downloadBlob(new Blob([body],{type:'text/plain;charset=utf-8'}),'luna-reel-brief.txt')};
+$('download').onclick=()=>{const o=current();const body=['LUNA REEL BRIEF',...fields.map(k=>k.toUpperCase()+':\n'+o[k]),'QA:\n'+checks.map(k=>k+': '+o.qa[k]).join('\n')].join('\n\n');downloadBlob(new Blob([body],{type:'text/plain;charset=utf-8'}),'luna-reel-brief.txt')};
 fill(null);render();
 })();
 </script></body></html>
