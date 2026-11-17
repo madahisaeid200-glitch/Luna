@@ -22,6 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install FFmpeg media validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
       - name: Install Playwright Chromium
         run: |
           npm install --no-save playwright
@@ -132,6 +136,16 @@ jobs:
             } finally { await browser.close(); }
           })().catch(e=>{console.error(e);process.exit(1);});
           NODE
+      - name: Validate final WebM containers, audio tracks and full decode
+        if: always() && hashFiles('luna-test-output/luna-final-assembled.webm', 'luna-test-output/luna-voiced-animatic.webm') != ''
+        run: |
+          set -euo pipefail
+          if [ -f luna-test-output/luna-final-assembled.webm ]; then
+            node tests/media-integrity/validate-media.mjs luna-test-output/luna-final-assembled.webm --container webm --require-audio
+          fi
+          if [ -f luna-test-output/luna-voiced-animatic.webm ]; then
+            node tests/media-integrity/validate-media.mjs luna-test-output/luna-voiced-animatic.webm --container webm --require-audio
+          fi
       - name: Upload generated LUNA test outputs
         if: always()
         uses: actions/upload-artifact@v4
