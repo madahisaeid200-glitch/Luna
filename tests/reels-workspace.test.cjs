@@ -24,6 +24,9 @@ function boot(saved='[]', writable=true) {
   const elements=Object.fromEntries(ids.map(id=>[id,new Element(id)]));
   const storage=new Map([['lunaReelsDrafts',saved]]);
   const downloads=[];
+  const timers=[];
+  const revoked=[];
+  let objectUrlCount=0;
   const document={
     getElementById:id=>elements[id]||(elements[id]=new Element(id)),
     createElement:tag=>{const el=new Element(tag);el.tagName=tag;el.click=()=>downloads.push({tag,download:el.download,href:el.href});return el;}
@@ -34,11 +37,12 @@ function boot(saved='[]', writable=true) {
       setItem:(key,value)=>{if(!writable)throw new Error('storage unavailable');storage.set(key,String(value))}
     },
     confirm:()=>true, Date, JSON, Blob:class Blob{constructor(parts,opts){this.parts=parts;this.type=opts?.type}},
-    URL:{createObjectURL:()=> 'blob:test',revokeObjectURL:()=>{}},
+    setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length},
+    URL:{createObjectURL:()=> 'blob:test-'+(++objectUrlCount),revokeObjectURL:(url)=>revoked.push(url)},
     console
   };
   vm.runInNewContext(fs.readFileSync('reels.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1],context);
-  return {elements,storage,downloads};
+  return {elements,storage,downloads,timers,revoked};
 }
 // The media lab is a local-only capability probe and must not call generation or publishing APIs.
 const mediaLab=fs.readFileSync('media-lab.html','utf8');
@@ -174,6 +178,11 @@ e.download.click();
 assert.equal(app.downloads.length,2);
 assert.equal(app.downloads[0].download,'luna-reel-brief.json');
 assert.equal(app.downloads[1].download,'luna-reel-brief.txt');
+assert.equal(app.timers.length,2,'each download must schedule deferred object URL cleanup');
+assert.deepEqual(app.timers.map(timer=>timer.delay),[1000,1000]);
+assert.equal(app.revoked.length,0,'object URLs must not be revoked synchronously after click');
+app.timers.forEach(timer=>timer.fn());
+assert.deepEqual(app.revoked,['blob:test-1','blob:test-2']);
 // Producer AI endpoint validation must be shared by save, reload and test flows.
 const producerHtml=fs.readFileSync('producer.html','utf8');
 const endpointValidator=producerHtml.match(/function normalizeAllowedAiEndpoint\(value\)\{[\s\S]*?\n\}/);
