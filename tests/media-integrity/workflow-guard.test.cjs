@@ -32,6 +32,14 @@ assert.ok(validator.includes('videoStreams.length !== 1'),
   'Media validation must reject ambiguous multiple video streams');
 assert.ok(validator.includes('audioStreams.length > 1'),
   'Media validation must reject ambiguous multiple audio streams');
+assert.ok(validator.includes("profile === 'instagram-mp4'"),
+  'The validator must expose an explicit Instagram MP4 compatibility profile');
+assert.ok(validator.includes("video.codec_name !== 'h264'") && validator.includes("audio.codec_name !== 'aac'"),
+  'Instagram MP4 compatibility must require H.264 video and AAC audio');
+assert.ok(fixtures.includes('--profile instagram-mp4'),
+  'Fixture suite must exercise the Instagram MP4 compatibility profile');
+assert.ok(fixtures.includes('incompatible-codec.mp4'),
+  'Fixture suite must reject an MP4 with an incompatible video codec');
 assert.ok(validator.includes('packet=pts_time,duration_time'), 'Packet timing must include both timestamps and durations');
 assert.ok(!validator.includes('video.duration || formatDuration') && !validator.includes('audio.duration || formatDuration'),
   'Container duration must never be substituted for missing stream duration');
