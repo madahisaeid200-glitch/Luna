@@ -24,6 +24,17 @@ assert.match(deploy, /wrangler@4 pages deploy dist --project-name=luna-studio --
 
 
 const workerWorkflow = fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8');
+const workerPush = workerWorkflow.match(/^  push:\\s*\\n([\\s\\S]*?)(?=^  workflow_dispatch:)/m)?.[1];
+assert.ok(workerPush, 'Worker auto-deploy push trigger must remain explicit');
+assert.match(workerPush, /branches:\\s*\\[\\"main\\"\\]/,
+  'Worker auto-deploy must remain limited to main');
+assert.match(workerPush, /- \\"worker\\.js\\"/,
+  'Worker source changes on main must still trigger deployment');
+assert.match(workerPush, /- \\"wrangler\\.toml\\"/,
+  'Worker configuration changes on main must still trigger deployment');
+assert.doesNotMatch(workerPush, /deploy-worker\\.yml/,
+  'Editing the deployment workflow itself must not trigger a production Worker deployment');
+
 const workerCheckout = workerWorkflow.indexOf('      - name: Checkout repository');
 const workerGuard = workerWorkflow.indexOf('      - name: Refuse non-main Worker deployment');
 const workerDeploy = workerWorkflow.indexOf('      - name: Deploy existing LUNA Worker to Cloudflare');
