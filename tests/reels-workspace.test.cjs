@@ -68,6 +68,13 @@ assert.match(fs.readFileSync('index.html','utf8'),/href="\.\/reels\.html"/);
 const dashboardHtml=fs.readFileSync('index.html','utf8');
 assert.match(dashboardHtml,/href="\.\/media-lab\.html"/);
 assert.match(mediaLab,/href="\.\/reels\.html"/);
+const reelsHtml=fs.readFileSync('reels.html','utf8');
+for (const id of ['title','lane','duration','hook','setup','payoff','caption','hashtags','cover']) {
+  assert.match(reelsHtml,new RegExp('<(?:input|textarea|select) id="' + id + '" dir="ltr"'),
+    'English-first Reels field must declare left-to-right direction: ' + id);
+}
+assert.match(reelsHtml,/\.field input\[dir="ltr"\].*direction:ltr;text-align:left/,
+  'English-first fields must render left-aligned as well as left-to-right');
 assert.doesNotMatch(fs.readFileSync('reels.html','utf8'),/\.innerHTML\s*=/,
   'Reels draft rendering must not use HTML parsing sinks');
 assert.match(fs.readFileSync('reels.html','utf8'),/box\.replaceChildren\(\)/,
