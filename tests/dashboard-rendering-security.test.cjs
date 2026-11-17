@@ -8,13 +8,13 @@ const start = html.indexOf('function render(){');
 const end = html.indexOf('\nconst storyIdeas=', start);
 assert.ok(start >= 0 && end > start, 'Dashboard render function must exist');
 const renderSource = html.slice(start, end);
-assert.doesNotMatch(renderSource, /\\.innerHTML\\s*=|insertAdjacentHTML|outerHTML\\s*=|document\\.write/,
+assert.doesNotMatch(renderSource, /\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=|document\.write/,
   'Dashboard render must not use HTML parsing or insertion sinks');
-assert.match(renderSource, /heading\\.textContent=fa\\?e\\.fa:e\\.en/);
-assert.match(renderSource, /summary\\.textContent=fa\\?e\\.storyFa\\[0\\]:e\\.storyEn\\[0\\]/);
-assert.match(renderSource, /paragraph\\.textContent=line/);
-assert.match(renderSource, /box\\.replaceChildren\\(\\)/);
-assert.match(renderSource, /story\\.replaceChildren\\(\\)/);
+assert.match(renderSource, /heading\.textContent=fa\?e\.fa:e\.en/);
+assert.match(renderSource, /summary\.textContent=fa\?e\.storyFa\[0\]:e\.storyEn\[0\]/);
+assert.match(renderSource, /paragraph\.textContent=line/);
+assert.match(renderSource, /box\.replaceChildren\(\)/);
+assert.match(renderSource, /story\.replaceChildren\(\)/);
 
 class Element {
   constructor(tag='div') {
