@@ -5,23 +5,32 @@ const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
-    const allowedOrigin = !origin || origin === ALLOWED_ORIGIN;
+    const allowedOrigin = origin === ALLOWED_ORIGIN;
     const cors = {
-      "Access-Control-Allow-Origin": origin || "*",
+      ...(allowedOrigin ? { "Access-Control-Allow-Origin": ALLOWED_ORIGIN } : {}),
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
       "Access-Control-Max-Age": "86400",
       "Vary": "Origin"
     };
     const json = (data, status = 200) => new Response(JSON.stringify(data), {
       status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }
     });
-
     if (request.method === "OPTIONS") {
-      if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+      if (!allowedOrigin) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: cors });
     }
     if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+    if (request.method === "POST") {
+      const configuredToken = typeof env.LUNA_ACCESS_TOKEN === "string" ? env.LUNA_ACCESS_TOKEN : "";
+      const suppliedToken = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!configuredToken) return json({ error: "Worker access is not configured. Set the LUNA_ACCESS_TOKEN secret before enabling this version." }, 503);
+      const expectedBytes = new TextEncoder().encode(configuredToken);
+      const suppliedBytes = new TextEncoder().encode(suppliedToken);
+      let mismatch = expectedBytes.length ^ suppliedBytes.length;
+      for (let i = 0; i < Math.max(expectedBytes.length, suppliedBytes.length); i++) mismatch |= (expectedBytes[i] || 0) ^ (suppliedBytes[i] || 0);
+      if (!suppliedToken || mismatch !== 0) return json({ error: "Unauthorized. Enter the LUNA access token in Producer." }, 401);
+    }
 
     // Provider-neutral chat fallback. All provider keys are Cloudflare Worker Secrets only.
     const externalChat = async (provider, messages, maxTokens, temperature, timeoutOverride) => {
@@ -171,23 +180,7 @@ export default {
     };
 
     if (request.method === "GET") {
-      return json({
-        ok: true,
-        service: "LUNA AI Worker",
-        aiBinding: Boolean(env.AI),
-        model: env.AI_MODEL || DEFAULT_MODEL,
-        fallbackModel: FALLBACK_MODEL,
-        providers: {
-          cloudflare: Boolean(env.AI),
-          groq: Boolean(env.GROQ_API_KEY),
-          mistral: Boolean(env.MISTRAL_API_KEY),
-          gemini: Boolean(env.GEMINI_API_KEY),
-          nvidia: Boolean(env.NVIDIA_API_KEY),
-          openrouter: Boolean(env.OPENROUTER_API_KEY)
-        },
-        publicFallbacks: { murakumo: true, murakumoFree: true, mishima: true, qwen3vl: true },
-        message: "Worker is reachable. Keyless OVH and Murakumo text fallbacks plus Murakumo Qwen3-VL vision analysis are wired. Identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding; health checks do not consume model quota."
-      }, 200);
+      return json({ ok: true, service: "LUNA AI Worker", message: "Worker is reachable. Authenticated POST requests are available when the owner secret is configured." }, 200);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
 
