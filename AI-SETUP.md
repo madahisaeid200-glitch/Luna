@@ -28,10 +28,11 @@ The updated Worker rejects every POST request unless the owner token is configur
 ## 4. Connect LUNA
 1. Open https://madahisaeid200-glitch.github.io/Luna/producer.html
 2. In **AI Connection**, paste your Worker URL, normally ending in `.workers.dev`.
-3. Press **Save connection**.
-4. Enter an episode title and premise, choose the language and length, then press **Generate episode draft**. The status message should confirm that an AI-generated script was returned.
+3. Enter the private token in **توکن دسترسی خصوصی LUNA** and press **اعمال توکن برای این نشست**. The page keeps it in memory only; after a refresh, enter it again.
+4. Press **Save connection**.
+5. Enter an episode title and premise, choose the language and length, then press **Generate episode draft**. The status message should confirm that an AI-generated script was returned.
 
-## 5. Quick diagnosis\n- Open the Worker URL directly in a browser. The updated Worker should return a minimal JSON response with `ok: true`; it no longer exposes provider bindings publicly. if you see `Use POST.` you are still running the older Worker code, so paste the current `worker.js` into Cloudflare and deploy.\n- If the connection test passes but generation fails, read the detailed error beside **AI Connection**. It may identify a model error or usage/quota issue.\n- The GitHub Pages workflow deploys the website. A separate GitHub Actions workflow deploys the Worker. Check the `Deploy LUNA AI Worker` run in GitHub Actions if Worker code was changed.\n\n## 6. Costs and limits
+## 5. Quick diagnosis\n- Open the Worker URL directly in a browser. The updated Worker should return a minimal JSON response with `ok: true`; it no longer exposes provider bindings publicly. If you see `Use POST.` you are still running the older Worker code, so paste the current `worker.js` into Cloudflare and deploy.\n- If the connection test passes but generation fails, read the detailed error beside **AI Connection**. It may identify a model error or usage/quota issue.\n- The GitHub Pages workflow deploys the website. A separate GitHub Actions workflow deploys the Worker. Check the `Deploy LUNA AI Worker` run in GitHub Actions if Worker code was changed.\n\n## 6. Costs and limits
 - Cloudflare Workers AI currently includes 10,000 Neurons per day on its free allocation. If you use up the allocation, requests may stop until the daily reset unless you enable paid usage. See https://developers.cloudflare.com/workers-ai/platform/pricing/
 - Cloudflare Workers also has a free plan for the Worker endpoint. See https://developers.cloudflare.com/workers/platform/pricing/
 - Usage limits and model availability can change; check the Cloudflare dashboard before relying on it for production.
