@@ -47,6 +47,8 @@ jobs:
             'CORS must allow the authenticated Authorization header');
           assert.match(worker, /origin === ALLOWED_ORIGIN/,
             'CORS must require the exact published GitHub Pages origin');
+          assert.match(worker, /request\\.method === "POST" && !allowedOrigin/,
+            'POST requests must reject missing or non-approved Origin headers');
           assert.match(html, /id="lunaAccessToken"/,
             'Producer must provide a private token input');
           assert.match(html, /headers\.set\('Authorization', 'Bearer ' \+ lunaAccessToken\)/,
