@@ -15,20 +15,31 @@ This setup uses Cloudflare Workers AI so you do not need an OpenAI API account o
 4. Save and deploy the Worker again. The binding name must be exactly `AI`.
 5. Do not create an OpenAI API key or paste any key into the website. The default text model in the current code is `@cf/meta/llama-3.1-8b-instruct-fast`; it falls back to `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. The deployment file also declares the Workers AI binding as `AI`.
 
-## 3. Connect LUNA
+## 3. Configure the private LUNA access token
+
+The updated Worker rejects every POST request unless the owner token is configured. This is intentional: CORS alone is not authentication.
+
+1. Create a long random secret (at least 32 characters; preferably 32 random bytes encoded as hex) using a password manager or trusted local generator.
+2. In Cloudflare, open **Workers & Pages → orange-firefly-6434 → Settings → Variables and Secrets** (menu wording may vary).
+3. Add a secret named exactly `LUNA_ACCESS_TOKEN` and paste the generated value. Save it as a secret, not a plain-text variable.
+4. Do not paste this value into GitHub, source code, chat, a URL, or browser storage.
+5. Deploy the Worker only after the secret is saved. Until then, POST calls intentionally return HTTP 503.
+
+## 4. Connect LUNA
 1. Open https://madahisaeid200-glitch.github.io/Luna/producer.html
 2. In **AI Connection**, paste your Worker URL, normally ending in `.workers.dev`.
-3. Press **Save connection**.
-4. Enter an episode title and premise, choose the language and length, then press **Generate episode draft**. The status message should confirm that an AI-generated script was returned.
+3. Enter the private token in **توکن دسترسی خصوصی LUNA** and press **اعمال توکن برای این نشست**. The page keeps it in memory only; after a refresh, enter it again.
+4. Press **Save connection**.
+5. Enter an episode title and premise, choose the language and length, then press **Generate episode draft**. The status message should confirm that an AI-generated script was returned.
 
-## 4. Quick diagnosis\n- Open the Worker URL directly in a browser. The updated Worker should return JSON with `ok: true` and `aiBinding: true`; if you see `Use POST.` you are still running the older Worker code, so paste the current `worker.js` into Cloudflare and deploy.\n- If the connection test passes but generation fails, read the detailed error beside **AI Connection**. It may identify a model error or usage/quota issue.\n- The GitHub Pages workflow deploys the website. A separate GitHub Actions workflow deploys the Worker. Check the `Deploy LUNA AI Worker` run in GitHub Actions if Worker code was changed.\n\n## 5. Costs and limits
+## 5. Quick diagnosis\n- Open the Worker URL directly in a browser. The updated Worker should return a minimal JSON response with `ok: true`; it no longer exposes provider bindings publicly. If you see `Use POST.` you are still running the older Worker code, so paste the current `worker.js` into Cloudflare and deploy.\n- If the connection test passes but generation fails, read the detailed error beside **AI Connection**. It may identify a model error or usage/quota issue.\n- The GitHub Pages workflow deploys the website. A separate GitHub Actions workflow deploys the Worker. Check the `Deploy LUNA AI Worker` run in GitHub Actions if Worker code was changed.\n\n## 6. Costs and limits
 - Cloudflare Workers AI currently includes 10,000 Neurons per day on its free allocation. If you use up the allocation, requests may stop until the daily reset unless you enable paid usage. See https://developers.cloudflare.com/workers-ai/platform/pricing/
 - Cloudflare Workers also has a free plan for the Worker endpoint. See https://developers.cloudflare.com/workers/platform/pricing/
 - Usage limits and model availability can change; check the Cloudflare dashboard before relying on it for production.
 - This endpoint generates scripts only. Image/video generation is a separate integration and may cost extra.
 - Keep the Worker restricted to the LUNA site origin. Do not publish provider tokens or secrets in GitHub, the browser, or this public repository.
 
-## 6. Automatic free-provider fallback
+## 7. Automatic free-provider fallback
 
 ### Main screenplay generation
 
