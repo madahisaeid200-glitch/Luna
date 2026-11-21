@@ -41,7 +41,7 @@ jobs:
             'Public health response must stay minimal and disclose that POST access requires the owner secret');
           assert.doesNotMatch(healthBlock, /providers:|publicFallbacks:|GROQ_API_KEY|MISTRAL_API_KEY/,
             'Public health must not reveal configured provider availability');
-          assert.match(worker, /env\\.LUNA_ACCESS_TOKEN/,
+          assert.match(worker, /env\.LUNA_ACCESS_TOKEN/,
             'Every Worker POST must be protected by the private owner token');
           assert.match(worker, /Access-Control-Allow-Headers": "Authorization, Content-Type"/,
             'CORS must allow the authenticated Authorization header');
@@ -49,11 +49,11 @@ jobs:
             'CORS must require the exact published GitHub Pages origin');
           assert.match(html, /id="lunaAccessToken"/,
             'Producer must provide a private token input');
-          assert.match(html, /headers\\.set\\('Authorization', 'Bearer ' \\+ lunaAccessToken\\)/,
+          assert.match(html, /headers\.set\('Authorization', 'Bearer ' \+ lunaAccessToken\)/,
             'Producer Worker requests must attach the token as a Bearer header');
-          assert.doesNotMatch(html, /localStorage\\.setItem\\(['"]lunaAccessToken/,
+          assert.doesNotMatch(html, /localStorage\.setItem\(['"]lunaAccessToken/,
             'Producer must never persist the access token in localStorage');
-          assert.doesNotMatch(html, /(?<![A-Za-z])fetch\\(endpoint/,
+          assert.doesNotMatch(html, /(?<![A-Za-z])fetch\(endpoint/,
             'All direct Worker endpoint requests must use the authenticated fetch helper');
           const imageEditStart = worker.indexOf('if (mode === "image_edit")');
           const imageEditEnd = worker.indexOf('// Generate one real scene image', imageEditStart);
