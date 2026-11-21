@@ -20,7 +20,8 @@ export default {
       if (!allowedOrigin) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: cors });
     }
-    if (!allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+    if (origin && !allowedOrigin) return json({ error: "Origin not allowed." }, 403);
+    if (request.method === "POST" && !allowedOrigin) return json({ error: "Origin not allowed." }, 403);
     if (request.method === "POST") {
       const configuredToken = typeof env.LUNA_ACCESS_TOKEN === "string" ? env.LUNA_ACCESS_TOKEN : "";
       const suppliedToken = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
