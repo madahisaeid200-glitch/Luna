@@ -185,8 +185,10 @@ el('testAiEndpoint').onclick=async()=>{
  const endpoint=endpointInput.value.trim()||defaultEndpoint;
  localStorage.setItem('lunaAiEndpoint',endpoint.replace(/\/$/,''));
  if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
- const button=el('testAiEndpoint');button.disabled=true;
- if(!lunaAccessToken){updateAiStatus('ابتدا توکن خصوصی را وارد و اعمال کن؛ سپس اتصال را آزمایش کن.');return;}\n  updateAiStatus('در حال آزمایش GET و سپس POST احرازشده…');
+ const button=el('testAiEndpoint');
+ if(!lunaAccessToken){updateAiStatus('ابتدا توکن خصوصی را وارد و اعمال کن؛ سپس اتصال را آزمایش کن.');return;}
+ button.disabled=true;
+  updateAiStatus('در حال آزمایش GET و سپس POST احرازشده…');
  try{
    const getResponse=await fetchLunaWithTimeout(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},12000);
    let getData={};try{getData=await getResponse.json()}catch(e){throw new Error('GET: پاسخ JSON معتبر نیست؛ HTTP '+getResponse.status);}
