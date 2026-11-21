@@ -37,8 +37,24 @@ jobs:
             'Worker health endpoint must stay HTTP 200 when optional Preview AI binding is absent');
           assert.ok(!healthBlock.includes('env.AI ? 200 : 503'),
             'Missing optional Workers AI binding must not mark the Preview Worker unhealthy');
-          assert.match(healthBlock, /identity-preserving reference-image editing still requires the optional Cloudflare Workers AI binding/i,
-            'Worker health response must disclose that Preview reference-image editing needs Workers AI');
+          assert.match(healthBlock, /Authenticated POST requests are available when the owner secret is configured/i,
+            'Public health response must stay minimal and disclose that POST access requires the owner secret');
+          assert.doesNotMatch(healthBlock, /providers:|publicFallbacks:|GROQ_API_KEY|MISTRAL_API_KEY/,
+            'Public health must not reveal configured provider availability');
+          assert.match(worker, /env\\.LUNA_ACCESS_TOKEN/,
+            'Every Worker POST must be protected by the private owner token');
+          assert.match(worker, /Access-Control-Allow-Headers": "Authorization, Content-Type"/,
+            'CORS must allow the authenticated Authorization header');
+          assert.match(worker, /origin === ALLOWED_ORIGIN/,
+            'CORS must require the exact published GitHub Pages origin');
+          assert.match(html, /id="lunaAccessToken"/,
+            'Producer must provide a private token input');
+          assert.match(html, /headers\\.set\\('Authorization', 'Bearer ' \\+ lunaAccessToken\\)/,
+            'Producer Worker requests must attach the token as a Bearer header');
+          assert.doesNotMatch(html, /localStorage\\.setItem\\(['"]lunaAccessToken/,
+            'Producer must never persist the access token in localStorage');
+          assert.doesNotMatch(html, /(?<![A-Za-z])fetch\\(endpoint/,
+            'All direct Worker endpoint requests must use the authenticated fetch helper');
           const imageEditStart = worker.indexOf('if (mode === "image_edit")');
           const imageEditEnd = worker.indexOf('// Generate one real scene image', imageEditStart);
           assert.ok(imageEditStart >= 0 && imageEditEnd > imageEditStart, 'Missing reference-image edit route');
