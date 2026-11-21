@@ -65,6 +65,8 @@
 <h2>اتصال به هوش مصنوعی / AI Connection</h2>
 <p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
 <div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" value="https://orange-firefly-6434.madahisaeid200.workers.dev" placeholder="https://orange-firefly-6434.madahisaeid200.workers.dev" autocomplete="url"></div>
+<div class="field"><label for="lunaAccessToken">توکن دسترسی خصوصی LUNA</label><input id="lunaAccessToken" type="password" autocomplete="off" spellcheck="false" placeholder="توکن را از تنظیمات امن Worker وارد کن"></div>
+<div class="actions"><button id="applyLunaToken" type="button">اعمال توکن برای این نشست</button><span class="hint" id="tokenStatus">توکن ذخیره نمی‌شود و پس از تازه‌سازی صفحه باید دوباره وارد شود.</span></div>
 <div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><button id="testAiEndpoint" type="button">آزمایش اتصال / Test connection</button><button id="diagnoseBrowser" type="button">آزمایش شبکه گوشی (بدون مدل)</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
 <p class="hint" id="aiStatus" role="status">آدرس Worker از پیش تنظیم شده است؛ وضعیت مدل هنوز تأیید نشده. آزمایش اتصال به‌تنهایی تولید هوش مصنوعی را ثابت نمی‌کند.</p>
 </section>
@@ -78,7 +80,7 @@
 </main><footer>LUNA Studio · Episode Producer Beta</footer>
 <script>
 const LUNA_RENDER_SHOT_COUNT=6; // Six independently generated scenes for short episodes; long plans are capped here to protect free quotas.
-const el=id=>document.getElementById(id);let fa=true;let lastDraft='';let lastDraftIsAi=false;let lastProductionPack='';let lastDirectorPlan=null;
+const el=id=>document.getElementById(id);let lunaAccessToken='';let fa=true;let lastDraft='';let lastDraftIsAi=false;let lastProductionPack='';let lastDirectorPlan=null;
 const characterDefaults={lunaName:'LUNA',lunaLook:'Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.',lunaPersonality:'Confident, warm, witty, romantic, playful, stylish, affectionate.',leoName:'LEO',leoLook:'Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.',leoPersonality:'Charming, affectionate, confident, slightly overconfident, adorably chaotic, romantic.',style:'Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.'};
 function readCharacterProfile(){return {lunaName:(el('charLunaName')?.value||characterDefaults.lunaName).trim().slice(0,40),lunaLook:(el('charLunaLook')?.value||characterDefaults.lunaLook).trim().slice(0,700),lunaPersonality:(el('charLunaPersonality')?.value||characterDefaults.lunaPersonality).trim().slice(0,400),leoName:(el('charLeoName')?.value||characterDefaults.leoName).trim().slice(0,40),leoLook:(el('charLeoLook')?.value||characterDefaults.leoLook).trim().slice(0,700),leoPersonality:(el('charLeoPersonality')?.value||characterDefaults.leoPersonality).trim().slice(0,400),style:(el('charStyle')?.value||characterDefaults.style).trim().slice(0,500)}}
 function fillCharacterProfile(profile){const p={...characterDefaults,...(profile||{})};for(const [key,id] of [['lunaName','charLunaName'],['lunaLook','charLunaLook'],['lunaPersonality','charLunaPersonality'],['leoName','charLeoName'],['leoLook','charLeoLook'],['leoPersonality','charLeoPersonality'],['style','charStyle']])if(el(id))el(id).value=p[key]}
@@ -158,6 +160,13 @@ try {
 endpointInput.value=savedEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
+el('applyLunaToken').onclick=()=>{
+  const value=el('lunaAccessToken').value.trim();
+  if(value.length<24){el('tokenStatus').textContent='توکن واردشده کوتاه یا خالی است؛ مقدار کامل Secret را وارد کن.';return;}
+  lunaAccessToken=value;
+  el('lunaAccessToken').value='';
+  el('tokenStatus').textContent='توکن فقط در حافظه همین صفحه فعال شد؛ در مرورگر ذخیره نشده است.';
+ };
 el('saveAiEndpoint').onclick=()=>{
  const value=endpointInput.value.trim();
  if(value){
@@ -177,17 +186,17 @@ el('testAiEndpoint').onclick=async()=>{
  localStorage.setItem('lunaAiEndpoint',endpoint.replace(/\/$/,''));
  if(!endpoint){updateAiStatus('آدرس Worker تنظیم نشده است. ابتدا آدرس را ذخیره کن.');return;}
  const button=el('testAiEndpoint');button.disabled=true;
- updateAiStatus('در حال آزمایش GET و سپس POST ساده…');
+ if(!lunaAccessToken){updateAiStatus('ابتدا توکن خصوصی را وارد و اعمال کن؛ سپس اتصال را آزمایش کن.');return;}\n  updateAiStatus('در حال آزمایش GET و سپس POST احرازشده…');
  try{
    const getResponse=await fetchLunaWithTimeout(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},12000);
    let getData={};try{getData=await getResponse.json()}catch(e){throw new Error('GET: پاسخ JSON معتبر نیست؛ HTTP '+getResponse.status);}
    if(!getResponse.ok)throw new Error('GET ناموفق؛ HTTP '+getResponse.status);
-   if(!getData.aiBinding)throw new Error('GET موفق بود، اما AI binding موجود نیست.');
-   updateAiStatus('GET موفق؛ اکنون POST آزمایشی بدون اجرای مدل…');
+   if(!getData.ok)throw new Error('GET موفق نبود.');
+   updateAiStatus('GET موفق؛ اکنون POST آزمایشی احرازشده بدون اجرای مدل…');
    const postResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},15000);
    let postData={};try{postData=await postResponse.json()}catch(e){throw new Error('POST پاسخ JSON معتبر نداد؛ HTTP '+postResponse.status);}
    if(!postResponse.ok||!postData.ok)throw new Error('POST ناموفق؛ HTTP '+postResponse.status+'؛ '+(postData.error||'بدون جزئیات'));
-   updateAiStatus('تأیید ارتباط: GET و POST هر دو موفق‌اند. این آزمایش مدل هوش مصنوعی را اجرا نمی‌کند.');
+   updateAiStatus('تأیید ارتباط: GET عمومی و POST احرازشده هر دو موفق‌اند. این آزمایش مدل هوش مصنوعی را اجرا نمی‌کند.');
  }catch(error){
    const msg=String(error.message||error);
    if(error.name==='AbortError')updateAiStatus('آزمایش ارتباط timeout شد؛ '+msg);
@@ -248,7 +257,7 @@ el('generate').onclick=async()=>{
      const requestTimeout=setTimeout(()=>controller.abort(),120000);
      let response;
      try{
-       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});
+       response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({title,premise,duration:el('duration').value,tone:el('tone').value,language:lang,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});
      }finally{clearTimeout(requestTimeout);}
      const rawResponse=await response.text();
      let data;try{data=JSON.parse(rawResponse);}catch(parseError){throw new Error('پاسخ Worker قابل‌خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+rawResponse.length+' کاراکتر.');}
@@ -291,7 +300,7 @@ el('makeProductionPack').onclick=async()=>{
  try{
    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),150000);
    let response;
-   try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'production',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}
+   try{response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'production',script:lastDraft,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}
    finally{clearTimeout(timeout);}
    const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(parseError){throw new Error('پاسخ بسته تولید قابل خواندن نیست؛ HTTP '+response.status+'، '+raw.length+' کاراکتر.')}
    if(!response.ok)throw new Error((data.error||'Production-pack request failed')+(Array.isArray(data.details)?' — '+data.details.join(' | '):''));
@@ -458,8 +467,16 @@ function clearCurrentEpisodeMedia(){
  async function restoreLatestLunaImage(){try{const db=await openLunaImageDb();const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('images','readonly');const req=tx.objectStore('images').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});db.close();if(!rows.length)return false;const baseRows=rows.filter(x=>x.meta?.mode!=='story-scene');if(!baseRows.length)return false;baseRows.sort((x,y)=>(Number(y.id)||0)-(Number(x.id)||0));const latest=baseRows[0];if(!latest.dataUrl)return false;generatedImageData=latest.dataUrl;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۶ · نیازمند کنترل کیفیت';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('makePreviewVideo').disabled=true;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('visualStatus').textContent='تصویر قبلی از کتابخانه خصوصی همین مرورگر بازیابی شد؛ می‌توانی آن را دانلود یا ارزیابی کنی.';return true}catch(e){logLunaDiagnostic('image-restore-error',e.message||e);return false}}
 function reportLunaDiagnostic(message){logLunaDiagnostic('user-report',message,{profile:readCharacterProfile(),title:el('epTitle').value,worker:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,'')});}
  el('downloadDiagnostic').onclick=()=>{let stored=[];try{stored=JSON.parse(localStorage.getItem('lunaDiagnostics')||'[]')}catch(e){}const report={app:'LUNA Studio',createdAt:new Date().toISOString(),page:location.href.split('?')[0],userAgent:navigator.userAgent,endpoint:(localStorage.getItem('lunaAiEndpoint')||'').replace(/\?.*$/,''),title:el('epTitle').value,premise:el('premise').value,profile:readCharacterProfile(),latestImagePrompt:el('imagePrompt').value,visualStatus:el('visualStatus').textContent,analysisStatus:el('imageAnalysisStatus').textContent,diagnostics:stored.concat(lunaDiagnostics).slice(-40)};const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='LUNA-diagnostic-report.json';a.click();URL.revokeObjectURL(url);};
- async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
- async function fetchLunaJsonWithTimeout(url,options={},timeoutMs=60000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{const response=await fetch(url,{...options,signal:controller.signal});const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+raw.length+' کاراکتر.')}return {response,data}}finally{clearTimeout(timer)}}
+ async function lunaWorkerFetch(url,options={}) {
+  const headers = new Headers(options.headers || {});
+  if ((options.method || 'GET').toUpperCase() === 'POST') {
+    if (!lunaAccessToken) throw new Error('ابتدا توکن خصوصی LUNA را وارد و اعمال کن.');
+    headers.set('Authorization', 'Bearer ' + lunaAccessToken);
+  }
+  return fetch(url, {...options, headers});
+ }
+ async function fetchLunaWithTimeout(url,options={},timeoutMs=20000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{return await lunaWorkerFetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
+ async function fetchLunaJsonWithTimeout(url,options={},timeoutMs=60000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);try{const response=await lunaWorkerFetch(url,{...options,signal:controller.signal});const raw=await response.text();let data;try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست (HTTP '+response.status+')؛ اندازه پاسخ: '+raw.length+' کاراکتر.')}return {response,data}}finally{clearTimeout(timer)}}
  async function prepareLunaImageForAnalysis(dataUrl,maxSide=512,quality=0.42){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{try{const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('مرورگر امکان آماده‌سازی تصویر را ندارد.');ctx.drawImage(img,0,0,canvas.width,canvas.height);const compact=canvas.toDataURL('image/jpeg',quality);if(compact.length>1800000)throw new Error('حجم تصویر پس از فشرده‌سازی هنوز زیاد است؛ این نسخه باید کوچک‌تر شود.');resolve(compact);}catch(e){reject(e)}};img.onerror=()=>reject(new Error('تصویر بازیابی‌شده قابل خواندن نیست.'));img.src=dataUrl})}
  async function analyzeLunaImageData(dataUrl,referenceDataUrl=null){
   const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint;
@@ -546,7 +563,7 @@ el('generateSceneImage').onclick=async()=>{
    const button=el('generateSceneImage');button.disabled=true;button.textContent='در حال ساخت تصویر…';el('visualStatus').textContent='در حال ساخت تصویر با مدل هوش مصنوعی…';
    try{
      const endpoint=localStorage.getItem('lunaAiEndpoint')||workerEndpoint,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);let response;
-     try{response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
+     try{response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:saveCharacterProfile(false)||readCharacterProfile()}),signal:controller.signal});}finally{clearTimeout(timer);}
      const data=await response.json();if(!response.ok)throw new Error((data.error||'Image generation failed')+(data.details?' — '+data.details:''));
      if(!data.image)throw new Error('پاسخ مدل تصویر نداشت.');generatedImageData='data:'+(data.mimeType||'image/jpeg')+';base64,'+data.image;generatedSceneImages=[{dataUrl:generatedImageData,shot:1,qaPassed:false}];firstSceneQaPassed=false;generatedWanClipUrls.forEach(url=>URL.revokeObjectURL(url));generatedWanClipUrls=[];if(assembledWanVideoUrl){URL.revokeObjectURL(assembledWanVideoUrl);assembledWanVideoUrl='';}el('assembleWanClips').disabled=true;el('wanClipResults').style.display='none';el('wanClipList').replaceChildren();const oldAssembled=el('assembledWanPreview');oldAssembled.pause();oldAssembled.removeAttribute('src');oldAssembled.load();oldAssembled.style.display='none';const oldPreview=el('generatedVideoPreview');oldPreview.pause();oldPreview.removeAttribute('src');oldPreview.load();oldPreview.style.display='none';el('downloadAssembledWan').removeAttribute('href');el('downloadAssembledWan').style.display='none';el('viewGeneratedVideo').style.display='none';el('sceneImagesStatus').textContent='تصاویر مستقل داستان: ۱ از ۶';el('generateMoreScenes').disabled=true;el('generateWanClips').disabled=true;el('makePreviewVideo').disabled=true;el('makeVoicedVideo').disabled=true;
      el('sceneImage').src=generatedImageData;el('sceneImageWrap').style.display='block';el('makePreviewVideo').disabled=true;el('editSceneImage').disabled=false;el('testImageUpload').disabled=false;el('downloadSceneImage').disabled=false;el('analyzeSceneImage').disabled=false;el('downloadVideoLink').style.display='none';
@@ -596,7 +613,7 @@ el('generateSceneImage').onclick=async()=>{
           const editController=new AbortController(),editTimer=setTimeout(()=>editController.abort(),105000);let editResponse;
           try{
             const editPrompt=('Using the supplied reference image, create a new distinct live-action frame for story scene '+shot.id+'. Preserve exact identities of the same two adult leads only: same faces, hair, age, body proportions, skin tone, gender presentation and wardrobe. Change only camera angle, pose, expression and action. Keep same suite, time and lighting. Scene: '+scene+action+'. '+profile.style.slice(0,180)+' Photorealistic natural skin. EXACTLY TWO PHYSICAL PEOPLE. No third person, staff, guest, silhouette, portrait, face or human figure in any painting, photo, framed artwork, poster, screen, mirror, reflection, sculpture, statue or mannequin. Walls blank or abstract geometric art only. No text, logo, collage or split screen.').slice(0,1750);
-            editResponse=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:generatedImageData,prompt:editPrompt,width:768,height:1152}),signal:editController.signal});
+            editResponse=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_edit',image:generatedImageData,prompt:editPrompt,width:768,height:1152}),signal:editController.signal});
           }finally{clearTimeout(editTimer);}
           const editData=await editResponse.json();
           if(!editResponse.ok||editData.error||!editData.image)throw new Error((editData.error||'Reference image edit failed')+(editData.details?' — '+editData.details:''));
@@ -605,7 +622,7 @@ el('generateSceneImage').onclick=async()=>{
           referenceEditError=String(editError?.message||editError||'reference edit unavailable').slice(0,260);
           const fallbackController=new AbortController(),fallbackTimer=setTimeout(()=>fallbackController.abort(),110000);let fallbackResponse;
           try{
-            fallbackResponse=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:profile}),signal:fallbackController.signal});
+            fallbackResponse=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image',script:prompt,characterProfile:profile}),signal:fallbackController.signal});
           }finally{clearTimeout(fallbackTimer);}
           data=await fallbackResponse.json();
           if(!fallbackResponse.ok||data.error||!data.image)throw new Error('ویرایش با حفظ مرجع ناموفق بود: '+referenceEditError+'؛ تولید جایگزین هم شکست خورد: '+(data.error||'خطای نامشخص')+(data.details?' — '+data.details:''));
@@ -741,7 +758,7 @@ el('testImageUpload').onclick=async()=>{
      const timeout=setTimeout(()=>controller.abort(),240000);
      let response;
      try{
-       response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:generatedImageData,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+       response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:generatedImageData,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
      }finally{clearTimeout(timeout);}
      if(!response.ok){
        let detail='HTTP '+response.status;
@@ -797,7 +814,7 @@ el('testImageUpload').onclick=async()=>{
        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),240000);
        let response;
        try{
-         response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:scene.dataUrl,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
+         response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'video',image:scene.dataUrl,prompt:motionPrompt,durationSeconds:3.5,steps:4}),signal:controller.signal});
        }finally{clearTimeout(timer);}
        if(!response.ok){
          let detail='HTTP '+response.status;
@@ -1268,7 +1285,7 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
       const timer=setTimeout(()=>controller.abort(),115000);
       let response,raw,data;
       try{
-        response=await fetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',signal:controller.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})});
+        response=await lunaWorkerFetch(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',signal:controller.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'tts',text:speech,lang:'en'})});
         raw=await response.text();
       }finally{clearTimeout(timer);}
       try{data=JSON.parse(raw);}catch(e){throw new Error('پاسخ Worker قابل خواندن نیست؛ HTTP '+response.status+'، '+raw.length+' کاراکتر.');}
