@@ -464,3 +464,56 @@ jobs:
             process.exitCode = 1;
           });
           NODE
+
+
+  cloudflare-secret-binding-audit:
+    name: Cloudflare secret binding audit (names only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_LUNA_TOKEN_PRESENT: ${{ secrets.LUNA_ACCESS_TOKEN != '' }}
+    steps:
+      - name: Inspect deployed Worker binding names without reading secret values
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+
+          (async () => {
+            const token = process.env.CLOUDFLARE_API_TOKEN || '';
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+            assert.ok(token && accountId,
+              'Cloudflare API token/account ID GitHub Actions secrets are required for read-only audit');
+
+            const endpoint = 'https://api.cloudflare.com/client/v4/accounts/'
+              + encodeURIComponent(accountId) + '/workers/scripts/orange-firefly-6434/script-settings';
+            const response = await fetch(endpoint, {
+              headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+              signal: AbortSignal.timeout(20000)
+            });
+            const data = await response.json();
+            assert.equal(response.status, 200, 'Cloudflare Worker settings API must return HTTP 200');
+            assert.equal(data.success, true, 'Cloudflare API must confirm successful settings lookup');
+
+            const bindings = Array.isArray(data.result?.bindings) ? data.result.bindings : [];
+            const names = bindings.map(binding => ({
+              name: String(binding.name || ''),
+              type: String(binding.type || '')
+            })).filter(binding => binding.name);
+            const secretNames = names.filter(binding => /secret/i.test(binding.type)).map(binding => binding.name);
+            const hasLunaSecret = secretNames.includes('LUNA_ACCESS_TOKEN');
+
+            console.log('CLOUDFLARE_BINDING_AUDIT:', JSON.stringify({
+              worker: 'orange-firefly-6434',
+              httpStatus: response.status,
+              bindingNamesAndTypes: names,
+              lunaAccessTokenBindingPresent: hasLunaSecret,
+              githubActionsLunaAccessTokenSecretPresent: process.env.GITHUB_LUNA_TOKEN_PRESENT === 'true',
+              secretValuesReadOrLogged: false
+            }));
+          })().catch(error => {
+            console.error('CLOUDFLARE_BINDING_AUDIT_FAILED:', error.message);
+            process.exitCode = 1;
+          });
+          NODE
