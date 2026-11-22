@@ -447,15 +447,13 @@ jobs:
               signal: AbortSignal.timeout(20000)
             });
             const post = await postResponse.json();
-            assert.ok([401, 503].includes(postResponse.status),
-              'Production must reject the dummy token with 401 (configured) or 503 (unconfigured)');
+            assert.equal(postResponse.status, 401,
+              'Production must have its Cloudflare-managed secret configured and reject the dummy token with HTTP 401');
             assert.equal(post.ok, undefined,
               'An invalid token must not reach the authenticated ping handler');
             console.log('PRODUCTION_AUTH:', JSON.stringify({
               httpStatus: postResponse.status,
-              interpretation: postResponse.status === 401
-                ? 'Secret configured; invalid token rejected'
-                : 'Secret missing; access safely disabled',
+              interpretation: 'Cloudflare-managed secret configured; invalid token rejected',
               rejectedDummyToken: true,
               aiGenerationInvoked: false
             }));
@@ -473,7 +471,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      GITHUB_LUNA_TOKEN_PRESENT: ${{ secrets.LUNA_ACCESS_TOKEN != '' }}
     steps:
       - name: Inspect deployed Worker binding names without reading secret values
         run: |
@@ -509,7 +506,6 @@ jobs:
               httpStatus: response.status,
               bindingNamesAndTypes: names,
               lunaAccessTokenBindingPresent: hasLunaSecret,
-              githubActionsLunaAccessTokenSecretPresent: process.env.GITHUB_LUNA_TOKEN_PRESENT === 'true',
               secretValuesReadOrLogged: false
             }));
           })().catch(error => {
