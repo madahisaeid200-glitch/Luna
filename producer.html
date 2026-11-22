@@ -1251,10 +1251,11 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
     try{
       status.textContent='مرحله ۱/۲: بررسی Worker…';
       const health=await request(endpoint,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'},12000);
-      if(!health.aiBinding)throw new Error('Worker پاسخ داد، اما AI Binding با نام AI فعال نیست.');
-      status.textContent='مرحله ۲/۲: بررسی مسیر POST…';
+      if(!health.ok)throw new Error('Worker پاسخ سلامت معتبر نداد.');
+      status.textContent='مرحله ۲/۲: بررسی مسیر POST و AI Binding احرازشده…';
       const ping=await request(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},15000);
       if(!ping.ok)throw new Error(ping.error||'پاسخ POST تأیید نشد.');
+      if(ping.aiBinding!==true)throw new Error('اتصال Worker برقرار است، اما Binding با نام دقیق AI در محیط Production فعال نیست.');
       status.textContent='اتصال موفق است: Worker و مسیر POST هر دو پاسخ دادند. هنوز تولید مدل آزمایش نشده است.';
       status.style.color='#16834a';
     }catch(error){
