@@ -23,25 +23,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Require the private LUNA access token from GitHub Actions
-        shell: bash
-        env:
-          LUNA_ACCESS_TOKEN: ${{ secrets.LUNA_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$LUNA_ACCESS_TOKEN" ]]; then
-            echo "::error::Missing GitHub Actions repository secret LUNA_ACCESS_TOKEN. Add it under Settings > Secrets and variables > Actions. Do not paste it into source code or chat."
-            exit 1
-          fi
-          echo "LUNA_ACCESS_TOKEN source is present; value is not displayed."
-
-      - name: Upload LUNA access token securely and deploy Worker
+      - name: Validate the Cloudflare-managed access secret and deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          secrets: |
-            LUNA_ACCESS_TOKEN
           command: deploy
-        env:
-          LUNA_ACCESS_TOKEN: ${{ secrets.LUNA_ACCESS_TOKEN }}
