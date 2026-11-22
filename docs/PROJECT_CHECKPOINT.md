@@ -29,10 +29,13 @@ The user's last known stopping point was the private Worker token setup associat
 - PR #18, #17, #16, #15, #14, #13, #11 and #10 were also OPEN/DRAFT at the last list query. Do not treat their changes as production.
 - No production secret, merge, deployment, Meta connection, paid operation or live media generation was performed in this session.
 
-## Critical unresolved integration check
-The PR #19 diff adds a session-only token field to the Producer HTML on its feature branch and a Bearer-authenticated Worker helper. However, the connection-test POST path shown in the diff appears to call `fetchLunaWithTimeout(...)` directly rather than `lunaWorkerFetch(...)`, while the Worker requires Authorization on every POST. This may cause the "Test connection" POST to fail even with a correctly configured token. **Verify the exact current branch source and fix/test this before asking the user to configure a token.**
+## Integration source check (verified 2026-11-22)
+- Inspected the exact PR #19 branch files `producer.html` and `worker.js`.
+- The Worker enforces `Authorization: Bearer ...` on every POST.
+- The Producer connection-test handler calls `fetchLunaWithTimeout(...)`; this is correctly wrapped around `lunaWorkerFetch(...)`, which adds the Bearer header. The suspected missing-auth defect is **not confirmed**; do not report it as a bug.
+- Remaining integration gap: verify the matching Producer Pages preview URL/deployment for the same PR branch. The Worker preview alone does not prove the Producer preview is available or aligned.
 
-Also verify the matching Producer preview URL/Pages deployment for the same branch. Do not send the user to the production Producer URL and ask them to enter a token if that page does not contain the PR #19 token UI or if it points at the production Worker.
+Do not send the user to the production Producer URL and ask them to enter a token if that page does not contain the PR #19 token UI or if it points at the production Worker.
 
 ## Single next action
 **Owner: PMO + security implementation workstream.**
