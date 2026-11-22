@@ -181,7 +181,7 @@ export default {
     };
 
     if (request.method === "GET") {
-      return json({ ok: true, service: "LUNA AI Worker", accessConfigured: Boolean(env.LUNA_ACCESS_TOKEN), aiBinding: Boolean(env.AI), message: "Runtime binding diagnostics only; secret values are never exposed." }, 200);
+      return json({ ok: true, service: "LUNA AI Worker", accessConfigured: Boolean(env.LUNA_ACCESS_TOKEN), aiBinding: Boolean(env.AI), message: "Authenticated POST requests are available when the owner secret is configured. Runtime diagnostics expose booleans only; secret values are never exposed." }, 200);
     }
     if (request.method !== "POST") return json({ error: "Use GET for health check or POST to generate a script." }, 405);
 
