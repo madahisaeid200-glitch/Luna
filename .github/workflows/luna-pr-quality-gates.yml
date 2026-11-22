@@ -402,3 +402,65 @@ jobs:
             process.exitCode = 1;
           });
           NODE
+
+
+  production-worker-auth-smoke:
+    name: Production Worker health and auth (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify production health and reject a dummy token
+        env:
+          PRODUCTION_WORKER_URL: https://orange-firefly-6434.madahisaeid200.workers.dev/
+          ALLOWED_ORIGIN: https://madahisaeid200-glitch.github.io
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+
+          (async () => {
+            const url = process.env.PRODUCTION_WORKER_URL;
+            const origin = process.env.ALLOWED_ORIGIN;
+            const healthResponse = await fetch(url, {
+              headers: { Origin: origin },
+              signal: AbortSignal.timeout(20000)
+            });
+            const health = await healthResponse.json();
+            assert.equal(healthResponse.status, 200, 'Production GET health must return HTTP 200');
+            assert.equal(health.ok, true, 'Production health payload must report ok=true');
+            console.log('PRODUCTION_GET:', JSON.stringify({
+              httpStatus: healthResponse.status,
+              ok: health.ok,
+              service: health.service || null,
+              accessConfiguredDiagnostic: typeof health.accessConfigured === 'boolean'
+                ? health.accessConfigured : 'not available on current production version',
+              aiBinding: typeof health.aiBinding === 'boolean' ? health.aiBinding : 'not reported'
+            }));
+
+            const postResponse = await fetch(url, {
+              method: 'POST',
+              headers: {
+                Origin: origin,
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer luna-production-smoke-invalid-token'
+              },
+              body: JSON.stringify({ mode: 'ping' }),
+              signal: AbortSignal.timeout(20000)
+            });
+            const post = await postResponse.json();
+            assert.ok([401, 503].includes(postResponse.status),
+              'Production must reject the dummy token with 401 (configured) or 503 (unconfigured)');
+            assert.equal(post.ok, undefined,
+              'An invalid token must not reach the authenticated ping handler');
+            console.log('PRODUCTION_AUTH:', JSON.stringify({
+              httpStatus: postResponse.status,
+              interpretation: postResponse.status === 401
+                ? 'Secret configured; invalid token rejected'
+                : 'Secret missing; access safely disabled',
+              rejectedDummyToken: true,
+              aiGenerationInvoked: false
+            }));
+          })().catch(error => {
+            console.error('PRODUCTION_AUTH_SMOKE_FAILED:', error.message);
+            process.exitCode = 1;
+          });
+          NODE
