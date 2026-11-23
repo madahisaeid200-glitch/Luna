@@ -195,10 +195,10 @@ el('testAiEndpoint').onclick=async()=>{
    if(!getResponse.ok)throw new Error('GET ناموفق؛ HTTP '+getResponse.status);
    if(!getData.ok)throw new Error('GET موفق نبود.');
    updateAiStatus('GET موفق؛ اکنون POST آزمایشی احرازشده بدون اجرای مدل…');
-   const postResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'ping'})},15000);
+   const postResponse=await fetchLunaWithTimeout(endpoint,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({mode:'image_ping',image:'data:image/jpeg;base64,'+'A'.repeat(128)})},15000);
    let postData={};try{postData=await postResponse.json()}catch(e){throw new Error('POST پاسخ JSON معتبر نداد؛ HTTP '+postResponse.status);}
-   if(!postResponse.ok||!postData.ok)throw new Error('POST ناموفق؛ HTTP '+postResponse.status+'؛ '+(postData.error||'بدون جزئیات'));
-   updateAiStatus('تأیید ارتباط: GET عمومی و POST احرازشده هر دو موفق‌اند. این آزمایش مدل هوش مصنوعی را اجرا نمی‌کند.');
+   if(!postResponse.ok||!postData.ok||!postData.receivedImageChars)throw new Error('POST ناموفق؛ HTTP '+postResponse.status+'؛ '+(postData.error||'داده آزمایشی تأیید نشد'));
+   updateAiStatus('تأیید ارتباط: GET موفق، AI Binding فعال، و POST احرازشده تا Worker دریافت و پردازش شد. هیچ مدل هوش مصنوعی اجرا نشد.');
  }catch(error){
    const msg=String(error.message||error);
    if(error.name==='AbortError')updateAiStatus('آزمایش ارتباط timeout شد؛ '+msg);
