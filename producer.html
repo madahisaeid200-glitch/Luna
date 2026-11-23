@@ -165,9 +165,10 @@ el('applyLunaToken').onclick=()=>{
   const value=el('lunaAccessToken').value.trim();
   if(value.length<24){el('tokenStatus').textContent='توکن واردشده کوتاه یا خالی است؛ مقدار کامل Secret را وارد کن.';return;}
   lunaAccessToken=value;
-  try{sessionStorage.setItem('lunaAccessToken',value);}catch(e){el('tokenStatus').textContent='ذخیره نشست در این مرورگر ممکن نشد؛ توکن فقط تا زمان تازه‌سازی فعال خواهد بود.';}
+  let tokenSessionSaved=false;
+  try{sessionStorage.setItem('lunaAccessToken',value);tokenSessionSaved=true;}catch(e){el('tokenStatus').textContent='ذخیره نشست در این مرورگر ممکن نشد؛ توکن فقط تا زمان تازه‌سازی فعال خواهد بود.';}
   el('lunaAccessToken').value='';
-  if(sessionStorage.getItem('lunaAccessToken')===value)el('tokenStatus').textContent='توکن در نشست همین زبانه ذخیره و فعال شد؛ با بستن زبانه پاک می‌شود.';
+  if(tokenSessionSaved)el('tokenStatus').textContent='توکن در نشست همین زبانه ذخیره و فعال شد؛ با بستن زبانه پاک می‌شود.';
  };
 el('saveAiEndpoint').onclick=()=>{
  const value=endpointInput.value.trim();
