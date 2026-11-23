@@ -15,14 +15,14 @@ jobs:
   health:
     runs-on: ubuntu-latest
     steps:
-      - name: Check deployed Worker and provider configuration
+      - name: Check deployed Worker runtime health and access configuration
         shell: bash
         run: |
           set -euo pipefail
           URL="https://orange-firefly-6434.madahisaeid200.workers.dev/"
           for attempt in $(seq 1 24); do
             CODE=$(curl -sS --max-time 15 "$URL" -o /tmp/health.json -w '%{http_code}' || true)
-            if [ "$CODE" = "200" ] && python3 -c 'import json; d=json.load(open("/tmp/health.json")); assert "providers" in d and d.get("publicFallbacks", {}).get("qwen3vl")' 2>/dev/null; then
+            if [ "$CODE" = "200" ] && python3 -c 'import json; d=json.load(open("/tmp/health.json")); assert d.get("ok") is True and d.get("service") == "LUNA AI Worker" and d.get("accessConfigured") is True' 2>/dev/null; then
               break
             fi
             sleep 5
@@ -30,13 +30,15 @@ jobs:
           python3 - <<'PY'
           import json,sys
           data=json.load(open("/tmp/health.json"))
-          print("Worker:",data.get("ok"))
-          print("Providers:",json.dumps(data.get("providers",{}),sort_keys=True))
-          if not data.get("ok") or not data.get("publicFallbacks", {}).get("qwen3vl"):
-              sys.exit("Worker health check failed or keyless Qwen fallback is not deployed")
-          print("Keyless Qwen3-VL fallback wired:", bool(data.get("publicFallbacks", {}).get("qwen3vl")))
-          print("Health GET does not consume model quota.")
+          print("Worker healthy:",data.get("ok"))
+          print("Service:",data.get("service"))
+          print("Runtime access secret configured:",data.get("accessConfigured"))
+          print("Workers AI binding available:",data.get("aiBinding"))
+          if data.get("ok") is not True or data.get("service") != "LUNA AI Worker" or data.get("accessConfigured") is not True:
+              sys.exit("Worker health check failed or runtime access secret is missing")
+          print("Runtime health and access configuration verified.")
+          print("Health GET does not invoke model inference or consume Workers AI neuron quota.")
           PY
       - name: Confirm health checks do not consume inference capacity
         shell: bash
-        run: echo "Live model inference is tested once by the separate end-to-end screenplay smoke test; this health workflow performs no model calls."
+        run: echo "This workflow performs only a GET health check; it does not invoke model inference."
