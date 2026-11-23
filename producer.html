@@ -1242,7 +1242,8 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
     status.style.color='#b7791f';
     const timeout=(ms)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('مهلت پاسخ تمام شد ('+Math.round(ms/1000)+' ثانیه)')),ms));
     const request=async(url,options,ms)=>{
-      const response=await Promise.race([fetch(url,options),timeout(ms)]);
+      const pending=(options.method||'GET').toUpperCase()==='POST' ? lunaWorkerFetch(url,options) : fetch(url,options);
+       const response=await Promise.race([pending,timeout(ms)]);
       const raw=await response.text();
       let data={};try{data=JSON.parse(raw)}catch(e){throw new Error('پاسخ غیر JSON؛ HTTP '+response.status);}
       if(!response.ok)throw new Error('HTTP '+response.status+' — '+(data.error||'خطای سرور'));
