@@ -335,3 +335,181 @@ jobs:
           console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
           console.log('WAN_PRE_QA_LOCK: PASS (new image, edited image, and restored image paths)');
           NODE
+
+
+  preview-worker-auth-smoke:
+    name: Preview Worker health and auth (no AI quota)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify Preview health and reject a dummy token
+        env:
+          PREVIEW_WORKER_URL: https://fix-worker-secret-runtime-diagnostics-orange-firefly-6434.madahisaeid200.workers.dev/
+          ALLOWED_ORIGIN: https://madahisaeid200-glitch.github.io
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+
+          (async () => {
+            const url = process.env.PREVIEW_WORKER_URL;
+            const origin = process.env.ALLOWED_ORIGIN;
+
+            const healthResponse = await fetch(url, {
+              headers: { Origin: origin },
+              signal: AbortSignal.timeout(20000)
+            });
+            const health = await healthResponse.json();
+            assert.equal(healthResponse.status, 200, 'Preview GET health must return HTTP 200');
+            assert.equal(health.ok, true, 'Preview health payload must report ok=true');
+            assert.equal(typeof health.accessConfigured, 'boolean',
+              'Preview health must expose accessConfigured as a boolean only');
+            assert.equal(typeof health.aiBinding, 'boolean',
+              'Preview health must expose aiBinding as a boolean only');
+            console.log('PREVIEW_GET:', JSON.stringify({
+              httpStatus: healthResponse.status,
+              ok: health.ok,
+              accessConfigured: health.accessConfigured,
+              aiBinding: health.aiBinding
+            }));
+
+            // This intentionally invalid token must never authorize a request.
+            // The ping mode is checked only after authentication and cannot call an AI provider.
+            const postResponse = await fetch(url, {
+              method: 'POST',
+              headers: {
+                Origin: origin,
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer luna-preview-smoke-invalid-token'
+              },
+              body: JSON.stringify({ mode: 'ping' }),
+              signal: AbortSignal.timeout(20000)
+            });
+            const post = await postResponse.json();
+            const expectedStatus = health.accessConfigured ? 401 : 503;
+            assert.equal(postResponse.status, expectedStatus,
+              'Dummy token must yield 401 when configured, or 503 when the secret is absent');
+            assert.equal(post.ok, undefined,
+              'An invalid token must not reach the authenticated ping handler');
+            console.log('PREVIEW_AUTH:', JSON.stringify({
+              httpStatus: postResponse.status,
+              expectedStatus,
+              rejectedDummyToken: true,
+              secretConfigured: health.accessConfigured,
+              aiGenerationInvoked: false
+            }));
+          })().catch(error => {
+            console.error('PREVIEW_AUTH_SMOKE_FAILED:', error.message);
+            process.exitCode = 1;
+          });
+          NODE
+
+
+  production-worker-auth-smoke:
+    name: Production Worker health and auth (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify production health and reject a dummy token
+        env:
+          PRODUCTION_WORKER_URL: https://orange-firefly-6434.madahisaeid200.workers.dev/
+          ALLOWED_ORIGIN: https://madahisaeid200-glitch.github.io
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+
+          (async () => {
+            const url = process.env.PRODUCTION_WORKER_URL;
+            const origin = process.env.ALLOWED_ORIGIN;
+            const healthResponse = await fetch(url, {
+              headers: { Origin: origin },
+              signal: AbortSignal.timeout(20000)
+            });
+            const health = await healthResponse.json();
+            assert.equal(healthResponse.status, 200, 'Production GET health must return HTTP 200');
+            assert.equal(health.ok, true, 'Production health payload must report ok=true');
+            console.log('PRODUCTION_GET:', JSON.stringify({
+              httpStatus: healthResponse.status,
+              ok: health.ok,
+              service: health.service || null,
+              accessConfiguredDiagnostic: typeof health.accessConfigured === 'boolean'
+                ? health.accessConfigured : 'not available on current production version',
+              aiBinding: typeof health.aiBinding === 'boolean' ? health.aiBinding : 'not reported'
+            }));
+
+            const postResponse = await fetch(url, {
+              method: 'POST',
+              headers: {
+                Origin: origin,
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer luna-production-smoke-invalid-token'
+              },
+              body: JSON.stringify({ mode: 'ping' }),
+              signal: AbortSignal.timeout(20000)
+            });
+            const post = await postResponse.json();
+            assert.equal(postResponse.status, 401,
+              'Production must have its Cloudflare-managed secret configured and reject the dummy token with HTTP 401');
+            assert.equal(post.ok, undefined,
+              'An invalid token must not reach the authenticated ping handler');
+            console.log('PRODUCTION_AUTH:', JSON.stringify({
+              httpStatus: postResponse.status,
+              interpretation: 'Cloudflare-managed secret configured; invalid token rejected',
+              rejectedDummyToken: true,
+              aiGenerationInvoked: false
+            }));
+          })().catch(error => {
+            console.error('PRODUCTION_AUTH_SMOKE_FAILED:', error.message);
+            process.exitCode = 1;
+          });
+          NODE
+
+
+  cloudflare-secret-binding-audit:
+    name: Cloudflare secret binding audit (names only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect deployed Worker binding names without reading secret values
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+
+          (async () => {
+            const token = process.env.CLOUDFLARE_API_TOKEN || '';
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+            assert.ok(token && accountId,
+              'Cloudflare API token/account ID GitHub Actions secrets are required for read-only audit');
+
+            const endpoint = 'https://api.cloudflare.com/client/v4/accounts/'
+              + encodeURIComponent(accountId) + '/workers/scripts/orange-firefly-6434/script-settings';
+            const response = await fetch(endpoint, {
+              headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+              signal: AbortSignal.timeout(20000)
+            });
+            const data = await response.json();
+            assert.equal(response.status, 200, 'Cloudflare Worker settings API must return HTTP 200');
+            assert.equal(data.success, true, 'Cloudflare API must confirm successful settings lookup');
+
+            const bindings = Array.isArray(data.result?.bindings) ? data.result.bindings : [];
+            const names = bindings.map(binding => ({
+              name: String(binding.name || ''),
+              type: String(binding.type || '')
+            })).filter(binding => binding.name);
+            const secretNames = names.filter(binding => /secret/i.test(binding.type)).map(binding => binding.name);
+            const hasLunaSecret = secretNames.includes('LUNA_ACCESS_TOKEN');
+
+            console.log('CLOUDFLARE_BINDING_AUDIT:', JSON.stringify({
+              worker: 'orange-firefly-6434',
+              httpStatus: response.status,
+              bindingNamesAndTypes: names,
+              lunaAccessTokenBindingPresent: hasLunaSecret,
+              secretValuesReadOrLogged: false
+            }));
+          })().catch(error => {
+            console.error('CLOUDFLARE_BINDING_AUDIT_FAILED:', error.message);
+            process.exitCode = 1;
+          });
+          NODE

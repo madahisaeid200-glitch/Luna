@@ -8,3 +8,6 @@ binding = "AI"
 
 [previews]
 # Preview builds intentionally omit the production AI binding; keyless fallbacks remain available.
+
+[secrets]
+required = ["LUNA_ACCESS_TOKEN"]
