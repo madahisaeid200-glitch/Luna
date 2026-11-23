@@ -66,7 +66,7 @@
 <p class="hint">برای تولید سناریوی واقعی با مدل هوش مصنوعی، ابتدا Worker امن را طبق فایل AI-SETUP.md راه‌اندازی کن. کلید API را اینجا وارد نکن.</p>
 <div class="field"><label for="aiEndpoint">آدرس امن Worker (URL)</label><input id="aiEndpoint" type="url" inputmode="url" value="https://orange-firefly-6434.madahisaeid200.workers.dev" placeholder="https://orange-firefly-6434.madahisaeid200.workers.dev" autocomplete="url"></div>
 <div class="field"><label for="lunaAccessToken">توکن دسترسی خصوصی LUNA</label><input id="lunaAccessToken" type="password" autocomplete="off" spellcheck="false" placeholder="توکن را از تنظیمات امن Worker وارد کن"></div>
-<div class="actions"><button id="applyLunaToken" type="button">اعمال توکن برای این نشست</button><span class="hint" id="tokenStatus">توکن ذخیره نمی‌شود و پس از تازه‌سازی صفحه باید دوباره وارد شود.</span></div>
+<div class="actions"><button id="applyLunaToken" type="button">اعمال توکن برای این نشست</button><span class="hint" id="tokenStatus">توکن فقط در نشست همین زبانه نگهداری می‌شود و با بستن زبانه پاک می‌شود.</span></div>
 <div class="actions"><button class="primary" id="saveAiEndpoint" type="button">ذخیره اتصال / Save connection</button><button id="testAiEndpoint" type="button">آزمایش اتصال / Test connection</button><button id="diagnoseBrowser" type="button">آزمایش شبکه گوشی (بدون مدل)</button><a class="link" href="https://github.com/madahisaeid200-glitch/Luna/blob/main/AI-SETUP.md" target="_blank" rel="noopener">راهنمای راه‌اندازی</a></div>
 <p class="hint" id="aiStatus" role="status">آدرس Worker از پیش تنظیم شده است؛ وضعیت مدل هنوز تأیید نشده. آزمایش اتصال به‌تنهایی تولید هوش مصنوعی را ثابت نمی‌کند.</p>
 </section>
@@ -80,7 +80,7 @@
 </main><footer>LUNA Studio · Episode Producer Beta</footer>
 <script>
 const LUNA_RENDER_SHOT_COUNT=6; // Six independently generated scenes for short episodes; long plans are capped here to protect free quotas.
-const el=id=>document.getElementById(id);let lunaAccessToken='';let fa=true;let lastDraft='';let lastDraftIsAi=false;let lastProductionPack='';let lastDirectorPlan=null;
+const el=id=>document.getElementById(id);let lunaAccessToken='';try{lunaAccessToken=sessionStorage.getItem('lunaAccessToken')||'';}catch(e){}let fa=true;let lastDraft='';let lastDraftIsAi=false;let lastProductionPack='';let lastDirectorPlan=null;
 const characterDefaults={lunaName:'LUNA',lunaLook:'Adult 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.',lunaPersonality:'Confident, warm, witty, romantic, playful, stylish, affectionate.',leoName:'LEO',leoLook:'Adult 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.',leoPersonality:'Charming, affectionate, confident, slightly overconfident, adorably chaotic, romantic.',style:'Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.'};
 function readCharacterProfile(){return {lunaName:(el('charLunaName')?.value||characterDefaults.lunaName).trim().slice(0,40),lunaLook:(el('charLunaLook')?.value||characterDefaults.lunaLook).trim().slice(0,700),lunaPersonality:(el('charLunaPersonality')?.value||characterDefaults.lunaPersonality).trim().slice(0,400),leoName:(el('charLeoName')?.value||characterDefaults.leoName).trim().slice(0,40),leoLook:(el('charLeoLook')?.value||characterDefaults.leoLook).trim().slice(0,700),leoPersonality:(el('charLeoPersonality')?.value||characterDefaults.leoPersonality).trim().slice(0,400),style:(el('charStyle')?.value||characterDefaults.style).trim().slice(0,500)}}
 function fillCharacterProfile(profile){const p={...characterDefaults,...(profile||{})};for(const [key,id] of [['lunaName','charLunaName'],['lunaLook','charLunaLook'],['lunaPersonality','charLunaPersonality'],['leoName','charLeoName'],['leoLook','charLeoLook'],['leoPersonality','charLeoPersonality'],['style','charStyle']])if(el(id))el(id).value=p[key]}
@@ -160,12 +160,15 @@ try {
 endpointInput.value=savedEndpoint;
 function updateAiStatus(message){aiStatus.textContent=message;}
 updateAiStatus(savedEndpoint?'وضعیت: آدرس Worker ذخیره شده است؛ هنگام تولید، اتصال آزمایش می‌شود.':'وضعیت: هنوز آدرس Worker تنظیم نشده؛ تولید فعلی از قالب‌های داخلی است.');
+if(lunaAccessToken){el('tokenStatus').textContent='توکن این نشست مرورگر فعال است؛ تا وقتی این زبانه باز باشد پس از تازه‌سازی هم باقی می‌ماند.';}
 el('applyLunaToken').onclick=()=>{
   const value=el('lunaAccessToken').value.trim();
   if(value.length<24){el('tokenStatus').textContent='توکن واردشده کوتاه یا خالی است؛ مقدار کامل Secret را وارد کن.';return;}
   lunaAccessToken=value;
+  let tokenSessionSaved=false;
+  try{sessionStorage.setItem('lunaAccessToken',value);tokenSessionSaved=true;}catch(e){el('tokenStatus').textContent='ذخیره نشست در این مرورگر ممکن نشد؛ توکن فقط تا زمان تازه‌سازی فعال خواهد بود.';}
   el('lunaAccessToken').value='';
-  el('tokenStatus').textContent='توکن فقط در حافظه همین صفحه فعال شد؛ در مرورگر ذخیره نشده است.';
+  if(tokenSessionSaved)el('tokenStatus').textContent='توکن در نشست همین زبانه ذخیره و فعال شد؛ با بستن زبانه پاک می‌شود.';
  };
 el('saveAiEndpoint').onclick=()=>{
  const value=endpointInput.value.trim();
