@@ -1083,7 +1083,7 @@ ${script.trim()}`;
         const response = await fetch(imageUrl.toString(), {
           method: "GET",
           headers: { "Accept": "image/jpeg,image/png,image/webp" },
-          signal: AbortSignal.timeout(45_000);
+          signal: AbortSignal.timeout(45_000)
         });
         if (!response.ok) {
           const detail = (await response.text()).slice(0, 260);
