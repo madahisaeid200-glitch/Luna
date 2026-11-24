@@ -1028,13 +1028,13 @@ ${script.trim()}`;
       const hokusaiFailures = [];
       // Hokusai can return transient 429 no_ready_capacity while community workers are busy.
       // Retry only transient capacity/server failures; never retry invalid prompts or client errors.
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           const response = await fetch("https://api.murakumo.cloud/v1/images/generations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ model: "awai-network/hokusai", prompt, size: "512x768" }),
-            signal: AbortSignal.timeout(95_000)
+            signal: AbortSignal.timeout(35_000)
           });
           const raw = await response.text();
           let data;
@@ -1067,7 +1067,7 @@ ${script.trim()}`;
           const message = String(fallbackError?.message || fallbackError || "");
           if (/Hokusai HTTP 4(?!29)/.test(message)) break;
         }
-        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 3500));
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 1000));
       }
       // Last-resort anonymous image route. The legacy Pollinations endpoint was
       // verified with a real JPEG response (HTTP 200, >10 KB) on 2026-11-02.
@@ -1083,7 +1083,7 @@ ${script.trim()}`;
         const response = await fetch(imageUrl.toString(), {
           method: "GET",
           headers: { "Accept": "image/jpeg,image/png,image/webp" },
-          signal: AbortSignal.timeout(75_000)
+          signal: AbortSignal.timeout(45_000)
         });
         if (!response.ok) {
           const detail = (await response.text()).slice(0, 260);
