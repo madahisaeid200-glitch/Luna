@@ -46,8 +46,8 @@ ID, date found, component/version, severity, user impact, reproduction/evidence,
   - Confirm unauthorized requests cannot read or mutate private project records.
   - Confirm a failed sync does not erase the local draft.
 - **Prevention rule:** Every project must declare the authoritative data store and backup/restore strategy before relying on persistent user data. Local-only storage must be visibly labelled and must not be mistaken for cloud sync.
-- **Next action:** Inspect the current Producer source and enumerate all localStorage keys, schemas, and read/write paths before proposing any migration.
-- **Not done:** No export/import implementation, central database, cross-device sync, or regression pass has been completed.
+- **Next action:** Verify the new full-backup export in a real browser with populated profile/episodes/IndexedDB images; inspect the downloaded JSON and recompute SHA-256. Then implement validation/preview and restore in separate stages.
+- **Not done:** Export code is in review but not yet merged or tested with the user's real browser data. No verified restore, central database, cross-device sync, or full regression pass has been completed.
 
 ## Issue template
 
@@ -115,3 +115,12 @@ A safe backup/restore feature must:
 
 ### Revised next action
 Design a non-destructive backup/export specification and tests first. Do not modify Producer UI or storage code until the complete restore path and failure behavior have been reviewed.
+
+
+## LUNA-001 implementation update — 2026-11-25
+
+- Added a dedicated full-backup export control to the Producer on branch `feat/producer-full-backup-export`.
+- The exporter reads the saved character profile, complete episode list, and all IndexedDB image records. If no saved episode array exists, it includes the dashboard's three bundled seed episodes rather than exporting an empty list. It validates record shapes and stops on malformed data rather than silently creating a partial archive.
+- The output is versioned JSON with SHA-256 integrity metadata; the digest uses recursively sorted object keys.
+- The access token is never read. Diagnostics and Worker endpoint are excluded by default.
+- **Status remains OPEN.** Code review and static/runtime checks are still pending; no claim of successful real-data backup is made.

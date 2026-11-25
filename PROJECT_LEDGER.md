@@ -217,3 +217,67 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Restore is two-phase: validate/preview first, then create and verify a pre-restore snapshot before writing. Silent overwrite is prohibited.
 - README now links all project-control records so future sessions and collaborators can find the source of truth.
 - This is design documentation only. No export/restore UI or runtime code has been implemented or tested.
+
+
+## 14. Full-backup export implementation — 2026-11-25
+
+- Created feature branch `feat/producer-full-backup-export` from `main`; no direct main changes.
+- Added a dedicated “دانلود پشتیبان کامل پروژه” action to Producer's Character Manager.
+- Export contents: saved character profile (recognized fields only), full `lunaEpisodes` array, and all `luna-image-library/images` records including image data URLs, metadata, timestamps, and source IDs.
+- Added strict validation for profile/episode/image structures; unknown episode fields abort export instead of being silently copied.
+- Added schema/version/source/count metadata and SHA-256 integrity digest over recursively sorted canonical payload.
+- Diagnostics, Worker endpoint, sessionStorage, and `lunaAccessToken` are excluded. The token is never read by the exporter.
+- A warning confirmation appears above 30 MiB; this is a precaution, not a validated mobile-browser limit.
+- Updated backup spec and LUNA-001 issue record to reflect implementation-in-review.
+
+### Verification state
+- Opened draft PR #37: https://github.com/madahisaeid200-glitch/Luna/pull/37 (head at first review snapshot `0888aa07bea4c8668f9749e753b6ae58f3efd519`; 4 files changed).
+- Reviewed the PR diff: only `producer.html`, the backup specification, issue register, and project ledger are changed.
+- Ran a Node JavaScript syntax check on the added exporter logic; it passed. GitHub combined commit status currently reports no status entries, so CI is not confirmed.
+- No real browser export/download has been run. No populated project JSON has been inspected. No digest has been recomputed from a downloaded file. No mobile memory/quota behavior has been tested.
+- Do not merge or mark LUNA-001 verified until the relevant checks pass.
+
+### Next action
+1. Keep PR #37 unmerged while GitHub checks are absent and real-browser verification is outstanding.
+2. Run the exporter in a browser profile with populated profile, episodes, and image library; inspect the downloaded JSON and independently recompute the digest.
+3. Only after those checks pass, decide whether to merge; do not claim portability until restore is tested on a second browser profile.
+
+
+### Follow-up review — 2026-11-25
+
+- Source inspection found an edge case: the dashboard displays three bundled seed episodes when `lunaEpisodes` is absent, while the first exporter draft would have written an empty episode array.
+- Fixed the exporter to include those exact three dashboard seed episodes when localStorage has no saved array, and record `source.episodes = bundled-seed`; saved arrays are still exported unchanged after schema validation.
+- Re-ran parser validation on the exact added exporter script using the JavaScript runtime: syntax PASS. Evaluated the embedded seed array: 3 entries, all match the episode schema.
+- This is a static source-level check only; it does not simulate browser APIs, IndexedDB, download behavior, or real user data.
+- PR #37 remains draft and unmerged. Latest reviewed PR head: `e861d7945811b43a8250fa1e1e65052b0eab319b`. GitHub reports no workflow runs or commit status entries for this head; PR #37 remains draft and unmerged.
+
+
+### Follow-up safety fix — 2026-11-25
+
+- Reviewed the latest PR head and found that `readAllImages()` resolved an empty image list when the IndexedDB database or `images` object store was absent. This could falsely label an incomplete archive as a full backup.
+- Updated `producer.html` on this feature branch: `onupgradeneeded` now aborts creation of a missing/empty database, request errors fail the export, and a missing `images` store explicitly rejects instead of returning `[]`.
+- GitHub confirmed the updated file content and blob SHA `3c5468d9dc3bfbd5e0fa8f7be7347aca4a2b9ffc`; commit `7ac0f92f9187f82bebbb3d39437c0c8f5be95e44` is the current PR head at this checkpoint.
+- GitHub Actions quality-gates run #385 is queued. Combined commit status has no status entries yet. Static patch inspection passed; real browser IndexedDB behavior and populated-data export remain unverified.
+- PR #37 stays draft and unmerged. Do not merge until CI and real-browser verification pass.
+
+
+### IndexedDB export transaction completion hardening — 2026-11-25
+
+- Follow-up audit found that the exporter resolved its image-read promise on the getAll() request success event, before the enclosing readonly transaction's complete event.
+- Updated readAllImages() to retain validated rows and resolve only after tx.oncomplete; aborts and request errors reject the export. Validation failures abort the read transaction and fail closed.
+- Verified the exact updated producer.html block on branch feat/producer-full-backup-export (blob 21c2c47e356ba669ef98f96950f66d3c57ee8421).
+- This is static code verification only. Real-browser export with populated IndexedDB data and forced transaction failure remains outstanding; do not merge on this basis.
+
+
+### Empty IndexedDB library acceptance alignment — 2026-11-25
+
+- Cross-checked exporter behavior against the backup spec's explicit “Export empty project” acceptance test. A project that has never stored an image has no IndexedDB database; rejecting that state would make the documented empty-project backup impossible.
+- Updated `readAllImages()` to detect the implicit first-time database upgrade, abort creation, and return zero images. Existing databases with a missing store and all actual read/transaction errors continue to reject.
+- Updated backup specification to make this distinction explicit. This is static source verification only; test in a real browser before merge.
+
+
+### 2026-11-25 — Backup digest specification alignment
+- A focused code/spec audit found stale specification wording claiming canonical JSON serialization had not yet been specified, although the exporter already implemented recursive sorted-object-key canonicalization and SHA-256 over the `data` payload.
+- Updated `docs/BACKUP_RESTORE_SPEC.md` to describe the implemented algorithm precisely: lexicographically sorted object keys, preserved array order, recursive serialization, UTF-8 encoding, hexadecimal SHA-256 digest, and JSON normalization of image metadata.
+- Independent digest recomputation from an actual downloaded backup and cross-browser test vectors remain pending; this documentation correction does not count as runtime verification.
+- PR #37 remains draft and unmerged; main remains unchanged.

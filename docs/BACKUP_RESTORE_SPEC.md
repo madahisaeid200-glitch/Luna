@@ -1,6 +1,6 @@
 # LUNA Browser Backup & Restore Specification
 
-> Status: DESIGN ONLY — not implemented. This document defines safe behavior before any Producer code changes.
+> Status: EXPORT IMPLEMENTED IN REVIEW — browser backup export is implemented on a feature branch; real-browser download and populated-data verification are still pending. Restore remains design only.
 
 ## 1. Goals
 
@@ -47,7 +47,7 @@ Top-level structure:
 }
 ```
 
-The example is illustrative, not an implemented or final API contract. Canonical JSON serialization must be specified and tested before digest code is written. If Web Crypto is unavailable, backup creation must fail clearly rather than silently omit integrity validation.
+The example is illustrative, not a final API contract. The current exporter computes the digest over `data` only, encoded as UTF-8 after canonicalization. Canonicalization recursively sorts object keys lexicographically, preserves array order, and serializes primitive values with `JSON.stringify`; nested objects and arrays are canonicalized recursively. Image metadata is first normalized through a JSON stringify/parse round trip. The resulting hexadecimal SHA-256 digest is stored in `integrity.payloadDigest`. This describes the implemented algorithm; independent recomputation from a downloaded file and cross-browser test vectors remain pending. If Web Crypto is unavailable, backup creation must fail clearly rather than silently omit integrity validation.
 
 ## 3. Export rules
 
@@ -121,7 +121,7 @@ The example is illustrative, not an implemented or final API contract. Canonical
 
 ## 9. Rollout sequence
 
-1. Implement export only.
+1. Implement export only. **Code now exists on `feat/producer-full-backup-export`; it is not merged or runtime-verified.**
 2. Test export with real project data and inspect the JSON structure.
 3. Implement backup validation and preview without writing.
 4. Implement restore to an empty browser.
@@ -130,6 +130,24 @@ The example is illustrative, not an implemented or final API contract. Canonical
 7. Only then enable Replace mode.
 8. Update user documentation and mark LUNA-001 partially or fully resolved only against the defined acceptance tests.
 
-## 10. Definition of done
+## 10. Export implementation notes — 2026-11-25
+
+- Producer adds a dedicated full-backup download action.
+- Export reads the saved profile and complete episode array from localStorage, plus every image record from IndexedDB. If `lunaEpisodes` has never been stored, it includes the same three bundled seed episodes currently shown by the dashboard and marks the source as `bundled-seed`.
+- Export validates the recognized profile fields, episode fields, and image payload structure; it stops rather than silently dropping malformed records or unknown episode fields.
+- SHA-256 is calculated over a canonical payload whose object keys are recursively sorted (`recursive-sorted-object-keys-v1`). The digest is included in the JSON.
+- The JSON records schema version, source origin/build, included flags, episode/image counts, and digest metadata.
+- Diagnostics and Worker endpoint are excluded by default; session token is never read or exported.
+- Large files above 30 MiB trigger a confirmation before download. This is a caution, not a tested mobile memory limit.
+- **Not yet verified:** real populated-browser export, image-heavy memory behavior, actual digest recomputation from downloaded file, token absence in downloaded artifact, or cross-device restore.
+
+## 11. Definition of done
 
 The feature is not complete until backup and restore pass the entire acceptance matrix on at least two separate browser profiles/devices, including an image-heavy project and a forced failure case. Successful download alone is not proof of recoverability.
+
+
+### Empty image-library behavior clarification — 2026-11-25
+
+- Acceptance test requires an empty project export to succeed with zero image records. A never-created IndexedDB database is now treated as an empty image library: the implicit database creation is aborted and the exporter returns an empty array without persisting a database.
+- An existing database with a missing `images` store, blocked open, read error, malformed record, or aborted read transaction still fails closed.
+- Static source patch only; browser verification of absent-database behavior remains required.

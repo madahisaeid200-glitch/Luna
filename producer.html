@@ -41,7 +41,7 @@
 </div>
 </div>
 <div class="field"><label for="charStyle">سبک بصری مشترک / Shared visual style</label><textarea id="charStyle" maxlength="500">Photorealistic live-action luxury European fashion editorial, premium natural fabrics, tasteful neutral colors, natural cinematic lighting, realistic skin pores and hair strands, physically accurate anatomy, vertical 9:16, no logos or text.</textarea></div>
-<div class="actions"><button class="primary" id="saveCharacters" type="button">ذخیره مشخصات شخصیت‌ها</button><button id="resetCharacters" type="button">بازگشت به مشخصات اولیه</button></div>
+<div class="actions"><button class="primary" id="saveCharacters" type="button">ذخیره مشخصات شخصیت‌ها</button><button id="resetCharacters" type="button">بازگشت به مشخصات اولیه</button><button id="downloadFullBackup" type="button">دانلود پشتیبان کامل پروژه</button></div>
 <p class="hint" id="characterStatus" role="status">مشخصات اولیه آماده است.</p>
 </section>
 
@@ -1363,4 +1363,162 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
  });
 })();
 </script>
+
+<script>
+(function(){
+  const button=document.getElementById('downloadFullBackup');
+  if(!button)return;
+  const status=document.getElementById('characterStatus');
+  const PROFILE_FIELDS=['lunaName','lunaLook','lunaPersonality','leoName','leoLook','leoPersonality','style'];
+  function canonical(value){
+    if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
+    if(value&&typeof value==='object'){
+      return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';
+    }
+    return JSON.stringify(value);
+  }
+  function readJson(key,fallback){
+    const raw=localStorage.getItem(key);
+    if(raw===null)return fallback;
+    return JSON.parse(raw);
+  }
+  function validateProfile(profile){
+    if(profile===null)return null;
+    if(!profile||typeof profile!=='object'||Array.isArray(profile))throw new Error('پروفایل ذخیره‌شده ساختار معتبری ندارد.');
+    const out={};
+    for(const key of PROFILE_FIELDS){
+      if(typeof profile[key]!=='string')throw new Error('فیلد پروفایل نامعتبر است: '+key);
+      out[key]=profile[key];
+    }
+    return out;
+  }
+  function validateEpisodes(episodes){
+    if(!Array.isArray(episodes))throw new Error('فهرست قسمت‌ها آرایه معتبر نیست.');
+    return episodes.map((episode,index)=>{
+      if(!episode||typeof episode!=='object'||Array.isArray(episode))throw new Error('ساختار قسمت شماره '+(index+1)+' نامعتبر است.');
+      const allowed=['id','en','fa','storyEn','storyFa'];
+      if(Object.keys(episode).some(key=>!allowed.includes(key)))throw new Error('فیلد ناشناخته در قسمت شماره '+(index+1)+' وجود دارد؛ برای جلوگیری از خروج اطلاعات ناخواسته، پشتیبان متوقف شد.');
+      if(!(typeof episode.id==='number'||typeof episode.id==='string'))throw new Error('شناسه قسمت شماره '+(index+1)+' نامعتبر است.');
+      for(const key of ['en','fa'])if(typeof episode[key]!=='string')throw new Error('عنوان قسمت شماره '+(index+1)+' ناقص است ('+key+').');
+      for(const key of ['storyEn','storyFa'])if(!Array.isArray(episode[key])||!episode[key].every(x=>typeof x==='string'))throw new Error('متن داستان قسمت شماره '+(index+1)+' نامعتبر است ('+key+').');
+      return JSON.parse(JSON.stringify(episode));
+    });
+  }
+  function readAllImages(){
+    return new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){reject(new Error('IndexedDB در این مرورگر در دسترس نیست؛ پشتیبان ناقص ساخته نشد.'));return;}
+      let request;
+      let absentDatabase=false;
+      let settled=false;
+      const finish=(error,value)=>{
+        if(settled)return;
+        settled=true;
+        if(error)reject(error);else resolve(value);
+      };
+      try{request=indexedDB.open('luna-image-library',1);}catch(error){finish(error);return;}
+      // A never-created image database represents an empty image library. Abort
+      // the implicit creation and report zero images without persisting a DB.
+      request.onupgradeneeded=()=>{
+        if(!request.result.objectStoreNames.contains('images')){
+          absentDatabase=true;
+          request.transaction.abort();
+        }
+      };
+      request.onerror=()=>{
+        if(settled)return;
+        if(absentDatabase){finish(null,[]);return;}
+        finish(request.error||new Error('کتابخانه تصاویر وجود ندارد یا ساختار آن معتبر نیست؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));
+      };
+      request.onblocked=()=>finish(new Error('کتابخانه تصاویر توسط تب دیگری قفل شده است؛ تب‌های دیگر LUNA را ببند و دوباره تلاش کن.'));
+      request.onsuccess=()=>{
+        const db=request.result;
+        // A blocked open can later succeed after another tab closes. Do not
+        // start a read after the export promise has already failed.
+        if(settled){db.close();return;}
+        if(!db.objectStoreNames.contains('images')){db.close();finish(new Error('فروشگاه تصاویر پیدا نشد؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));return;}
+        let tx;
+        try{tx=db.transaction('images','readonly');}catch(error){db.close();finish(error);return;}
+        const get=tx.objectStore('images').getAll();
+        let safeRows=null;
+        get.onsuccess=()=>{
+          if(settled)return;
+          const rows=get.result||[];
+          try{
+            safeRows=rows.map((row,index)=>{
+              if(!row||typeof row!=='object'||typeof row.dataUrl!=='string'||!row.dataUrl.startsWith('data:image/'))throw new Error('داده تصویر شماره '+(index+1)+' ناقص یا نامعتبر است.');
+              if(!row.meta||typeof row.meta!=='object'||Array.isArray(row.meta))throw new Error('فراداده تصویر شماره '+(index+1)+' نامعتبر است.');
+              if(typeof row.createdAt!=='string')throw new Error('زمان ثبت تصویر شماره '+(index+1)+' نامعتبر است.');
+              const item={dataUrl:row.dataUrl,meta:JSON.parse(JSON.stringify(row.meta)),createdAt:row.createdAt};
+              if(row.id!==undefined)item.sourceId=row.id;
+              return item;
+            });
+          }catch(error){
+            try{tx.abort();}catch(ignore){}
+            db.close();
+            finish(error);
+          }
+        };
+        get.onerror=()=>{db.close();finish(get.error||new Error('خواندن تصاویر ناموفق بود.'));};
+        tx.oncomplete=()=>{db.close();if(safeRows===null)finish(new Error('تراکنش خواندن تصاویر بدون نتیجه کامل شد.'));else finish(null,safeRows);};
+        tx.onabort=()=>{db.close();finish(tx.error||new Error('تراکنش خواندن تصاویر لغو شد.'));};
+      };
+    });
+  }
+  function formatBytes(bytes){
+    if(bytes<1024)return bytes+' B';
+    if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+    return (bytes/1024/1024).toFixed(2)+' MB';
+  }
+  button.addEventListener('click',async()=>{
+    if(button.disabled)return;
+    button.disabled=true;
+    const oldLabel=button.textContent;
+    button.textContent='در حال آماده‌سازی پشتیبان…';
+    try{
+      if(!window.crypto||!crypto.subtle||!window.TextEncoder)throw new Error('قابلیت امن SHA-256 در این مرورگر فعال نیست؛ خروجی بدون کنترل سلامت ساخته نمی‌شود.');
+      const profile=validateProfile(readJson('lunaCharacterProfile',null));
+      const storedEpisodes=localStorage.getItem('lunaEpisodes');
+      const bundledEpisodes=[
+        {id:1,en:"The Five-Star Mix-Up",fa:"سوءتفاهم پنج‌ستاره",storyEn:["Luna: \"Leo, tell me you booked the most romantic suite in the hotel.\"","Leo: \"Absolutely. Ocean view, champagne, rose petals… the whole luxury package!\"","The receptionist smiles: \"And your little VIP guest will love the dog bed.\"","Luna slowly turns to Leo. \"You booked a royal suite for a dog?\"","Leo whispers: \"Technically, the dog has better reviews than us.\""],storyFa:["لونا: «لئو، بگو که رمانتیک‌ترین سوئیت هتل رو رزرو کردی.»","لئو: «معلومه! منظره دریا، شامپاین، گلبرگ رز… پکیج کامل لاکچری!»","مسئول پذیرش لبخند می‌زند: «مهمان VIP کوچولوتون هم حتماً از تخت مخصوص سگ خوشش میاد.»","لونا آرام به سمت لئو برمی‌گردد: «برای یه سگ سوئیت سلطنتی رزرو کردی؟!»","لئو یواش می‌گوید: «از نظر فنی، امتیازهای اون سگ از ما بهتره!»"]},
+        {id:2,en:"The Fashion Emergency",fa:"بحران مد و فشن",storyEn:["One missing designer shoe turns a glamorous photo shoot into a ridiculous detective mission."],storyFa:["گم شدن یک کفش برند، عکاسی لوکس را به یک مأموریت کارآگاهی خنده‌دار تبدیل می‌کند."]},
+        {id:3,en:"Lost in Luxury",fa:"گم‌شده در دنیای لوکس",storyEn:["They get lost on the way to a VIP event—and accidentally become the stars of a local festival."],storyFa:["آن‌ها راه مراسم ویژه را گم می‌کنند و ناخواسته ستاره‌های یک جشن محلی می‌شوند."]}
+      ];
+      const episodes=validateEpisodes(storedEpisodes===null?bundledEpisodes:JSON.parse(storedEpisodes));
+      const images=await readAllImages();
+      const data={characterProfile:profile,episodes:episodes,images:images};
+      const canonicalPayload=canonical(data);
+      const digestBuffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonicalPayload));
+      const payloadDigest=Array.from(new Uint8Array(digestBuffer)).map(x=>x.toString(16).padStart(2,'0')).join('');
+      const backup={
+        format:'luna-browser-backup',
+        schemaVersion:1,
+        app:'LUNA Studio',
+        createdAt:new Date().toISOString(),
+        source:{origin:location.origin,appVersion:document.querySelector('meta[name="luna-build"]')?.content||'unknown',episodes:storedEpisodes===null?'bundled-seed':'browser-storage'},
+        included:{characterProfile:profile!==null,episodes:true,images:true,diagnostics:false,workerEndpoint:false},
+        counts:{episodes:episodes.length,images:images.length},
+        data:data,
+        integrity:{algorithm:'SHA-256',canonicalization:'recursive-sorted-object-keys-v1',payloadDigest:payloadDigest}
+      };
+      const json=JSON.stringify(backup,null,2);
+      const bytes=new TextEncoder().encode(json).byteLength;
+      if(bytes>30*1024*1024&&!window.confirm('حجم پشتیبان حدود '+formatBytes(bytes)+' است. ساخت فایل بزرگ روی گوشی ممکن است حافظه زیادی مصرف کند. ادامه می‌دهی؟'))return;
+      const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+      a.href=url;a.download='luna-backup-'+stamp+'.json';a.style.display='none';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      if(status)status.textContent='پشتیبان ساخته شد: '+episodes.length+' قسمت، '+images.length+' تصویر، حجم '+formatBytes(bytes)+'. توکن خصوصی صادر نشده است.';
+    }catch(error){
+      if(status)status.textContent='ساخت پشتیبان ناموفق بود: '+(error&&error.message?error.message:String(error));
+    }finally{
+      button.disabled=false;
+      button.textContent=oldLabel;
+    }
+  });
+})();
+</script>
+
 </body>\n</html>\n
