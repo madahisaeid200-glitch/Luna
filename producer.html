@@ -1422,10 +1422,11 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
         let tx;
         try{tx=db.transaction('images','readonly');}catch(error){db.close();reject(error);return;}
         const get=tx.objectStore('images').getAll();
+        let safeRows=null;
         get.onsuccess=()=>{
           const rows=get.result||[];
           try{
-            const safe=rows.map((row,index)=>{
+            safeRows=rows.map((row,index)=>{
               if(!row||typeof row!=='object'||typeof row.dataUrl!=='string'||!row.dataUrl.startsWith('data:image/'))throw new Error('داده تصویر شماره '+(index+1)+' ناقص یا نامعتبر است.');
               if(!row.meta||typeof row.meta!=='object'||Array.isArray(row.meta))throw new Error('فراداده تصویر شماره '+(index+1)+' نامعتبر است.');
               if(typeof row.createdAt!=='string')throw new Error('زمان ثبت تصویر شماره '+(index+1)+' نامعتبر است.');
@@ -1433,10 +1434,14 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
               if(row.id!==undefined)item.sourceId=row.id;
               return item;
             });
-            db.close();resolve(safe);
-          }catch(error){db.close();reject(error);}
+          }catch(error){
+            db.close();
+            try{tx.abort();}catch(ignore){}
+            reject(error);
+          }
         };
         get.onerror=()=>{db.close();reject(get.error||new Error('خواندن تصاویر ناموفق بود.'));};
+        tx.oncomplete=()=>{db.close();if(safeRows===null)reject(new Error('تراکنش خواندن تصاویر بدون نتیجه کامل شد.'));else resolve(safeRows);};
         tx.onabort=()=>{db.close();reject(tx.error||new Error('تراکنش خواندن تصاویر لغو شد.'));};
       };
     });
