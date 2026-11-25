@@ -30,3 +30,24 @@ Every important creative asset must have one record here. Never rely on a filena
 | file_000000007798821094b376c2c2e19980 | Confident Portrait Overlooking Paris.png | LEO portrait candidate; no final approval evidence | UNVERIFIED; not canonical |
 
 Note: the entries above are inventory notes only. They do not establish that these assets belong to the final character designs. Do not feed them into production as canonical references.
+
+
+## Additional Library inventory — recovered 2026-11-25
+
+The following files were found by a recursive Library image listing and visually inspected on 2026-11-25. Their creation timestamps are Library timestamps, not proof of generation prompt order or user approval. They are recorded as candidates only.
+
+| Asset ID / Library ID | Filename | Library created (UTC) | Character | Visual observation | Status |
+|---|---|---|---|---|---|
+| file_0000000023b08210ad32808058757ead | Elegant Portrait in a Luxurious Interior.png | 2026-11-21 09:52:58 | LEO candidate | Black tailored suit, direct portrait, hands not prominent in frame | UNVERIFIED |
+| file_00000000858c82109069993facf40c0d | Leo on a Parisian Luxury Balcony.png | 2026-11-21 09:42:45 | LEO candidate | Dark shirt and light trousers; seated/leaning balcony pose; one hand visible near railing | UNVERIFIED |
+| file_00000000b9d4821087c70ec915ac22d0 | Paris Café Portrait with Eiffel Tower View.png | 2026-11-21 09:50:54 | LEO candidate | Café portrait; hand supports temple/side of head | UNVERIFIED |
+| file_00000000ac1882109750de99b32091bb | Parisian Café Portrait with Eiffel Tower.png | 2026-11-21 09:43:45 | LEO candidate | Café portrait; hand supports temple/side of head | UNVERIFIED |
+| file_0000000024788210a31ebe2d283def8f | Cinematic Portrait in a Luxe Interior.png | 2026-11-21 09:14:37 | LEO candidate | Seated luxury-interior portrait; hand supports temple/side of head | UNVERIFIED |
+
+### Inventory interpretation and safeguards
+- These five images depict the same apparent male character concept and are therefore provisionally grouped as LEO candidates based on visual inspection; this grouping is not an approval decision.
+- The 2026-11-21 timestamps do not establish which image was generated first in the creative revision sequence. Prompt/session chronology must be recovered separately.
+- The black-suit portrait is currently the clearest neutral-pose candidate among the five inspected because the hands do not obscure the face. This is only a technical suitability observation, not a recommendation to canonize it.
+- The café and seated-lounge images have a hand close to the face; keep them out of motion testing until hand/face occlusion is evaluated.
+- No LUNA candidate was established by this five-image inspection. The LUNA identity search remains open.
+- Do not modify the canonical reference table above until exact user approval evidence is found.
