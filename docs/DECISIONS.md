@@ -22,3 +22,8 @@ This is the chronological record of durable project decisions. The current state
 ### 2026-11-25 — Production priority
 - Decision: prove a zero-cost, photorealistic Instagram Reels workflow before expanding secondary Studio features.
 - Status: active.
+
+### 2026-11-25 — Browser-local persistence gap
+- Finding: Producer character profile is stored in browser localStorage; the dashboard episode list is also documented as browser-local. These are not a shared, centrally synchronized project database.
+- Decision: repository ledger/registers remain authoritative until a secure central persistence layer with export, stable IDs, version history, and conflict handling is implemented and verified.
+- Status: gap confirmed; migration not implemented. No secrets may be committed to public source.
