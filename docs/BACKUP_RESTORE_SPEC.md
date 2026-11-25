@@ -144,3 +144,10 @@ The example is illustrative, not an implemented or final API contract. Canonical
 ## 11. Definition of done
 
 The feature is not complete until backup and restore pass the entire acceptance matrix on at least two separate browser profiles/devices, including an image-heavy project and a forced failure case. Successful download alone is not proof of recoverability.
+
+
+### Empty image-library behavior clarification — 2026-11-25
+
+- Acceptance test requires an empty project export to succeed with zero image records. A never-created IndexedDB database is now treated as an empty image library: the implicit database creation is aborted and the exporter returns an empty array without persisting a database.
+- An existing database with a missing `images` store, blocked open, read error, malformed record, or aborted read transaction still fails closed.
+- Static source patch only; browser verification of absent-database behavior remains required.
