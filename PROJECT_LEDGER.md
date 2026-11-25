@@ -241,3 +241,12 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 1. Keep PR #37 unmerged while GitHub checks are absent and real-browser verification is outstanding.
 2. Run the exporter in a browser profile with populated profile, episodes, and image library; inspect the downloaded JSON and independently recompute the digest.
 3. Only after those checks pass, decide whether to merge; do not claim portability until restore is tested on a second browser profile.
+
+
+### Follow-up review — 2026-11-25
+
+- Source inspection found an edge case: the dashboard displays three bundled seed episodes when `lunaEpisodes` is absent, while the first exporter draft would have written an empty episode array.
+- Fixed the exporter to include those exact three dashboard seed episodes when localStorage has no saved array, and record `source.episodes = bundled-seed`; saved arrays are still exported unchanged after schema validation.
+- Re-ran parser validation on the exact added exporter script using the JavaScript runtime: syntax PASS. Evaluated the embedded seed array: 3 entries, all match the episode schema.
+- This is a static source-level check only; it does not simulate browser APIs, IndexedDB, download behavior, or real user data.
+- PR #37 remains draft and unmerged. Current branch head is tracked separately by GitHub; no CI runs or commit statuses are reported yet.
