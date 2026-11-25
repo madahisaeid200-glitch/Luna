@@ -1,0 +1,107 @@
+# LUNA Project Ledger — Single Source of Truth
+
+> Purpose: prevent lost decisions, repeated work, accidental use of rejected assets, and restarting from the wrong checkpoint.
+> Status: initialized on 2026-11-25. This ledger is the project control document. It is not a claim that every historical asset or decision has already been recovered.
+
+## 1. Operating rules (mandatory)
+1. Read this file before every LUNA work session. Continue from the latest dated checkpoint below; do not restart an older audit or repeat completed checks.
+2. Write every material decision here during the same work session. A decision is not durable until recorded in this repository.
+3. Never silently promote a draft, experiment, generated image, or old archive asset to an approved reference.
+4. Use explicit status labels only: APPROVED, REJECTED, EXPERIMENTAL, UNVERIFIED, SUPERSEDED.
+5. A character reference is approved only when the user explicitly approves that exact image/version. Similarity, assistant preference, or a positive comment about an intermediate revision is not approval.
+6. Rejected/superseded assets must remain recorded so they are not accidentally reused.
+7. No production run may begin until the required character references, input assets, motion source, and cost/rights constraints are checked against this ledger.
+8. Do not ask the user to repeat information already present here or in linked source artifacts. If evidence is missing, mark it UNVERIFIED and investigate.
+9. Do not make changes directly on main for project work. Use a focused branch and a reviewable pull request.
+10. Never report a test as passed unless the actual output was generated and inspected.
+
+## 2. Project goals and constraints
+- Project: LUNA & LEO, a realistic virtual couple with a cinematic, luxury European visual world.
+- Current distribution focus: Instagram Reels; do not silently revert to the earlier YouTube-first plan.
+- Cost constraint: ZERO-COST production path. No paid subscription, credit purchase, or service upgrade without the user's explicit approval.
+- Quality requirement: highly photorealistic, natural human appearance and movement; stable identity across shots; believable faces, anatomy, hands, lighting, clothing, and environments. The user has described the target as comparable to the realism of Rostam Luti and expects an exceptionally difficult-to-detect AI result. This is a target, not a verified achieved score.
+- If a free path cannot meet the quality requirement, report the limitation honestly. Do not lower the quality bar or incur costs to conceal the gap.
+- Automation should minimize user effort, especially because the user often works from an Android phone.
+- Do not expand secondary Studio features until the free, realistic video-production path has been demonstrated with inspected output.
+
+## 3. Character identity registry
+
+### LUNA
+- Canonical visual reference: UNVERIFIED — not yet recovered and confirmed in this ledger.
+- Historical text description found in a Producer draft: 27-year-old elegant European woman, long glossy chestnut-brown hair, hazel eyes, refined natural facial features, realistic skin texture, graceful natural proportions, understated luxury styling.
+- This text is not proof of the final approved design.
+- Several old café portraits in the Library show a hand resting against the cheek. They were considered unsuitable for an initial motion test because the hand is too close to the face. They are NOT approved canonical references.
+- Do not use old café portraits, unrelated web images, or assistant-selected archive images as LUNA's canonical identity.
+- Next action: recover the original design decisions and exact candidate image(s), compare revisions chronologically, then record the exact asset name/ID and approval evidence.
+
+### LEO
+- Canonical visual reference: UNVERIFIED — not yet recovered and confirmed in this ledger.
+- Historical text description found in a Producer draft: 29-year-old elegant European man, neatly styled dark-brown hair, warm brown eyes, subtle natural stubble, realistic skin texture, athletic but natural proportions, tailored quiet-luxury clothing.
+- This text is not proof of the final approved design.
+- User rejected an earlier unattractive/non-natural-looking version and requested a more natural, handsome appearance. A later revision was considered improved but still needed more naturalism; that does not establish final approval.
+- Do not substitute an old archive portrait or an unrelated couple image.
+- Next action: recover the exact initial design and all subsequent revisions, then identify the latest explicitly approved version.
+
+### Approval record
+No final LUNA or LEO image is marked approved by this initial ledger. This is deliberate: uncertainty must remain visible rather than being replaced with guesses.
+
+| Character | Exact asset/version | Status | Approval evidence |
+|---|---|---|---|
+| LUNA | Not yet recovered | UNVERIFIED | Not established |
+| LEO | Not yet recovered | UNVERIFIED | Not established |
+
+## 4. Production pipeline status
+| Stage | Status | Evidence / next action |
+|---|---|---|
+| Original character concept recovery | IN PROGRESS | Search prior project conversations and Library chronologically |
+| Final LUNA reference approval | BLOCKED | Exact approved asset not yet established |
+| Final LEO reference approval | BLOCKED | Exact approved asset not yet established |
+| Free driving-motion source | UNVERIFIED | Establish provenance, license, framing, and suitability |
+| Wan-Animate-2 technical route | EXPERIMENTAL | Official Space/code reviewed; no LUNA/LEO output generated or inspected |
+| End-to-end photorealistic Reel | NOT DEMONSTRATED | No qualifying finished output inspected |
+| Automated publishing | NOT IN SCOPE YET | Do not build before production quality is proven |
+
+### Wan-Animate-2 caution
+- Reviewed Hugging Face Space: https://huggingface.co/spaces/hugging-apps/wan2-2-animate-2-14b
+- The reviewed demo accepts a character image and a driving video and returns MP4.
+- Free ZeroGPU capacity, queue time, and runtime are limited/variable. Do not assume daily capacity or a successful run.
+- The model is not yet validated on the canonical LUNA/LEO references.
+- A single-character run does not by itself solve scenes with both characters.
+- No actual LUNA/LEO video generation has been verified as of this ledger's initialization.
+
+## 5. Technical project anchors
+- Repository: madahisaeid200-glitch/Luna
+- Main website: https://madahisaeid200-glitch.github.io/Luna/
+- Producer page: https://madahisaeid200-glitch.github.io/Luna/producer.html
+- Cloudflare Worker endpoint historically used: https://orange-firefly-6434.madahisaeid200.workers.dev
+- Main branch README describes the browser-first Studio, Worker, production-pack export, and prototype renderers. Those renderer prototypes are motion-graphics/text-card paths, not proof of photorealistic AI footage.
+- Current documentation branch: docs/luna-single-source-of-truth
+- Main branch was not modified when this ledger was initialized.
+
+## 6. Session checkpoint
+### 2026-11-25 — Ledger initialized
+Problem addressed: project knowledge, decisions, assets, and checkpoints were scattered across chats, Library files, and repository history. Work repeatedly resumed from stale or incorrect material.
+
+Confirmed facts:
+- The Producer draft contains textual descriptions for LUNA and LEO, but those descriptions do not establish final visual approval.
+- Previously inspected old LUNA café portraits commonly show a hand against the cheek and are poor first motion-test references.
+- An old LEO portrait exists, but it is not established as the final approved LEO.
+- No actual Wan-Animate-2 output featuring the canonical LUNA has been generated and inspected.
+- The user explicitly objects to reusing old designs instead of the original/current approved designs.
+
+Current task — do this next, in order:
+1. Recover the original LUNA and LEO concept/design from prior conversations and Library assets, preserving dates and exact asset identifiers.
+2. Build a chronological revision history for each character: original → revisions → rejected versions → explicitly approved version.
+3. Record the exact approved reference image(s) here. If explicit approval cannot be found, keep status UNVERIFIED; do not invent a final design.
+4. Only after character identity is locked, resume motion-source and Wan-Animate-2 feasibility testing.
+5. Update this checkpoint with what was actually inspected, what passed/failed, and the next single action.
+
+Do not do: restart old Worker/token diagnosis, modify Producer UI, create new character portraits, or run video generation before completing character-reference recovery, unless a new verified blocker makes that necessary.
+
+## 7. Decision log
+Append newest entries at the top. Each entry must state the date, decision/change, evidence, and affected files/assets.
+
+| Date | Type | Decision / finding | Evidence |
+|---|---|---|---|
+| 2026-11-25 | Process | Establish this repository ledger as the mandatory project checkpoint and decision register. | Created on docs/luna-single-source-of-truth. |
+| 2026-11-25 | Quality gate | Old archive portraits and unapproved drafts must not be treated as canonical character references. | User correction; exact final references still being recovered. |
