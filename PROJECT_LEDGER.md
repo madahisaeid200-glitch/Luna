@@ -105,3 +105,35 @@ Append newest entries at the top. Each entry must state the date, decision/chang
 |---|---|---|---|
 | 2026-11-25 | Process | Establish this repository ledger as the mandatory project checkpoint and decision register. | Created on docs/luna-single-source-of-truth. |
 | 2026-11-25 | Quality gate | Old archive portraits and unapproved drafts must not be treated as canonical character references. | User correction; exact final references still being recovered. |
+
+## 8. Recovered historical design timeline (partial)
+
+This section records evidence recovered from prior conversations. It deliberately distinguishes saved profile text and generation prompts from explicit approval of an exact image.
+
+### 2026-10-28 — Original saved profile and first generation record
+- LUNA profile: adult 27-year-old elegant European woman; long glossy chestnut-brown hair; hazel eyes.
+- LEO profile: adult 29-year-old elegant European man; dark-brown hair; warm brown eyes; subtle stubble.
+- Shared style: photorealistic luxury European fashion editorial; vertical 9:16; no logos or text.
+- A FLUX generation was reported as successful and stored in the private browser library. The prompt described LUNA looking at the camera with a confident expression and cinematic lighting.
+- Approval status: **UNVERIFIED**. The conversation record does not establish that the user approved that exact output. The exact Library asset ID still needs to be matched.
+
+### 2026-10-31 — Hotel-suite and window looks
+- One generation prompt described LUNA standing elegantly in a luxurious hotel suite.
+- A later prompt described LUNA beside a large window with a city view, wearing a white evening gown, silver necklace, and earrings.
+- The window-look generation timed out after 90 seconds; it must not be treated as a completed output.
+- Approval status: **UNVERIFIED**. No explicit approval/rejection of the exact successful hotel-suite output was found in the retrieved record.
+
+### 2026-11-01 — Profile reaffirmed; motion test distinction
+- The same LUNA/LEO profile and shared photorealistic 9:16 editorial style were reaffirmed.
+- A prior assistant reported a Wan 2.2 test using a test image, but explicitly noted that no dedicated LUNA-and-LEO video had been produced.
+- Approval status: **UNVERIFIED** for character references; a generic test image is not a canonical character asset.
+
+### 2026-11-24 — Studio profile check
+- The saved Studio profile had editable LUNA/LEO “fixed appearance” fields and a shared visual style, but the retrieved record did not expose the actual appearance text or a reference-image approval.
+- No redesign or final approval evidence was recovered from that check.
+
+### Recovery conclusion
+- The earliest retrievable concept is the October 28 profile above. It is the original **textual character concept**, not proof of the final visual image.
+- The exact image generated on October 28, its Library ID, and any subsequent image approvals remain to be recovered from Library assets and full conversation records.
+- Do not call a later image “the original design” solely because its prompt resembles this profile.
+- Keep both canonical visual references **UNVERIFIED** until exact image identity and explicit user approval are connected.
