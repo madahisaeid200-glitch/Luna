@@ -47,7 +47,7 @@ Top-level structure:
 }
 ```
 
-The example is illustrative, not an implemented or final API contract. Canonical JSON serialization must be specified and tested before digest code is written. If Web Crypto is unavailable, backup creation must fail clearly rather than silently omit integrity validation.
+The example is illustrative, not a final API contract. The current exporter computes the digest over `data` only, encoded as UTF-8 after canonicalization. Canonicalization recursively sorts object keys lexicographically, preserves array order, and serializes primitive values with `JSON.stringify`; nested objects and arrays are canonicalized recursively. Image metadata is first normalized through a JSON stringify/parse round trip. The resulting hexadecimal SHA-256 digest is stored in `integrity.payloadDigest`. This describes the implemented algorithm; independent recomputation from a downloaded file and cross-browser test vectors remain pending. If Web Crypto is unavailable, backup creation must fail clearly rather than silently omit integrity validation.
 
 ## 3. Export rules
 
