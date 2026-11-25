@@ -2,6 +2,8 @@
 
 A lightweight browser-first production workspace for the LUNA & LEO virtual couple.
 
+> **Project control document:** read [PROJECT_LEDGER.md](PROJECT_LEDGER.md) before every work session. It records approved/rejected references, decisions, constraints, pipeline status, and the exact next checkpoint. Do not treat drafts or archive images as approved character references.
+
 ## Current architecture
 
 - `index.html`: episode dashboard and saved episode list (browser-local storage).
