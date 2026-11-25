@@ -159,3 +159,33 @@ This section records evidence recovered from prior conversations. It deliberatel
 6. Verify recovery from a second browser/device before calling synchronization complete.
 
 Status: **GAP CONFIRMED; CENTRAL SYNC NOT IMPLEMENTED.** No migration or code change has been made in this audit.
+
+
+## 10. Session checkpoint — 2026-11-25 continuation
+
+### Work completed in this session
+- Recursively listed the Library image assets and found a set of 2026-11-21 character candidates that were not present in the earlier asset register.
+- Visually inspected five exact image files and recorded their Library IDs, timestamps, and pose observations in `docs/ASSET_REGISTRY.md`.
+- Opened PR #32 and merged it into main. Merge commit: `88a31ca0588f40771d4d28e662432ae71cccdd31`.
+- No candidate was promoted to APPROVED. LUNA's canonical visual reference remains UNVERIFIED; LEO's canonical visual reference remains UNVERIFIED.
+- Added a pilot-draft project playbook at `docs/PROJECT_SYSTEM_PLAYBOOK.md` on branch `docs/project-system-playbook-v0`. It is not yet merged or validated as a standard.
+
+### Important new evidence
+- Five additional 2026-11-21 images are visually grouped as LEO candidates.
+- The black-suit portrait is the clearest neutral-pose candidate among those five inspected, but this is only a pose-suitability observation, not approval.
+- Several newer LEO café/lounge portraits still have a hand close to the face.
+- The LUNA image lineage is not yet recovered; do not infer her canonical image from these LEO files.
+
+### Next actions
+1. Review and merge the project playbook only after checking the complete diff and confirming it does not overstate current capabilities.
+2. Continue Library inventory for remaining 2026-11-21 LEO candidates and 2026-11-19/earlier LUNA candidates; visually inspect before recording.
+3. Recover the exact conversation prompts and user approval statements that connect candidate images to the design revision sequence.
+4. Add an Issue & Learning Register to LUNA and record the already confirmed persistence gap as a tracked issue.
+5. Keep production/video tests blocked until the exact character references are recovered and approved.
+
+### Explicitly not completed
+- No final LUNA/LEO image approval.
+- No photorealistic LUNA/LEO video generation or visual quality pass.
+- No central database, cross-device sync, or browser-data migration.
+- No automated project-management enforcement.
+- No validated multi-project standard yet.
