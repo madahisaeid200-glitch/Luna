@@ -197,3 +197,15 @@ Status: **GAP CONFIRMED; CENTRAL SYNC NOT IMPLEMENTED.** No migration or code ch
 - Severity is marked HIGH because of data durability and continuity risk; status remains OPEN.
 - The record distinguishes the confirmed architecture gap from a runtime bug, documents containment, and defines regression tests required before closure.
 - No persistence code was changed. The next technical action is to map all Producer localStorage keys and read/write paths before proposing a migration.
+
+
+## 12. Producer storage inventory — 2026-11-25
+Reviewed current `producer.html` and `index.html` source on main. Confirmed:
+- localStorage keys: `lunaCharacterProfile`, `lunaEpisodes`, `lunaAiEndpoint`, `lunaDiagnostics`, `lunaVoiceDiagnostics`.
+- sessionStorage key: `lunaAccessToken` (private credential; explicitly excluded from backups).
+- IndexedDB database: `luna-image-library`, object store `images`, storing generated image data URLs, metadata, timestamps, and auto-increment IDs.
+- Dashboard and Producer both use `lunaEpisodes`; dashboard reset removes that key.
+- Existing diagnostic export is not a full backup: it does not export the full episode collection and IndexedDB image payloads.
+- Diagnostic histories are bounded (30 general events / 20 voice events in observed write paths); they are not a complete audit trail.
+
+Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined backup requirements. No runtime code changed. The next step is to specify and review a non-destructive backup/restore design before implementation.
