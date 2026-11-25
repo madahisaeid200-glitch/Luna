@@ -274,3 +274,10 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Cross-checked exporter behavior against the backup spec's explicit “Export empty project” acceptance test. A project that has never stored an image has no IndexedDB database; rejecting that state would make the documented empty-project backup impossible.
 - Updated `readAllImages()` to detect the implicit first-time database upgrade, abort creation, and return zero images. Existing databases with a missing store and all actual read/transaction errors continue to reject.
 - Updated backup specification to make this distinction explicit. This is static source verification only; test in a real browser before merge.
+
+
+### 2026-11-25 — Backup digest specification alignment
+- A focused code/spec audit found stale specification wording claiming canonical JSON serialization had not yet been specified, although the exporter already implemented recursive sorted-object-key canonicalization and SHA-256 over the `data` payload.
+- Updated `docs/BACKUP_RESTORE_SPEC.md` to describe the implemented algorithm precisely: lexicographically sorted object keys, preserved array order, recursive serialization, UTF-8 encoding, hexadecimal SHA-256 digest, and JSON normalization of image metadata.
+- Independent digest recomputation from an actual downloaded backup and cross-browser test vectors remain pending; this documentation correction does not count as runtime verification.
+- PR #37 remains draft and unmerged; main remains unchanged.
