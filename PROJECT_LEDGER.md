@@ -250,3 +250,12 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Re-ran parser validation on the exact added exporter script using the JavaScript runtime: syntax PASS. Evaluated the embedded seed array: 3 entries, all match the episode schema.
 - This is a static source-level check only; it does not simulate browser APIs, IndexedDB, download behavior, or real user data.
 - PR #37 remains draft and unmerged. Latest reviewed PR head: `e861d7945811b43a8250fa1e1e65052b0eab319b`. GitHub reports no workflow runs or commit status entries for this head; PR #37 remains draft and unmerged.
+
+
+### Follow-up safety fix — 2026-11-25
+
+- Reviewed the latest PR head and found that `readAllImages()` resolved an empty image list when the IndexedDB database or `images` object store was absent. This could falsely label an incomplete archive as a full backup.
+- Updated `producer.html` on this feature branch: `onupgradeneeded` now aborts creation of a missing/empty database, request errors fail the export, and a missing `images` store explicitly rejects instead of returning `[]`.
+- GitHub confirmed the updated file content and blob SHA `3c5468d9dc3bfbd5e0fa8f7be7347aca4a2b9ffc`; commit `7ac0f92f9187f82bebbb3d39437c0c8f5be95e44` is the current PR head at this checkpoint.
+- GitHub Actions quality-gates run #385 is queued. Combined commit status has no status entries yet. Static patch inspection passed; real browser IndexedDB behavior and populated-data export remain unverified.
+- PR #37 stays draft and unmerged. Do not merge until CI and real-browser verification pass.
