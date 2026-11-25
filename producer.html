@@ -1409,7 +1409,13 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
       if(!('indexedDB' in window)){reject(new Error('IndexedDB در این مرورگر در دسترس نیست؛ پشتیبان ناقص ساخته نشد.'));return;}
       let request;
       let absentDatabase=false;
-      try{request=indexedDB.open('luna-image-library',1);}catch(error){reject(error);return;}
+      let settled=false;
+      const finish=(error,value)=>{
+        if(settled)return;
+        settled=true;
+        if(error)reject(error);else resolve(value);
+      };
+      try{request=indexedDB.open('luna-image-library',1);}catch(error){finish(error);return;}
       // A never-created image database represents an empty image library. Abort
       // the implicit creation and report zero images without persisting a DB.
       request.onupgradeneeded=()=>{
@@ -1419,18 +1425,23 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
         }
       };
       request.onerror=()=>{
-        if(absentDatabase){resolve([]);return;}
-        reject(request.error||new Error('کتابخانه تصاویر وجود ندارد یا ساختار آن معتبر نیست؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));
+        if(settled)return;
+        if(absentDatabase){finish(null,[]);return;}
+        finish(request.error||new Error('کتابخانه تصاویر وجود ندارد یا ساختار آن معتبر نیست؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));
       };
-      request.onblocked=()=>reject(new Error('کتابخانه تصاویر توسط تب دیگری قفل شده است؛ تب‌های دیگر LUNA را ببند و دوباره تلاش کن.'));
+      request.onblocked=()=>finish(new Error('کتابخانه تصاویر توسط تب دیگری قفل شده است؛ تب‌های دیگر LUNA را ببند و دوباره تلاش کن.'));
       request.onsuccess=()=>{
         const db=request.result;
-        if(!db.objectStoreNames.contains('images')){db.close();reject(new Error('فروشگاه تصاویر پیدا نشد؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));return;}
+        // A blocked open can later succeed after another tab closes. Do not
+        // start a read after the export promise has already failed.
+        if(settled){db.close();return;}
+        if(!db.objectStoreNames.contains('images')){db.close();finish(new Error('فروشگاه تصاویر پیدا نشد؛ برای جلوگیری از پشتیبان ناقص، خروجی متوقف شد.'));return;}
         let tx;
-        try{tx=db.transaction('images','readonly');}catch(error){db.close();reject(error);return;}
+        try{tx=db.transaction('images','readonly');}catch(error){db.close();finish(error);return;}
         const get=tx.objectStore('images').getAll();
         let safeRows=null;
         get.onsuccess=()=>{
+          if(settled)return;
           const rows=get.result||[];
           try{
             safeRows=rows.map((row,index)=>{
@@ -1442,14 +1453,14 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
               return item;
             });
           }catch(error){
-            db.close();
             try{tx.abort();}catch(ignore){}
-            reject(error);
+            db.close();
+            finish(error);
           }
         };
-        get.onerror=()=>{db.close();reject(get.error||new Error('خواندن تصاویر ناموفق بود.'));};
-        tx.oncomplete=()=>{db.close();if(safeRows===null)reject(new Error('تراکنش خواندن تصاویر بدون نتیجه کامل شد.'));else resolve(safeRows);};
-        tx.onabort=()=>{db.close();reject(tx.error||new Error('تراکنش خواندن تصاویر لغو شد.'));};
+        get.onerror=()=>{db.close();finish(get.error||new Error('خواندن تصاویر ناموفق بود.'));};
+        tx.oncomplete=()=>{db.close();if(safeRows===null)finish(new Error('تراکنش خواندن تصاویر بدون نتیجه کامل شد.'));else finish(null,safeRows);};
+        tx.onabort=()=>{db.close();finish(tx.error||new Error('تراکنش خواندن تصاویر لغو شد.'));};
       };
     });
   }
