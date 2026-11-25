@@ -217,3 +217,25 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Restore is two-phase: validate/preview first, then create and verify a pre-restore snapshot before writing. Silent overwrite is prohibited.
 - README now links all project-control records so future sessions and collaborators can find the source of truth.
 - This is design documentation only. No export/restore UI or runtime code has been implemented or tested.
+
+
+## 14. Full-backup export implementation — 2026-11-25
+
+- Created feature branch `feat/producer-full-backup-export` from `main`; no direct main changes.
+- Added a dedicated “دانلود پشتیبان کامل پروژه” action to Producer's Character Manager.
+- Export contents: saved character profile (recognized fields only), full `lunaEpisodes` array, and all `luna-image-library/images` records including image data URLs, metadata, timestamps, and source IDs.
+- Added strict validation for profile/episode/image structures; unknown episode fields abort export instead of being silently copied.
+- Added schema/version/source/count metadata and SHA-256 integrity digest over recursively sorted canonical payload.
+- Diagnostics, Worker endpoint, sessionStorage, and `lunaAccessToken` are excluded. The token is never read by the exporter.
+- A warning confirmation appears above 30 MiB; this is a precaution, not a validated mobile-browser limit.
+- Updated backup spec and LUNA-001 issue record to reflect implementation-in-review.
+
+### Verification state
+- Feature branch source updated successfully; pull request and CI verification not yet completed at this checkpoint.
+- No real browser export/download has been run. No populated project JSON has been inspected. No digest has been recomputed from a downloaded file. No mobile memory/quota behavior has been tested.
+- Do not merge or mark LUNA-001 verified until the relevant checks pass.
+
+### Next action
+1. Run source syntax/static checks and inspect the exact diff.
+2. Open a focused PR and inspect CI results.
+3. If code checks pass, keep PR unmerged until real-browser export can be verified; report clearly that the user-side download test is still required.
