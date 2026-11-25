@@ -189,3 +189,11 @@ Status: **GAP CONFIRMED; CENTRAL SYNC NOT IMPLEMENTED.** No migration or code ch
 - No central database, cross-device sync, or browser-data migration.
 - No automated project-management enforcement.
 - No validated multi-project standard yet.
+
+
+## 11. Issue tracking established — 2026-11-25
+- Created `docs/ISSUES_AND_LEARNINGS.md` in a review branch.
+- First tracked issue: **LUNA-001 — Studio data is browser-local rather than centrally synchronized**.
+- Severity is marked HIGH because of data durability and continuity risk; status remains OPEN.
+- The record distinguishes the confirmed architecture gap from a runtime bug, documents containment, and defines regression tests required before closure.
+- No persistence code was changed. The next technical action is to map all Producer localStorage keys and read/write paths before proposing a migration.
