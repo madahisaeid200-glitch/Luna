@@ -120,7 +120,7 @@ Design a non-destructive backup/export specification and tests first. Do not mod
 ## LUNA-001 implementation update — 2026-11-25
 
 - Added a dedicated full-backup export control to the Producer on branch `feat/producer-full-backup-export`.
-- The exporter reads the saved character profile, complete episode list, and all IndexedDB image records. It validates record shapes and stops on malformed data rather than silently creating a partial archive.
+- The exporter reads the saved character profile, complete episode list, and all IndexedDB image records. If no saved episode array exists, it includes the dashboard's three bundled seed episodes rather than exporting an empty list. It validates record shapes and stops on malformed data rather than silently creating a partial archive.
 - The output is versioned JSON with SHA-256 integrity metadata; the digest uses recursively sorted object keys.
 - The access token is never read. Diagnostics and Worker endpoint are excluded by default.
 - **Status remains OPEN.** Code review and static/runtime checks are still pending; no claim of successful real-data backup is made.
