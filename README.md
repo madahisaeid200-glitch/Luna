@@ -67,3 +67,17 @@ The `browser-renderer/` app is a second Remotion path designed for phones and st
 Import the JSON downloaded from Producer, then render. The page checks whether the current browser can encode H.264 MP4 before starting. Chrome 94+ is the documented minimum for client-side rendering, but actual codec support varies by device/browser. Mobile rendering is limited by memory, battery and thermal performance; start with short episodes. Keep the server-side renderer in `renderer/` as a fallback for longer or heavier renders.
 
 The browser renderer currently outputs animated text-based scene cards, not AI-generated character footage. Client-side rendering uses WebCodecs/Mediabunny and supports a subset of CSS; richer footage, images, speech, lip-sync and music remain separate production stages. See the [Remotion client-side rendering guide](https://www.remotiondocs.com/docs/client-side-rendering) and [limitations](https://www.remotiondocs.com/docs/client-side-rendering/limitations).
+
+
+## Project control and quality records
+
+Before changing the application, read the [Project Ledger](PROJECT_LEDGER.md). Supporting records:
+
+- [Project System Playbook — pilot draft](docs/PROJECT_SYSTEM_PLAYBOOK.md)
+- [Decision Register](docs/DECISIONS.md)
+- [Asset Registry](docs/ASSET_REGISTRY.md)
+- [Issue & Learning Register](docs/ISSUES_AND_LEARNINGS.md)
+- [Session Template](docs/SESSION_TEMPLATE.md)
+- [Browser Backup & Restore Specification — design only](docs/BACKUP_RESTORE_SPEC.md)
+
+These records are the project's durable working memory. The playbook remains a pilot until validated through repeated project cycles.
