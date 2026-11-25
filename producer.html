@@ -1449,7 +1449,13 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
     try{
       if(!window.crypto||!crypto.subtle||!window.TextEncoder)throw new Error('قابلیت امن SHA-256 در این مرورگر فعال نیست؛ خروجی بدون کنترل سلامت ساخته نمی‌شود.');
       const profile=validateProfile(readJson('lunaCharacterProfile',null));
-      const episodes=validateEpisodes(readJson('lunaEpisodes',[]));
+      const storedEpisodes=localStorage.getItem('lunaEpisodes');
+      const bundledEpisodes=[
+        {id:1,en:"The Five-Star Mix-Up",fa:"سوءتفاهم پنج‌ستاره",storyEn:["Luna: \"Leo, tell me you booked the most romantic suite in the hotel.\"","Leo: \"Absolutely. Ocean view, champagne, rose petals… the whole luxury package!\"","The receptionist smiles: \"And your little VIP guest will love the dog bed.\"","Luna slowly turns to Leo. \"You booked a royal suite for a dog?\"","Leo whispers: \"Technically, the dog has better reviews than us.\""],storyFa:["لونا: «لئو، بگو که رمانتیک‌ترین سوئیت هتل رو رزرو کردی.»","لئو: «معلومه! منظره دریا، شامپاین، گلبرگ رز… پکیج کامل لاکچری!»","مسئول پذیرش لبخند می‌زند: «مهمان VIP کوچولوتون هم حتماً از تخت مخصوص سگ خوشش میاد.»","لونا آرام به سمت لئو برمی‌گردد: «برای یه سگ سوئیت سلطنتی رزرو کردی؟!»","لئو یواش می‌گوید: «از نظر فنی، امتیازهای اون سگ از ما بهتره!»"]},
+        {id:2,en:"The Fashion Emergency",fa:"بحران مد و فشن",storyEn:["One missing designer shoe turns a glamorous photo shoot into a ridiculous detective mission."],storyFa:["گم شدن یک کفش برند، عکاسی لوکس را به یک مأموریت کارآگاهی خنده‌دار تبدیل می‌کند."]},
+        {id:3,en:"Lost in Luxury",fa:"گم‌شده در دنیای لوکس",storyEn:["They get lost on the way to a VIP event—and accidentally become the stars of a local festival."],storyFa:["آن‌ها راه مراسم ویژه را گم می‌کنند و ناخواسته ستاره‌های یک جشن محلی می‌شوند."]}
+      ];
+      const episodes=validateEpisodes(storedEpisodes===null?bundledEpisodes:JSON.parse(storedEpisodes));
       const images=await readAllImages();
       const data={characterProfile:profile,episodes:episodes,images:images};
       const canonicalPayload=canonical(data);
@@ -1460,7 +1466,7 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
         schemaVersion:1,
         app:'LUNA Studio',
         createdAt:new Date().toISOString(),
-        source:{origin:location.origin,appVersion:document.querySelector('meta[name="luna-build"]')?.content||'unknown'},
+        source:{origin:location.origin,appVersion:document.querySelector('meta[name="luna-build"]')?.content||'unknown',episodes:storedEpisodes===null?'bundled-seed':'browser-storage'},
         included:{characterProfile:profile!==null,episodes:true,images:true,diagnostics:false,workerEndpoint:false},
         counts:{episodes:episodes.length,images:images.length},
         data:data,
