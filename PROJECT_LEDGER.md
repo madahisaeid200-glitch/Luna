@@ -137,3 +137,25 @@ This section records evidence recovered from prior conversations. It deliberatel
 - The exact image generated on October 28, its Library ID, and any subsequent image approvals remain to be recovered from Library assets and full conversation records.
 - Do not call a later image “the original design” solely because its prompt resembles this profile.
 - Keep both canonical visual references **UNVERIFIED** until exact image identity and explicit user approval are connected.
+
+
+## 9. Persistence and synchronization audit
+
+### Confirmed architecture gap — 2026-11-24 source review
+- The Producer source uses browser `localStorage` for the editable character profile (`lunaCharacterProfile`) and the dashboard/episode state is described as saved in the same browser.
+- This means the Studio's working profile and some episode state are browser/device-local, not a reliable shared project database. They can be absent in another browser/device or after local browser data is cleared.
+- The repository README also describes the dashboard episode list as browser-local storage.
+- Therefore the project currently has two separate kinds of records:
+  1. Repository-backed source and documentation (durable, versioned, reviewable).
+  2. Browser-local Studio working data (not centrally synchronized).
+- Do not assume a saved profile in one browser is available to another. Do not use browser-local data as the only canonical record for character identity, approved assets, decisions, or episode continuity.
+
+### Required future remediation
+1. Keep the repository ledger, decision register, and asset registry as the authoritative project record.
+2. Create export/import backups for browser-local episodes and settings before any migration.
+3. Design a central persistence layer for Studio records only after checking the existing Worker/API and security model. Never expose a private access token in public source or commit it to the repository.
+4. Define stable IDs and version history for characters, approved reference assets, episodes, and production runs.
+5. Add explicit sync status and conflict handling so a local draft cannot silently overwrite a newer approved record.
+6. Verify recovery from a second browser/device before calling synchronization complete.
+
+Status: **GAP CONFIRMED; CENTRAL SYNC NOT IMPLEMENTED.** No migration or code change has been made in this audit.
