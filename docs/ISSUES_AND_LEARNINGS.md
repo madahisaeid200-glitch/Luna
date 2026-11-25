@@ -76,3 +76,42 @@ A prevention rule may be promoted into `docs/PROJECT_SYSTEM_PLAYBOOK.md` only af
 4. The rule is reviewed for applicability beyond this single incident.
 
 Do not convert guesses or one-off workarounds into universal standards.
+
+
+## LUNA-001 evidence update — Producer storage inventory (2026-11-25)
+
+Source reviewed: `producer.html` and `index.html` on `main` (Producer blob `996439af315a8873fe4eabf818b9715c1cad721c`; dashboard blob `866367a1d19a9dabf686df305f956bc8394495c4`).
+
+### Confirmed browser storage map
+
+| Storage | Key / database | Observed content / behavior | Durability scope |
+|---|---|---|---|
+| localStorage | `lunaCharacterProfile` | JSON profile: LUNA/LEO names, appearance, personality, shared style | Same browser origin/profile |
+| localStorage | `lunaEpisodes` | Episode records with numeric ID, Persian/English titles and story arrays; Producer and dashboard both read/write this key | Same browser origin/profile |
+| localStorage | `lunaAiEndpoint` | Worker endpoint URL; not an access token | Same browser origin/profile |
+| localStorage | `lunaDiagnostics` | Diagnostic events; several paths cap stored history to 30 entries | Same browser origin/profile; bounded history |
+| localStorage | `lunaVoiceDiagnostics` | TTS diagnostic events; history capped to 20 entries | Same browser origin/profile; bounded history |
+| sessionStorage | `lunaAccessToken` | Private access token restored into the current tab session | Session/tab-scoped; not part of a normal project backup |
+| IndexedDB | `luna-image-library`, store `images` | Generated image data URLs, metadata, creation timestamp; auto-increment numeric ID | Same browser origin/profile; binary/base64 image payloads |
+
+### Additional findings
+- Dashboard `index.html` initializes episode data from `localStorage.getItem('lunaEpisodes')` or falls back to embedded seed episodes. Its reset action removes the stored episode key and returns to seeds. This is a destructive operation for locally saved episode records unless they have been backed up.
+- Producer character reset removes `lunaCharacterProfile` and restores defaults in the form.
+- Producer image storage uses IndexedDB, not localStorage. The image library is separate from the Library feature of ChatGPT and is local to the LUNA website's browser origin.
+- Diagnostic records are intentionally bounded, so they are not a complete audit trail.
+- The access token is held in sessionStorage and an in-memory variable. It must not be exported with project data or written to GitHub.
+- The Producer currently offers a diagnostic-report export, but the inspected export includes diagnostics/status/profile metadata and does not constitute a full backup of episodes plus IndexedDB image payloads.
+
+### Backup design requirements refined
+A safe backup/restore feature must:
+1. Export/import `lunaCharacterProfile` and `lunaEpisodes` with schema version and integrity checks.
+2. Offer optional diagnostic export, clearly labelled as bounded diagnostic history rather than a complete log.
+3. Export/import every record in IndexedDB `luna-image-library.images`, including dataUrl, meta, createdAt, and id where safe to preserve.
+4. Explicitly exclude `lunaAccessToken` and never include secrets in the backup.
+5. Treat `lunaAiEndpoint` as configuration, not a credential; allow user choice to include it.
+6. Validate imported data before writing; create a pre-restore snapshot; never silently overwrite current records.
+7. Verify record counts and image readability after restore.
+8. Test backup on browser A and restore on a clean browser B before claiming portability.
+
+### Revised next action
+Design a non-destructive backup/export specification and tests first. Do not modify Producer UI or storage code until the complete restore path and failure behavior have been reviewed.
