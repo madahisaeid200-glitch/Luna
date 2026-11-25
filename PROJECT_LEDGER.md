@@ -259,3 +259,11 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - GitHub confirmed the updated file content and blob SHA `3c5468d9dc3bfbd5e0fa8f7be7347aca4a2b9ffc`; commit `7ac0f92f9187f82bebbb3d39437c0c8f5be95e44` is the current PR head at this checkpoint.
 - GitHub Actions quality-gates run #385 is queued. Combined commit status has no status entries yet. Static patch inspection passed; real browser IndexedDB behavior and populated-data export remain unverified.
 - PR #37 stays draft and unmerged. Do not merge until CI and real-browser verification pass.
+
+
+### IndexedDB export transaction completion hardening — 2026-11-25
+
+- Follow-up audit found that the exporter resolved its image-read promise on the getAll() request success event, before the enclosing readonly transaction's complete event.
+- Updated readAllImages() to retain validated rows and resolve only after tx.oncomplete; aborts and request errors reject the export. Validation failures abort the read transaction and fail closed.
+- Verified the exact updated producer.html block on branch feat/producer-full-backup-export (blob 21c2c47e356ba669ef98f96950f66d3c57ee8421).
+- This is static code verification only. Real-browser export with populated IndexedDB data and forced transaction failure remains outstanding; do not merge on this basis.
