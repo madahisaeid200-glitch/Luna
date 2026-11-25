@@ -231,11 +231,13 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Updated backup spec and LUNA-001 issue record to reflect implementation-in-review.
 
 ### Verification state
-- Feature branch source updated successfully; pull request and CI verification not yet completed at this checkpoint.
+- Opened draft PR #37: https://github.com/madahisaeid200-glitch/Luna/pull/37 (head `09282c13f4d85d3109f61bdf6175704b8907988f`; 4 files changed).
+- Reviewed the PR diff: only `producer.html`, the backup specification, issue register, and project ledger are changed.
+- Ran a Node JavaScript syntax check on the added exporter logic; it passed. GitHub combined commit status currently reports no status entries, so CI is not confirmed.
 - No real browser export/download has been run. No populated project JSON has been inspected. No digest has been recomputed from a downloaded file. No mobile memory/quota behavior has been tested.
 - Do not merge or mark LUNA-001 verified until the relevant checks pass.
 
 ### Next action
-1. Run source syntax/static checks and inspect the exact diff.
-2. Open a focused PR and inspect CI results.
-3. If code checks pass, keep PR unmerged until real-browser export can be verified; report clearly that the user-side download test is still required.
+1. Keep PR #37 unmerged while GitHub checks are absent and real-browser verification is outstanding.
+2. Run the exporter in a browser profile with populated profile, episodes, and image library; inspect the downloaded JSON and independently recompute the digest.
+3. Only after those checks pass, decide whether to merge; do not claim portability until restore is tested on a second browser profile.
