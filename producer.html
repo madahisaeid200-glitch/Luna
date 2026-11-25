@@ -1396,6 +1396,8 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
     if(!Array.isArray(episodes))throw new Error('فهرست قسمت‌ها آرایه معتبر نیست.');
     return episodes.map((episode,index)=>{
       if(!episode||typeof episode!=='object'||Array.isArray(episode))throw new Error('ساختار قسمت شماره '+(index+1)+' نامعتبر است.');
+      const allowed=['id','en','fa','storyEn','storyFa'];
+      if(Object.keys(episode).some(key=>!allowed.includes(key)))throw new Error('فیلد ناشناخته در قسمت شماره '+(index+1)+' وجود دارد؛ برای جلوگیری از خروج اطلاعات ناخواسته، پشتیبان متوقف شد.');
       if(!(typeof episode.id==='number'||typeof episode.id==='string'))throw new Error('شناسه قسمت شماره '+(index+1)+' نامعتبر است.');
       for(const key of ['en','fa'])if(typeof episode[key]!=='string')throw new Error('عنوان قسمت شماره '+(index+1)+' ناقص است ('+key+').');
       for(const key of ['storyEn','storyFa'])if(!Array.isArray(episode[key])||!episode[key].every(x=>typeof x==='string'))throw new Error('متن داستان قسمت شماره '+(index+1)+' نامعتبر است ('+key+').');
@@ -1459,7 +1461,7 @@ el('language').onclick=()=>{fa=!fa;setUi()};setUi();
         app:'LUNA Studio',
         createdAt:new Date().toISOString(),
         source:{origin:location.origin,appVersion:document.querySelector('meta[name="luna-build"]')?.content||'unknown'},
-        included:{characterProfile:true,episodes:true,images:true,diagnostics:false,workerEndpoint:false},
+        included:{characterProfile:profile!==null,episodes:true,images:true,diagnostics:false,workerEndpoint:false},
         counts:{episodes:episodes.length,images:images.length},
         data:data,
         integrity:{algorithm:'SHA-256',canonicalization:'recursive-sorted-object-keys-v1',payloadDigest:payloadDigest}
