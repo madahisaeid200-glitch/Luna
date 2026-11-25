@@ -231,7 +231,7 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Updated backup spec and LUNA-001 issue record to reflect implementation-in-review.
 
 ### Verification state
-- Opened draft PR #37: https://github.com/madahisaeid200-glitch/Luna/pull/37 (latest head `0888aa07bea4c8668f9749e753b6ae58f3efd519`; 4 files changed).
+- Opened draft PR #37: https://github.com/madahisaeid200-glitch/Luna/pull/37 (head at first review snapshot `0888aa07bea4c8668f9749e753b6ae58f3efd519`; 4 files changed).
 - Reviewed the PR diff: only `producer.html`, the backup specification, issue register, and project ledger are changed.
 - Ran a Node JavaScript syntax check on the added exporter logic; it passed. GitHub combined commit status currently reports no status entries, so CI is not confirmed.
 - No real browser export/download has been run. No populated project JSON has been inspected. No digest has been recomputed from a downloaded file. No mobile memory/quota behavior has been tested.
