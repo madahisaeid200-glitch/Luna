@@ -209,3 +209,11 @@ Reviewed current `producer.html` and `index.html` source on main. Confirmed:
 - Diagnostic histories are bounded (30 general events / 20 voice events in observed write paths); they are not a complete audit trail.
 
 Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined backup requirements. No runtime code changed. The next step is to specify and review a non-destructive backup/restore design before implementation.
+
+
+## 13. Backup/restore design — 2026-11-25
+- Added `docs/BACKUP_RESTORE_SPEC.md` on branch `docs/backup-restore-design`.
+- The design covers character profile, episode records, IndexedDB images, optional bounded diagnostics, optional Worker endpoint, and strict exclusion of access tokens.
+- Restore is two-phase: validate/preview first, then create and verify a pre-restore snapshot before writing. Silent overwrite is prohibited.
+- README now links all project-control records so future sessions and collaborators can find the source of truth.
+- This is design documentation only. No export/restore UI or runtime code has been implemented or tested.
