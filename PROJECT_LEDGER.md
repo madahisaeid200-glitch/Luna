@@ -249,4 +249,4 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Fixed the exporter to include those exact three dashboard seed episodes when localStorage has no saved array, and record `source.episodes = bundled-seed`; saved arrays are still exported unchanged after schema validation.
 - Re-ran parser validation on the exact added exporter script using the JavaScript runtime: syntax PASS. Evaluated the embedded seed array: 3 entries, all match the episode schema.
 - This is a static source-level check only; it does not simulate browser APIs, IndexedDB, download behavior, or real user data.
-- PR #37 remains draft and unmerged. Current branch head is tracked separately by GitHub; no CI runs or commit statuses are reported yet.
+- PR #37 remains draft and unmerged. Latest reviewed PR head: `e861d7945811b43a8250fa1e1e65052b0eab319b`. GitHub reports no workflow runs or commit status entries for this head; PR #37 remains draft and unmerged.
