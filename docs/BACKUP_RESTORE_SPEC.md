@@ -133,7 +133,7 @@ The example is illustrative, not an implemented or final API contract. Canonical
 ## 10. Export implementation notes — 2026-11-25
 
 - Producer adds a dedicated full-backup download action.
-- Export reads the saved profile and complete episode array from localStorage, plus every image record from IndexedDB.
+- Export reads the saved profile and complete episode array from localStorage, plus every image record from IndexedDB. If `lunaEpisodes` has never been stored, it includes the same three bundled seed episodes currently shown by the dashboard and marks the source as `bundled-seed`.
 - Export validates the recognized profile fields, episode fields, and image payload structure; it stops rather than silently dropping malformed records or unknown episode fields.
 - SHA-256 is calculated over a canonical payload whose object keys are recursively sorted (`recursive-sorted-object-keys-v1`). The digest is included in the JSON.
 - The JSON records schema version, source origin/build, included flags, episode/image counts, and digest metadata.
