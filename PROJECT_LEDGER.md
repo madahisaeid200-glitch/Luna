@@ -267,3 +267,10 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Updated readAllImages() to retain validated rows and resolve only after tx.oncomplete; aborts and request errors reject the export. Validation failures abort the read transaction and fail closed.
 - Verified the exact updated producer.html block on branch feat/producer-full-backup-export (blob 21c2c47e356ba669ef98f96950f66d3c57ee8421).
 - This is static code verification only. Real-browser export with populated IndexedDB data and forced transaction failure remains outstanding; do not merge on this basis.
+
+
+### Empty IndexedDB library acceptance alignment — 2026-11-25
+
+- Cross-checked exporter behavior against the backup spec's explicit “Export empty project” acceptance test. A project that has never stored an image has no IndexedDB database; rejecting that state would make the documented empty-project backup impossible.
+- Updated `readAllImages()` to detect the implicit first-time database upgrade, abort creation, and return zero images. Existing databases with a missing store and all actual read/transaction errors continue to reject.
+- Updated backup specification to make this distinction explicit. This is static source verification only; test in a real browser before merge.
