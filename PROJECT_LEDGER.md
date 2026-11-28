@@ -228,3 +228,29 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - No image was promoted to APPROVED; no live image/video generation was run; no production code or main-branch file was changed.
 - Next: recover the user's exact approval/rejection statements from the conversation lineage; then compare candidate faces against those decisions. Keep all video generation gated until canonical references are approved.
 
+
+
+## 15. Session checkpoint — 2026-11-28 (post PR #40)
+
+### Completed in this session
+- Re-checked repository PR state and the latest control documents before continuing; no Worker/token diagnosis or old setup was repeated.
+- PR #39 is merged to main (merge commit c625733158dcdd4400e72e1aa5ed549eabe00c2b). Its character-realism QA protocol and controlled video-model evaluation plan remain documentation only; no model was selected and no generation was run.
+- PR #40 added the canonical character reference-pack specification. Quality-gate workflow run #401 completed successfully across all four jobs (Preview auth/health, production read-only auth/health, Cloudflare secret-binding names audit, and static/QA tests). The one-file docs-only PR was marked ready and squash-merged as 7ffd7616486e2de7146590772d076fdfa7b151cd.
+- The new specification defines exact candidate IDs, separate single-character candidate review, neutral multi-angle and full-body reference packs, locked/flexible/scene-dependent traits, explicit user approval evidence, identity/anatomy QA gates, versioning, and cost/privacy safeguards.
+- No image was generated, no existing image was promoted to APPROVED, no production code or Worker configuration was changed, and no paid generation was initiated.
+
+### Backup export PR #37 — current verified state
+- PR #37 remains OPEN and DRAFT on feat/producer-full-backup-export; current head 3db9fc65116c93357b713edce2e5945316b20bec. Its reported mergeability is false against the older main base; do not force-merge or bypass review. Reconcile the branch against current main and re-run its checks before any merge decision.
+- Automated browser-shim regression runs #396 and #397 passed, including exporter payload, seed fallback, SHA-256 recomputation inside the test harness, privacy exclusions, fail-closed validation, and download-link lifecycle assertions.
+- These tests do NOT verify that a real Android browser saved a file. Still outstanding: real populated-browser export, inspection of the downloaded JSON, independent digest recomputation from that actual file, mobile memory/quota behavior, and restore on a separate browser/device.
+- Keep the feature unmerged until the real-browser export and actual-file digest checks are completed. Restore and cross-device recovery remain unimplemented.
+
+### Character identity / production gate
+- Canonical LUNA and LEO image references remain UNVERIFIED. The 2026-11-19 candidate images and comparison collage remain unapproved; the 2026-10-25 LUNA & ALEX composite is not a LEO reference.
+- The exact next production-preparation task is to assemble a small, separately labeled candidate review set from recoverable Library assets and map each candidate to its exact prior feedback. Do not create new portraits or start image-to-video until the reference identity is explicitly approved.
+- Once both reference packs are approved, begin with the smallest controlled video comparison described in docs/CHARACTER_REALISM_QA_PROTOCOL.md; no paid request without explicit approval and a hard budget ceiling.
+
+### Next actions (ordered)
+1. Reconcile PR #37 with current main without losing its six-file backup-export work; retain draft status until real-browser verification is complete.
+2. Recover exact LUNA/LEO candidate-to-feedback mapping and prepare the review set; keep all candidates non-canonical until explicit approval.
+3. Continue only after the real mobile download test or character-reference evidence is available; do not claim either as complete based on CI or documentation.
