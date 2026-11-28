@@ -52,6 +52,10 @@ function makeIndexedDB({ rows = [], mode = 'populated' } = {}) {
 async function runExport({ profile, episodes, rows = [], dbMode = 'populated' } = {}) {
   let handler;
   let downloadedBlob = null;
+  let downloadAnchor = null;
+  let appendedAnchor = false;
+  let removedAnchor = false;
+  let revokedUrl = null;
   const status = { textContent: '' };
   const button = {
     disabled: false,
@@ -75,18 +79,20 @@ async function runExport({ profile, episodes, rows = [], dbMode = 'populated' } 
       return null;
     },
     querySelector() { return { content: 'test-build' }; },
-    createElement() {
-      return {
-        style: {},
-        click() {},
-        remove() {}
+    createElement(tag) {
+      assert.equal(tag, 'a', 'Exporter must create a download link');
+      downloadAnchor = {
+        style: {}, href: '', download: '', clicked: false,
+        click() { this.clicked = true; },
+        remove() { removedAnchor = true; }
       };
+      return downloadAnchor;
     },
-    body: { appendChild() {} }
+    body: { appendChild(node) { assert.equal(node, downloadAnchor); appendedAnchor = true; } }
   };
   const URL = {
     createObjectURL(blob) { downloadedBlob = blob; return 'blob:test'; },
-    revokeObjectURL() {}
+    revokeObjectURL(url) { revokedUrl = url; }
   };
   const context = {
     document,
@@ -113,7 +119,7 @@ async function runExport({ profile, episodes, rows = [], dbMode = 'populated' } 
   assert.equal(typeof handler, 'function', 'Backup button must have a click handler');
   await handler();
   const json = downloadedBlob ? await downloadedBlob.text() : null;
-  return { backup: json ? JSON.parse(json) : null, raw: json, status: status.textContent, downloaded: !!downloadedBlob };
+  return { backup: json ? JSON.parse(json) : null, raw: json, status: status.textContent, downloaded: !!downloadedBlob, anchor: downloadAnchor, appendedAnchor, removedAnchor, revokedUrl };
 }
 
 function canonical(value) {
@@ -140,6 +146,12 @@ function canonical(value) {
 
   const populated = await runExport({ profile, episodes, rows });
   assert.equal(populated.downloaded, true, populated.status);
+  assert.equal(populated.anchor.href, 'blob:test');
+  assert.match(populated.anchor.download, /^luna-backup-.*\.json$/);
+  assert.equal(populated.anchor.clicked, true, 'Backup link must be clicked to initiate browser download');
+  assert.equal(populated.appendedAnchor, true, 'Download link must be attached to the document');
+  assert.equal(populated.removedAnchor, true, 'Temporary download link must be removed');
+  assert.equal(populated.revokedUrl, 'blob:test', 'Temporary object URL must be revoked');
   assert.equal(populated.backup.format, 'luna-browser-backup');
   assert.equal(populated.backup.schemaVersion, 1);
   assert.equal(populated.backup.counts.episodes, 1);
