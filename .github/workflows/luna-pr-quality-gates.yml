@@ -335,6 +335,8 @@ jobs:
           console.log('VISUAL_QA_PARSER: PASS (valid, third person, artwork, realism, anatomy, close-up cases)');
           console.log('WAN_PRE_QA_LOCK: PASS (new image, edited image, and restored image paths)');
           NODE
+      - name: Test full browser backup export and integrity
+        run: node tests/backup-export.test.cjs
 
 
   preview-worker-auth-smoke:
