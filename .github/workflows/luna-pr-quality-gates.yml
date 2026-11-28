@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Run dashboard stored-content security regression
+        run: node tests/dashboard-rendering-security.test.cjs
       - name: Parse Worker JavaScript
         run: node --check worker.js
       - name: Parse producer scripts and test episode safeguards
