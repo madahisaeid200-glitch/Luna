@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ["main"]
   push:
-    branches: ["fix/episode-voice-sync-and-visual-qa"]
+    branches: ["fix/episode-voice-sync-and-visual-qa", "feat/producer-full-backup-export"]
 
 permissions:
   contents: read
