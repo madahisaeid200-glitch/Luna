@@ -281,3 +281,13 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Updated `docs/BACKUP_RESTORE_SPEC.md` to describe the implemented algorithm precisely: lexicographically sorted object keys, preserved array order, recursive serialization, UTF-8 encoding, hexadecimal SHA-256 digest, and JSON normalization of image metadata.
 - Independent digest recomputation from an actual downloaded backup and cross-browser test vectors remain pending; this documentation correction does not count as runtime verification.
 - PR #37 remains draft and unmerged; main remains unchanged.
+
+
+### 2026-11-28 — Backup export regression verification
+
+- Enabled the quality-gates workflow on pushes to `feat/producer-full-backup-export`; prior to this correction, the new test file had no workflow run on its head.
+- Workflow run #396 (`730ee612f7ede4cebc84ae48253cb827c4f343b4`) passed all four jobs: Preview Worker auth/health, production Worker auth/health (read-only), secret binding name audit, and static/QA tests including the browser-shim backup suite.
+- Strengthened `tests/backup-export.test.cjs` to verify the download link receives the Blob URL and a JSON filename, is attached and clicked, is removed afterward, and its object URL is revoked.
+- Workflow run #397 (`aba7ed00f24bb72fc9ee0bf3478d9b6ff744cad9`) passed all four jobs, including the strengthened download-link lifecycle assertions.
+- These tests execute the actual embedded exporter in a Node browser shim. They are not a real Android browser download, do not inspect a file saved by the user's browser, and do not validate mobile storage limits or cross-device restore.
+- PR #37 remains draft and unmerged. Real populated-browser export and independent digest verification from the downloaded file remain required before merge; restore remains design-only.
