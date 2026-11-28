@@ -70,3 +70,23 @@ The following Library images were opened and visually inspected on 2026-11-28. T
 - The candidate portraits show polished, smooth editorial rendering. A later realism pass must specifically inspect skin microtexture, eye reflections, hairline/strands, neck-to-face continuity, hands, anatomy, and consistent lighting across angles. This is a quality checklist, not a claim that the defects have all been measured in these files.
 - Canonical reference rows remain UNVERIFIED. Do not use these candidates in live video generation or mark them APPROVED until exact user approval evidence is recovered.
 
+
+
+## Exact user feedback recovered — 2026-11-19
+
+Conversation evidence recovered on 2026-11-28. This section records the user's decisions separately from the image-file inventory; timestamps alone do not identify which nearby generated file was on screen.
+
+| Conversation time (UTC) | Exact user feedback (Persian) | Decision recorded | Asset mapping |
+|---|---|---|---|
+| 08:24:23 | «قیافه هاشونو دوست ندار نه لونا نه لیو» | REJECTED: both then-current LUNA and LEO faces; user also said the faces were inconsistent and changed every time. | The exact two image files shown in that turn are not conclusively mapped to the Library filenames listed above. |
+| 08:25:57 | «خیلی خوشکل و جذاب» | Requirement: both characters should be very beautiful and attractive. | Design constraint, not approval of an asset. |
+| 08:31:42 | «لئو بد نیست» / «دختره ولی نه دوست ندارم» | The LEO candidate visible in that exchange was described as “not bad”; the LUNA/girl candidate was explicitly rejected. “Not bad” is not final canonical approval. | Do not attach either statement to a later Library file without direct image-to-message evidence. |
+| 08:33:15 | Asked to test LUNA with dark hair and light eyes. | REQUESTED EXPERIMENT only; not approval of a resulting face. | No specific resulting asset is confirmed by this statement. |
+
+### Binding decisions for future visual work
+
+- Do not restore either face rejected at 08:24 as canonical.
+- The LUNA candidate rejected at 08:31 is not approved; the dark-hair/light-eyes request is a design experiment, not a final identity.
+- The LEO candidate described as “not bad” may be retained only as a historical comparison lead. It is not an approved canonical reference.
+- The two 2026-11-19 couple portraits remain UNVERIFIED and must not be described as user-approved. Their proximity in Library timestamps does not prove which portrait corresponds to the user's 08:31 feedback or 08:33 experiment.
+- Until exact image-to-message mapping and explicit final approval are recovered, both canonical reference rows remain UNVERIFIED and production image-to-video remains gated.
