@@ -217,3 +217,14 @@ Updated `docs/ISSUES_AND_LEARNINGS.md` with exact source evidence and refined ba
 - Restore is two-phase: validate/preview first, then create and verify a pre-restore snapshot before writing. Silent overwrite is prohibited.
 - README now links all project-control records so future sessions and collaborators can find the source of truth.
 - This is design documentation only. No export/restore UI or runtime code has been implemented or tested.
+
+## 14. Visual lineage recovery — 2026-11-28
+
+- Recovered and visually inspected four exact Library image assets: the 2026-10-25 legacy LUNA & ALEX composite, two 2026-11-19 single-frame couple portraits, and a 2026-11-19 black-clad six-panel portrait collage.
+- Important identity distinction: the October 25 composite explicitly labels the male character ALEX. It must not be silently relabelled as LEO or treated as proof of LEO's face.
+- The two November 19 couple portraits are provisional later LUNA/LEO candidates only. No user approval evidence was connected to either file; canonical references remain UNVERIFIED.
+- The black-clad six-panel collage is a comparison sheet, not a clean image-to-video source. One female full-body panel uses exaggerated proportions that do not meet the project's natural-proportion preference.
+- Added Library file IDs, timestamps, observations, and safeguards to docs/ASSET_REGISTRY.md.
+- No image was promoted to APPROVED; no live image/video generation was run; no production code or main-branch file was changed.
+- Next: recover the user's exact approval/rejection statements from the conversation lineage; then compare candidate faces against those decisions. Keep all video generation gated until canonical references are approved.
+

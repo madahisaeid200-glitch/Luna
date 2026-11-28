@@ -51,3 +51,42 @@ The following files were found by a recursive Library image listing and visually
 - The café and seated-lounge images have a hand close to the face; keep them out of motion testing until hand/face occlusion is evaluated.
 - No LUNA candidate was established by this five-image inspection. The LUNA identity search remains open.
 - Do not modify the canonical reference table above until exact user approval evidence is found.
+
+## Recovered earlier and 2026-11-19 visual lineage — reviewed 2026-11-28
+
+The following Library images were opened and visually inspected on 2026-11-28. These are inventory observations only; Library timestamps do not prove prompt chronology, character identity, or user approval.
+
+| Library file ID | Filename | Library created (UTC) | Provisional grouping | Visual observation | Status / restrictions |
+|---|---|---|---|---|---|
+| file_000000001af481f4b2caff5e80cb5f8a | Luna & Alex: Luxury Love Chaos.png | 2026-10-25 07:53:04 | Legacy LUNA + ALEX concept | Composite promotional/storyboard collage explicitly labels the male character ALEX; includes text overlays and multiple scene panels. | HISTORICAL / UNVERIFIED; do not relabel ALEX as LEO or use as a clean reference frame. |
+| file_000000002e888210a5d94d9a62de950b | Luxury Couple Portrait.png | 2026-11-19 08:32:33 | Possible later LUNA + LEO couple candidate | Single close two-person portrait; woman has long chestnut-brown hair; man has dark wavy hair and black formal clothing. | UNVERIFIED; no approval evidence; candidate only. |
+| file_000000009ee48210935885a5db4b110d | Glamorous Couple in Warm Luxury.png | 2026-11-19 08:34:38 | Possible later LUNA + LEO couple candidate | Single close two-person portrait in warm interior; similar apparent couple styling to the prior candidate, with a slightly different pose/framing. | UNVERIFIED; no approval evidence; candidate only. |
+| file_000000005d1482109f07fbd40dd1d9fa | Glamorous Black-Clad Portrait Collage.png | 2026-11-19 08:26:32 | Separate LUNA and LEO portrait candidate sheet | Six-panel contact sheet: three female portraits and three male portraits in black clothing; useful for comparing face/wardrobe variants, but not a single clean source frame. | UNVERIFIED; collage only; not suitable as a direct motion reference. |
+
+### Lineage conclusions and production safeguards
+- The 2026-10-25 asset is explicitly a LUNA & ALEX legacy concept. It is not evidence that ALEX and the later LEO design are the same character.
+- The two 2026-11-19 single-frame couple portraits appear visually related and are useful candidates for later comparison, but neither has recorded user approval. Their similarity is not proof of a canonical identity.
+- The 2026-11-19 black-clad contact sheet is a comparison asset, not a clean image-to-video input. Its female full-body panel has strongly emphasized body proportions; this conflicts with the project's stated preference for attractive but natural, non-exaggerated proportions. Do not select that panel as a production standard without explicit review.
+- The candidate portraits show polished, smooth editorial rendering. A later realism pass must specifically inspect skin microtexture, eye reflections, hairline/strands, neck-to-face continuity, hands, anatomy, and consistent lighting across angles. This is a quality checklist, not a claim that the defects have all been measured in these files.
+- Canonical reference rows remain UNVERIFIED. Do not use these candidates in live video generation or mark them APPROVED until exact user approval evidence is recovered.
+
+
+
+## Exact user feedback recovered — 2026-11-19
+
+Conversation evidence recovered on 2026-11-28. This section records the user's decisions separately from the image-file inventory; timestamps alone do not identify which nearby generated file was on screen.
+
+| Conversation time (UTC) | Exact user feedback (Persian) | Decision recorded | Asset mapping |
+|---|---|---|---|
+| 08:24:23 | «قیافه هاشونو دوست ندار نه لونا نه لیو» | REJECTED: both then-current LUNA and LEO faces; user also said the faces were inconsistent and changed every time. | The exact two image files shown in that turn are not conclusively mapped to the Library filenames listed above. |
+| 08:25:57 | «خیلی خوشکل و جذاب» | Requirement: both characters should be very beautiful and attractive. | Design constraint, not approval of an asset. |
+| 08:31:42 | «لئو بد نیست» / «دختره ولی نه دوست ندارم» | The LEO candidate visible in that exchange was described as “not bad”; the LUNA/girl candidate was explicitly rejected. “Not bad” is not final canonical approval. | Do not attach either statement to a later Library file without direct image-to-message evidence. |
+| 08:33:15 | Asked to test LUNA with dark hair and light eyes. | REQUESTED EXPERIMENT only; not approval of a resulting face. | No specific resulting asset is confirmed by this statement. |
+
+### Binding decisions for future visual work
+
+- Do not restore either face rejected at 08:24 as canonical.
+- The LUNA candidate rejected at 08:31 is not approved; the dark-hair/light-eyes request is a design experiment, not a final identity.
+- The LEO candidate described as “not bad” may be retained only as a historical comparison lead. It is not an approved canonical reference.
+- The two 2026-11-19 couple portraits remain UNVERIFIED and must not be described as user-approved. Their proximity in Library timestamps does not prove which portrait corresponds to the user's 08:31 feedback or 08:33 experiment.
+- Until exact image-to-message mapping and explicit final approval are recovered, both canonical reference rows remain UNVERIFIED and production image-to-video remains gated.
